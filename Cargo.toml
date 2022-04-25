@@ -12,4 +12,7 @@ readme = "README.md"
 
 [dependencies]
 bevy = { version = "^0.7", default-features = false }
-bevy_egui = { version = "0.13", default-features = false }
+bevy_egui = { version = "0.13.0", default-features = false }
+
+[dev-dependencies]
+bevy = { version = "0.7", default-features = false, features = ["bevy_sprite"] }
