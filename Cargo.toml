@@ -1,0 +1,15 @@
+[package]
+name = "bevy-yoleck"
+version = "0.1.0"
+edition = "2021"
+authors = ["IdanArye <idanarye@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/idanarye/bevy-yoleck"
+documentation = "https://docs.rs/bevy-yoleck"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "^0.7", default-features = false }
+bevy_egui = { version = "0.13", default-features = false }
