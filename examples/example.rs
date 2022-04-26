@@ -1,6 +1,5 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -18,7 +17,6 @@ fn main() {
     app.add_system_set(SystemSet::on_update(AppMode::Editor).with_system(yoleck_editor));
     app.insert_resource(YoleckState {
         entity_being_edited: None,
-        entities: Default::default(),
     });
     app.run();
 }
@@ -27,7 +25,7 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }
 
-fn setup_entities(mut yoleck: ResMut<YoleckState>, mut commands: Commands) {
+fn setup_entities(mut commands: Commands) {
     for example_box in [
         ExampleBox {
             position: Vec2::new(0.0, -50.0),
@@ -39,38 +37,51 @@ fn setup_entities(mut yoleck: ResMut<YoleckState>, mut commands: Commands) {
         },
     ] {
         let mut cmd = commands.spawn();
-        cmd.insert(YoleckOwned);
         example_box.populate(&mut cmd);
-        yoleck.entities.insert(cmd.id(), example_box);
+        cmd.insert(YoleckManaged {
+            name: String::new(),
+            source: Box::new(example_box),
+        });
     }
+    let mut cmd = commands.spawn();
+    let box2 = ExampleBox2 { position: Vec2::new(0.0, 0.0) };
+    box2.populate(&mut cmd);
+    cmd.insert(YoleckManaged {
+        name: String::new(),
+        source: Box::new(box2),
+    });
 }
 
 #[derive(Component)]
-pub struct YoleckOwned;
+struct YoleckManaged {
+    name: String,
+    source: Box<dyn YoleckSource>,
+}
 
 struct YoleckState {
     entity_being_edited: Option<Entity>,
-    entities: HashMap<Entity, ExampleBox>,
 }
 
 fn yoleck_editor(
     mut egui_context: ResMut<EguiContext>,
     mut yoleck: ResMut<YoleckState>,
+    mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
     mut commands: Commands,
 ) {
     egui::Window::new("Level Editor").show(egui_context.ctx_mut(), |ui| {
         let yoleck = yoleck.as_mut();
-        for entity in yoleck.entities.keys() {
+        for (entity, yoleck_managed) in yoleck_managed_query.iter() {
             ui.selectable_value(
                 &mut yoleck.entity_being_edited,
-                Some(*entity),
-                format!("{:?}", entity),
+                Some(entity),
+                format!("{} {:?}", yoleck_managed.name, entity),
             );
         }
         if let Some(entity) = yoleck.entity_being_edited {
-            if let Some(data) = yoleck.entities.get_mut(&entity) {
-                data.edit(ui);
-                data.populate(&mut commands.entity(entity));
+            if let Ok((_, mut yoleck_managed)) = yoleck_managed_query.get_mut(entity) {
+                ui.text_edit_singleline(&mut yoleck_managed.name);
+                yoleck_managed.source.edit(ui);
+                yoleck_managed.source.populate(&mut commands.entity(entity));
             }
         }
     });
@@ -81,7 +92,12 @@ struct ExampleBox {
     color: Color,
 }
 
-impl ExampleBox {
+pub trait YoleckSource: Send + Sync {
+    fn populate(&self, cmd: &mut EntityCommands);
+    fn edit(&mut self, ui: &mut egui::Ui);
+}
+
+impl YoleckSource for ExampleBox {
     fn populate(&self, cmd: &mut EntityCommands) {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
@@ -117,5 +133,28 @@ impl ExampleBox {
             *blue = rgba.b();
             *alpha = rgba.a();
         }
+    }
+}
+
+struct ExampleBox2 {
+    position: Vec2,
+}
+
+impl YoleckSource for ExampleBox2 {
+    fn populate(&self, cmd: &mut EntityCommands) {
+        cmd.insert_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::GREEN,
+                custom_size: Some(Vec2::new(30.0, 30.0)),
+                ..Default::default()
+            },
+            transform: Transform::from_translation(self.position.extend(0.0)),
+            ..Default::default()
+        });
+    }
+
+    fn edit(&mut self, ui: &mut egui::Ui) {
+        ui.add(egui::Slider::new(&mut self.position.x, -100.0..=100.0).text("X Position"));
+        ui.add(egui::Slider::new(&mut self.position.y, -100.0..=100.0).text("Y Position"));
     }
 }
