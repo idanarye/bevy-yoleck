@@ -2,13 +2,18 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 
-use bevy_yoleck::{YoleckManaged, YoleckPlugin, YoleckSource};
+use bevy_yoleck::{YoleckPlugin, YoleckRaw, YoleckSource, YoleckState};
+use serde::{Deserialize, Serialize};
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
     app.add_plugin(EguiPlugin);
     app.add_plugin(YoleckPlugin);
+    app.add_startup_system(|mut yoleck: ResMut<YoleckState>| {
+        yoleck.add_handler::<ExampleBox>("ExampleBox".to_owned());
+        yoleck.add_handler::<ExampleBox2>("ExampleBox2".to_owned());
+    });
     app.add_startup_system(setup_camera);
     app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
     app.run();
@@ -19,36 +24,30 @@ fn setup_camera(mut commands: Commands) {
 }
 
 fn setup_entities(mut commands: Commands) {
-    for example_box in [
-        ExampleBox {
-            position: Vec2::new(0.0, -50.0),
-            color: Color::RED,
-        },
-        ExampleBox {
-            position: Vec2::new(0.0, 50.0),
-            color: Color::BLUE,
-        },
-    ] {
-        let mut cmd = commands.spawn();
-        example_box.populate(&mut cmd);
-        cmd.insert(YoleckManaged {
-            name: String::new(),
-            source: Box::new(example_box),
-        });
+    let data = r#"[
+        ["ExampleBox", {
+            "position": [0.0, -50.0],
+            "color":{"Rgba":{"alpha":1.0,"blue":0.0,"green":0.0,"red":1.0}}
+        }],
+        ["ExampleBox", {
+            "position": [0.0, 50.0],
+            "color":{"Rgba":{"alpha":1.0,"blue":1.0,"green":0.0,"red":0.0}}
+        }],
+        ["ExampleBox2", {
+            "position": [0.0, 0.0]
+        }]
+    ]"#;
+    for (type_name, data) in serde_json::from_str::<Vec<(String, serde_json::Value)>>(data).unwrap()
+    {
+        commands.spawn().insert(YoleckRaw { type_name, data });
     }
-    let mut cmd = commands.spawn();
-    let box2 = ExampleBox2 {
-        position: Vec2::new(0.0, 0.0),
-    };
-    box2.populate(&mut cmd);
-    cmd.insert(YoleckManaged {
-        name: String::new(),
-        source: Box::new(box2),
-    });
 }
 
+#[derive(Serialize, Deserialize)]
 struct ExampleBox {
+    #[serde(default)]
     position: Vec2,
+    #[serde(default)]
     color: Color,
 }
 
@@ -91,6 +90,7 @@ impl YoleckSource for ExampleBox {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 struct ExampleBox2 {
     position: Vec2,
 }
