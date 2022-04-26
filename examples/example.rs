@@ -1,23 +1,16 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContext, EguiPlugin};
+use bevy_egui::{egui, EguiPlugin};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-enum AppMode {
-    Editor,
-}
+use bevy_yoleck::{YoleckManaged, YoleckPlugin, YoleckSource};
 
 fn main() {
     let mut app = App::new();
-    app.add_state(AppMode::Editor);
     app.add_plugins(DefaultPlugins);
     app.add_plugin(EguiPlugin);
+    app.add_plugin(YoleckPlugin);
     app.add_startup_system(setup_camera);
     app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
-    app.add_system_set(SystemSet::on_update(AppMode::Editor).with_system(yoleck_editor));
-    app.insert_resource(YoleckState {
-        entity_being_edited: None,
-    });
     app.run();
 }
 
@@ -44,7 +37,9 @@ fn setup_entities(mut commands: Commands) {
         });
     }
     let mut cmd = commands.spawn();
-    let box2 = ExampleBox2 { position: Vec2::new(0.0, 0.0) };
+    let box2 = ExampleBox2 {
+        position: Vec2::new(0.0, 0.0),
+    };
     box2.populate(&mut cmd);
     cmd.insert(YoleckManaged {
         name: String::new(),
@@ -52,49 +47,9 @@ fn setup_entities(mut commands: Commands) {
     });
 }
 
-#[derive(Component)]
-struct YoleckManaged {
-    name: String,
-    source: Box<dyn YoleckSource>,
-}
-
-struct YoleckState {
-    entity_being_edited: Option<Entity>,
-}
-
-fn yoleck_editor(
-    mut egui_context: ResMut<EguiContext>,
-    mut yoleck: ResMut<YoleckState>,
-    mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
-    mut commands: Commands,
-) {
-    egui::Window::new("Level Editor").show(egui_context.ctx_mut(), |ui| {
-        let yoleck = yoleck.as_mut();
-        for (entity, yoleck_managed) in yoleck_managed_query.iter() {
-            ui.selectable_value(
-                &mut yoleck.entity_being_edited,
-                Some(entity),
-                format!("{} {:?}", yoleck_managed.name, entity),
-            );
-        }
-        if let Some(entity) = yoleck.entity_being_edited {
-            if let Ok((_, mut yoleck_managed)) = yoleck_managed_query.get_mut(entity) {
-                ui.text_edit_singleline(&mut yoleck_managed.name);
-                yoleck_managed.source.edit(ui);
-                yoleck_managed.source.populate(&mut commands.entity(entity));
-            }
-        }
-    });
-}
-
 struct ExampleBox {
     position: Vec2,
     color: Color,
-}
-
-pub trait YoleckSource: Send + Sync {
-    fn populate(&self, cmd: &mut EntityCommands);
-    fn edit(&mut self, ui: &mut egui::Ui);
 }
 
 impl YoleckSource for ExampleBox {
