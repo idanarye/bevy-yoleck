@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 use bevy_egui::{egui, EguiContext};
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +17,7 @@ impl Plugin for YoleckPlugin {
         );
         app.insert_resource(YoleckState {
             entity_being_edited: None,
+            type_handler_names: Default::default(),
             type_handlers: Default::default(),
         });
         app.add_system(yoleck_process_raw_entries);
@@ -44,6 +45,7 @@ pub struct YoleckManaged {
 
 pub struct YoleckState {
     entity_being_edited: Option<Entity>,
+    type_handler_names: Vec<String>,
     type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
 }
 
@@ -54,6 +56,7 @@ impl YoleckState {
         T: Serialize,
         for<'de> T: Deserialize<'de>,
     {
+        self.type_handler_names.push(name.clone());
         self.type_handlers.insert(
             name,
             Box::new(YoleckTypeHandlerFor::<T> {
@@ -68,6 +71,7 @@ fn yoleck_editor(
     mut yoleck: ResMut<YoleckState>,
     mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
     mut commands: Commands,
+    mut filter_types: Local<HashSet<String>>,
 ) {
     egui::Window::new("Level Editor").show(egui_context.ctx_mut(), |ui| {
         let yoleck = yoleck.as_mut();
@@ -90,23 +94,63 @@ fn yoleck_editor(
             }
         }
 
-        for (entity, yoleck_managed) in yoleck_managed_query.iter() {
-            ui.selectable_value(
-                &mut yoleck.entity_being_edited,
-                Some(entity),
-                if yoleck_managed.name.is_empty() {
-                    format!("{} {:?}", yoleck_managed.type_name, entity)
-                } else {
-                    format!(
-                        "{} ({} {:?})",
-                        yoleck_managed.name, yoleck_managed.type_name, entity
-                    )
-                },
-            );
-        }
+        egui::CollapsingHeader::new("Types")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::Grid::new("level editor types table").show(ui, |ui| {
+                    for type_name in yoleck.type_handler_names.iter() {
+                        let mut should_show = filter_types.contains(type_name);
+                        if ui.checkbox(&mut should_show, type_name).changed() {
+                            if should_show {
+                                filter_types.insert(type_name.clone());
+                            } else {
+                                filter_types.remove(type_name);
+                            }
+                        }
+                        if ui.button("New").clicked() {
+                            let mut cmd = commands.spawn();
+                            cmd.insert(YoleckRawEntry {
+                                header: YoleckEntryHeader {
+                                    type_name: type_name.clone(),
+                                    name: "".to_owned(),
+                                },
+                                data: serde_json::Value::Object(Default::default()),
+                            });
+                            yoleck.entity_being_edited = Some(cmd.id());
+                        }
+                        ui.end_row();
+                    }
+                });
+            });
+
+        egui::ScrollArea::vertical()
+            .max_height(128.0)
+            .show(ui, |ui| {
+                for (entity, yoleck_managed) in yoleck_managed_query.iter() {
+                    if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name)
+                    {
+                        continue;
+                    }
+                    ui.selectable_value(
+                        &mut yoleck.entity_being_edited,
+                        Some(entity),
+                        if yoleck_managed.name.is_empty() {
+                            format!("{} {:?}", yoleck_managed.type_name, entity)
+                        } else {
+                            format!(
+                                "{} ({} {:?})",
+                                yoleck_managed.name, yoleck_managed.type_name, entity
+                            )
+                        },
+                    );
+                }
+            });
         if let Some(entity) = yoleck.entity_being_edited {
             if let Ok((_, mut yoleck_managed)) = yoleck_managed_query.get_mut(entity) {
-                ui.text_edit_singleline(&mut yoleck_managed.name);
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(&mut yoleck_managed.name);
+                    if ui.button("Delete").clicked() {}
+                });
                 let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
                 handler.on_editor(&mut yoleck_managed.data, entity, ui, &mut commands);
             }

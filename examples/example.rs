@@ -64,7 +64,7 @@ impl YoleckSource for ExampleBox {
     }
 
     fn edit(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::Slider::new(&mut self.position.x, -100.0..=100.0).text("X Position"));
+        ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
         self.color = self.color.as_rgba();
         if let Color::Rgba {
             red,
@@ -91,6 +91,7 @@ impl YoleckSource for ExampleBox {
 
 #[derive(Serialize, Deserialize)]
 struct ExampleBox2 {
+    #[serde(default)]
     position: Vec2,
 }
 
@@ -108,7 +109,7 @@ impl YoleckSource for ExampleBox2 {
     }
 
     fn edit(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::Slider::new(&mut self.position.x, -100.0..=100.0).text("X Position"));
-        ui.add(egui::Slider::new(&mut self.position.y, -100.0..=100.0).text("Y Position"));
+        ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
+        ui.add(egui::DragValue::new(&mut self.position.y).prefix("Y:"));
     }
 }
