@@ -126,35 +126,39 @@ fn yoleck_editor(
         egui::ScrollArea::vertical()
             .max_height(128.0)
             .show(ui, |ui| {
-                for (entity, yoleck_managed) in yoleck_managed_query.iter() {
+                for (entity, mut yoleck_managed) in yoleck_managed_query.iter_mut() {
                     if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name)
                     {
                         continue;
                     }
-                    ui.selectable_value(
-                        &mut yoleck.entity_being_edited,
-                        Some(entity),
-                        if yoleck_managed.name.is_empty() {
-                            format!("{} {:?}", yoleck_managed.type_name, entity)
+                    let is_selected = yoleck.entity_being_edited == Some(entity);
+                    let header = egui::CollapsingHeader::new(if yoleck_managed.name.is_empty() {
+                        format!("{} {:?}", yoleck_managed.type_name, entity)
+                    } else {
+                        format!(
+                            "{} ({} {:?})",
+                            yoleck_managed.name, yoleck_managed.type_name, entity
+                        )
+                    });
+                    let header = header.selectable(true).selected(is_selected);
+                    let header = header.open(Some(is_selected));
+                    let resp = header.show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut yoleck_managed.name);
+                            if ui.button("Delete").clicked() {}
+                        });
+                        let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
+                        handler.on_editor(&mut yoleck_managed.data, entity, ui, &mut commands);
+                    });
+                    if resp.header_response.clicked() {
+                        if is_selected {
+                            yoleck.entity_being_edited = None;
                         } else {
-                            format!(
-                                "{} ({} {:?})",
-                                yoleck_managed.name, yoleck_managed.type_name, entity
-                            )
-                        },
-                    );
+                            yoleck.entity_being_edited = Some(entity);
+                        }
+                    }
                 }
             });
-        if let Some(entity) = yoleck.entity_being_edited {
-            if let Ok((_, mut yoleck_managed)) = yoleck_managed_query.get_mut(entity) {
-                ui.horizontal(|ui| {
-                    ui.text_edit_singleline(&mut yoleck_managed.name);
-                    if ui.button("Delete").clicked() {}
-                });
-                let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
-                handler.on_editor(&mut yoleck_managed.data, entity, ui, &mut commands);
-            }
-        }
     });
 }
 
