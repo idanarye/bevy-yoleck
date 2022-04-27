@@ -2,7 +2,7 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 
-use bevy_yoleck::{YoleckPlugin, YoleckRawEntry, YoleckSource, YoleckState};
+use bevy_yoleck::{YoleckPlugin, YoleckRawEntry, YoleckSelectable, YoleckSource, YoleckState};
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -61,6 +61,7 @@ impl YoleckSource for ExampleBox {
             transform: Transform::from_translation(self.position.extend(0.0)),
             ..Default::default()
         });
+        cmd.insert(YoleckSelectable::rect(20.0, 20.0));
     }
 
     fn edit(&mut self, ui: &mut egui::Ui) {
@@ -106,6 +107,7 @@ impl YoleckSource for ExampleBox2 {
             transform: Transform::from_translation(self.position.extend(0.0)),
             ..Default::default()
         });
+        cmd.insert(YoleckSelectable::rect(30.0, 30.0));
     }
 
     fn edit(&mut self, ui: &mut egui::Ui) {

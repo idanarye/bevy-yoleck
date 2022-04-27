@@ -1,3 +1,5 @@
+mod mouse_actions_2d;
+
 use std::any::Any;
 use std::marker::PhantomData;
 
@@ -6,6 +8,8 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::{egui, EguiContext};
 use serde::{Deserialize, Serialize};
+
+pub use mouse_actions_2d::YoleckSelectable;
 
 pub struct YoleckPlugin;
 
@@ -21,6 +25,7 @@ impl Plugin for YoleckPlugin {
             type_handlers: Default::default(),
         });
         app.add_system(yoleck_process_raw_entries);
+        app.add_plugin(mouse_actions_2d::YoleckMouseActions2dPlugin);
     }
 }
 
