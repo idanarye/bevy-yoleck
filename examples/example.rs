@@ -2,7 +2,7 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 
-use bevy_yoleck::{YoleckPlugin, YoleckRaw, YoleckSource, YoleckState};
+use bevy_yoleck::{YoleckPlugin, YoleckRawEntry, YoleckSource, YoleckState};
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -25,21 +25,20 @@ fn setup_camera(mut commands: Commands) {
 
 fn setup_entities(mut commands: Commands) {
     let data = r#"[
-        ["ExampleBox", {
+        [{"type": "ExampleBox"}, {
             "position": [0.0, -50.0],
             "color":{"Rgba":{"alpha":1.0,"blue":0.0,"green":0.0,"red":1.0}}
         }],
-        ["ExampleBox", {
+        [{"type": "ExampleBox", "name": "box2"}, {
             "position": [0.0, 50.0],
             "color":{"Rgba":{"alpha":1.0,"blue":1.0,"green":0.0,"red":0.0}}
         }],
-        ["ExampleBox2", {
+        [{"type": "ExampleBox2"}, {
             "position": [0.0, 0.0]
         }]
     ]"#;
-    for (type_name, data) in serde_json::from_str::<Vec<(String, serde_json::Value)>>(data).unwrap()
-    {
-        commands.spawn().insert(YoleckRaw { type_name, data });
+    for entry in serde_json::from_str::<Vec<YoleckRawEntry>>(data).unwrap() {
+        commands.spawn().insert(entry);
     }
 }
 

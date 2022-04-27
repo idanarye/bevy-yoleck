@@ -19,7 +19,7 @@ impl Plugin for YoleckPlugin {
             entity_being_edited: None,
             type_handlers: Default::default(),
         });
-        app.add_system(yoleck_process_raws);
+        app.add_system(yoleck_process_raw_entries);
     }
 }
 
@@ -78,7 +78,14 @@ fn yoleck_editor(
                 println!(
                     "{:?}: {}",
                     entity,
-                    serde_json::to_string(&handler.make_raw(&yoleck_managed.data)).unwrap()
+                    serde_json::to_string(&YoleckRawEntry {
+                        header: YoleckEntryHeader {
+                            type_name: yoleck_managed.type_name.clone(),
+                            name: yoleck_managed.name.clone(),
+                        },
+                        data: handler.make_raw(&yoleck_managed.data),
+                    })
+                    .unwrap()
                 );
             }
         }
@@ -87,7 +94,14 @@ fn yoleck_editor(
             ui.selectable_value(
                 &mut yoleck.entity_being_edited,
                 Some(entity),
-                format!("{} {:?}", yoleck_managed.name, entity),
+                if yoleck_managed.name.is_empty() {
+                    format!("{} {:?}", yoleck_managed.type_name, entity)
+                } else {
+                    format!(
+                        "{} ({} {:?})",
+                        yoleck_managed.name, yoleck_managed.type_name, entity
+                    )
+                },
             );
         }
         if let Some(entity) = yoleck.entity_being_edited {
@@ -160,26 +174,57 @@ where
     }
 }
 
-#[derive(Component, Debug)]
-pub struct YoleckRaw {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct YoleckEntryHeader {
+    #[serde(rename = "type")]
     pub type_name: String,
+    #[serde(default)]
+    pub name: String,
+}
+
+#[derive(Component, Debug)]
+pub struct YoleckRawEntry {
+    pub header: YoleckEntryHeader,
     pub data: serde_json::Value,
 }
 
-fn yoleck_process_raws(
-    raws_query: Query<(Entity, &YoleckRaw)>,
+impl Serialize for YoleckRawEntry {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        (&self.header, &self.data).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for YoleckRawEntry {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let (header, data): (YoleckEntryHeader, serde_json::Value) =
+            Deserialize::deserialize(deserializer)?;
+        Ok(Self { header, data })
+    }
+}
+
+fn yoleck_process_raw_entries(
+    raw_entries_query: Query<(Entity, &YoleckRawEntry)>,
     mut commands: Commands,
     yoleck: Res<YoleckState>,
 ) {
-    for (entity, raw) in raws_query.iter() {
+    for (entity, raw_entry) in raw_entries_query.iter() {
         let mut cmd = commands.entity(entity);
-        cmd.remove::<YoleckRaw>();
-        let handler = yoleck.type_handlers.get(&raw.type_name).unwrap();
-        let concrete = handler.make_concrete(raw.data.clone()).unwrap();
+        cmd.remove::<YoleckRawEntry>();
+        let handler = yoleck
+            .type_handlers
+            .get(&raw_entry.header.type_name)
+            .unwrap();
+        let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
         handler.populate(&concrete, &mut cmd);
         cmd.insert(YoleckManaged {
-            name: "".to_owned(),
-            type_name: raw.type_name.to_owned(),
+            name: raw_entry.header.name.to_owned(),
+            type_name: raw_entry.header.type_name.to_owned(),
             data: concrete,
         });
     }
