@@ -73,14 +73,14 @@ impl YoleckSource for ExampleBox {
             alpha,
         } = &mut self.color
         {
-            let mut color32: egui::Color32 =
+            let color32: egui::Color32 =
                 egui::Rgba::from_rgba_unmultiplied(*red, *green, *blue, *alpha).into();
-            egui::widgets::color_picker::color_picker_color32(
+            let mut rgba: egui::Rgba = color32.into();
+            egui::widgets::color_picker::color_edit_button_rgba(
                 ui,
-                &mut color32,
+                &mut rgba,
                 egui::color_picker::Alpha::OnlyBlend,
             );
-            let rgba: egui::Rgba = color32.into();
             *red = rgba.r();
             *green = rgba.g();
             *blue = rgba.b();
