@@ -142,12 +142,8 @@ impl YoleckSelectable {
     }
 
     fn is_world_pos_in(&self, transform: &GlobalTransform, cursor_in_world_pos: Vec2) -> bool {
-        let topleft = transform.mul_vec3(Vec3::new(self.0.left, self.0.top, 0.0));
-        let botright = transform.mul_vec3(Vec3::new(self.0.right, self.0.bottom, 0.0));
-        topleft.x <= cursor_in_world_pos.x
-            && topleft.y <= cursor_in_world_pos.y
-            && cursor_in_world_pos.x <= botright.x
-            && cursor_in_world_pos.y <= botright.y
+        let [x, y, _] = transform.compute_matrix().inverse().project_point3(cursor_in_world_pos.extend(0.0)).to_array();
+        self.0.left <= x && x <= self.0.right && self.0.top <= y && y <= self.0.bottom
     }
 }
 
@@ -157,7 +153,8 @@ fn screen_pos_to_world_pos(
     camera_transform: &GlobalTransform,
     camera: &Camera,
 ) -> Vec2 {
-    // Taken from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
+    // Code stolen from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
+
     // get the size of the window
     let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
 
