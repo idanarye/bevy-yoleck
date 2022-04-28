@@ -1,6 +1,6 @@
 mod mouse_actions_2d;
 
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 
 use bevy::ecs::system::EntityCommands;
@@ -16,14 +16,15 @@ pub struct YoleckPlugin;
 impl Plugin for YoleckPlugin {
     fn build(&self, app: &mut App) {
         app.add_state(YoleckEditorState::EditorActive);
-        app.add_system_set(
-            SystemSet::on_update(YoleckEditorState::EditorActive).with_system(yoleck_editor),
-        );
         app.insert_resource(YoleckState {
             entity_being_edited: None,
             type_handler_names: Default::default(),
             type_handlers: Default::default(),
         });
+        app.add_event::<YoleckDirective>();
+        app.add_system_set(
+            SystemSet::on_update(YoleckEditorState::EditorActive).with_system(yoleck_editor),
+        );
         app.add_system(yoleck_process_raw_entries);
         app.add_plugin(mouse_actions_2d::YoleckMouseActions2dPlugin);
     }
@@ -34,9 +35,39 @@ pub enum YoleckEditorState {
     EditorActive,
 }
 
+pub enum YoleckDirectiveInner {
+    PassToEntity(Entity, TypeId, BoxedAny),
+}
+
+pub struct YoleckDirective(YoleckDirectiveInner);
+
+impl YoleckDirective {
+    pub fn pass_to_entity<T: 'static + Send + Sync>(entity: Entity, data: T) -> Self {
+        Self(YoleckDirectiveInner::PassToEntity(
+            entity,
+            TypeId::of::<T>(),
+            Box::new(data),
+        ))
+    }
+}
+
+pub struct YoleckEditContext<'a> {
+    passed: &'a HashMap<TypeId, &'a BoxedAny>,
+}
+
+impl YoleckEditContext<'_> {
+    pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
+        if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
+            dynamic.downcast_ref()
+        } else {
+            None
+        }
+    }
+}
+
 pub trait YoleckSource: Send + Sync {
     fn populate(&self, cmd: &mut EntityCommands);
-    fn edit(&mut self, ui: &mut egui::Ui);
+    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext);
 }
 
 type BoxedAny = Box<dyn Send + Sync + Any>;
@@ -77,7 +108,22 @@ fn yoleck_editor(
     mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
     mut commands: Commands,
     mut filter_types: Local<HashSet<String>>,
+    mut directives_reader: EventReader<YoleckDirective>,
 ) {
+    let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, &BoxedAny>> =
+        Default::default();
+    let dummy_data_passed_to_entity = HashMap::<TypeId, &BoxedAny>::new();
+    for directive in directives_reader.iter() {
+        match &directive.0 {
+            YoleckDirectiveInner::PassToEntity(entity, type_id, data) => {
+                data_passed_to_entities
+                    .entry(*entity)
+                    .or_default()
+                    .insert(*type_id, data);
+            }
+        }
+    }
+
     egui::Window::new("Level Editor").show(egui_context.ctx_mut(), |ui| {
         let yoleck = yoleck.as_mut();
 
@@ -153,7 +199,18 @@ fn yoleck_editor(
                             if ui.button("Delete").clicked() {}
                         });
                         let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
-                        handler.on_editor(&mut yoleck_managed.data, entity, ui, &mut commands);
+                        let edit_context = YoleckEditContext {
+                            passed: data_passed_to_entities
+                                .get(&entity)
+                                .unwrap_or(&dummy_data_passed_to_entity),
+                        };
+                        handler.on_editor(
+                            &mut yoleck_managed.data,
+                            entity,
+                            ui,
+                            &edit_context,
+                            &mut commands,
+                        );
                     });
                     if resp.header_response.clicked() {
                         if is_selected {
@@ -175,6 +232,7 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
         data: &mut BoxedAny,
         entity: Entity,
         ui: &mut egui::Ui,
+        ctx: &YoleckEditContext,
         commands: &mut Commands,
     );
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value;
@@ -214,10 +272,11 @@ where
         data: &mut BoxedAny,
         entity: Entity,
         ui: &mut egui::Ui,
+        ctx: &YoleckEditContext,
         commands: &mut Commands,
     ) {
         let concrete = data.downcast_mut::<T>().unwrap();
-        concrete.edit(ui);
+        concrete.edit(ui, ctx);
         concrete.populate(&mut commands.entity(entity));
     }
 

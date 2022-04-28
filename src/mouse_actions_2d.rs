@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::utils::HashMap;
 
-use crate::{YoleckEditorState, YoleckState};
+use crate::{YoleckDirective, YoleckEditorState, YoleckState};
 
 pub struct YoleckMouseActions2dPlugin;
 
@@ -19,9 +19,14 @@ enum YoleckClicksOnObjectsState {
     Empty,
     PendingSelection(Entity),
     PendingMidair {
-        screen: Vec2,
+        orig_screen_pos: Vec2,
         #[allow(dead_code)]
         world: Vec2,
+    },
+    BeingDragged {
+        entity: Entity,
+        prev_screen_pos: Vec2,
+        offset: Vec2,
     },
 }
 
@@ -32,6 +37,7 @@ fn yoleck_clicks_on_objects(
     yolek_targets_query: Query<(Entity, &GlobalTransform, &YoleckSelectable)>,
     mut yoleck: ResMut<YoleckState>,
     mut state_by_camera: Local<HashMap<Entity, YoleckClicksOnObjectsState>>,
+    mut directives_writer: EventWriter<YoleckDirective>,
 ) {
     enum MouseButtonOp {
         JustPressed,
@@ -63,64 +69,105 @@ fn yoleck_clicks_on_objects(
                 .entry(camera_entity)
                 .or_insert(YoleckClicksOnObjectsState::Empty);
 
-            let is_entity_still_pointed_at = |entity: Entity| -> bool {
+            let is_entity_still_pointed_at = |entity: Entity| {
                 if let Ok((_, entity_transform, entity_selectable)) =
                     yolek_targets_query.get(entity)
                 {
-                    entity_selectable.is_world_pos_in(entity_transform, world_pos)
+                    if entity_selectable.is_world_pos_in(entity_transform, world_pos) {
+                        Some(entity_transform)
+                    } else {
+                        None
+                    }
                 } else {
-                    false
+                    None
                 }
             };
 
             match (&mouse_button_op, &state) {
                 (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
-                    let entity_under_cursor = yolek_targets_query.iter().find_map(
-                        |(entity, entity_transform, entity_selectable)| {
-                            entity_selectable
-                                .is_world_pos_in(entity_transform, world_pos)
-                                .then(|| entity)
-                        },
-                    );
-                    if let Some(entity) = entity_under_cursor {
-                        *state = YoleckClicksOnObjectsState::PendingSelection(entity);
+                    *state = if let Some((entity, entity_transform)) = yoleck
+                        .entity_being_edited
+                        .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
+                    {
+                        YoleckClicksOnObjectsState::BeingDragged {
+                            entity,
+                            prev_screen_pos: screen_pos,
+                            offset: world_pos - entity_transform.translation.truncate(),
+                        }
                     } else {
-                        *state = YoleckClicksOnObjectsState::PendingMidair {
-                            screen: screen_pos,
-                            world: world_pos,
-                        };
+                        let entity_under_cursor = yolek_targets_query.iter().find_map(
+                            |(entity, entity_transform, entity_selectable)| {
+                                entity_selectable
+                                    .is_world_pos_in(entity_transform, world_pos)
+                                    .then(|| entity)
+                            },
+                        );
+                        if let Some(entity) = entity_under_cursor {
+                            YoleckClicksOnObjectsState::PendingSelection(entity)
+                        } else {
+                            YoleckClicksOnObjectsState::PendingMidair {
+                                orig_screen_pos: screen_pos,
+                                world: world_pos,
+                            }
+                        }
                     }
                 }
                 (
                     MouseButtonOp::JustReleased,
                     YoleckClicksOnObjectsState::PendingSelection(start_entity),
                 ) => {
-                    if is_entity_still_pointed_at(*start_entity) {
+                    if is_entity_still_pointed_at(*start_entity).is_some() {
                         yoleck.entity_being_edited = Some(*start_entity);
                     }
                     *state = YoleckClicksOnObjectsState::Empty;
                 }
                 (_, YoleckClicksOnObjectsState::PendingSelection(start_entity)) => {
-                    if !is_entity_still_pointed_at(*start_entity) {
+                    if is_entity_still_pointed_at(*start_entity).is_none() {
                         *state = YoleckClicksOnObjectsState::Empty;
                     }
                 }
                 (
                     MouseButtonOp::BeingPressed,
-                    YoleckClicksOnObjectsState::PendingMidair { screen, world: _ },
+                    YoleckClicksOnObjectsState::PendingMidair {
+                        orig_screen_pos,
+                        world: _,
+                    },
                 ) => {
-                    if 0.1 <= (*screen - screen_pos).length_squared() {
+                    if 0.1 <= orig_screen_pos.distance_squared(screen_pos) {
                         *state = YoleckClicksOnObjectsState::Empty;
                     }
                 }
                 (
                     MouseButtonOp::JustReleased,
-                    YoleckClicksOnObjectsState::PendingMidair { screen, world: _ },
+                    YoleckClicksOnObjectsState::PendingMidair {
+                        orig_screen_pos,
+                        world: _,
+                    },
                 ) => {
-                    if (*screen - screen_pos).length_squared() < 0.1 {
+                    if orig_screen_pos.distance_squared(screen_pos) < 0.1 {
                         yoleck.entity_being_edited = None;
                     }
                     *state = YoleckClicksOnObjectsState::Empty;
+                }
+                (
+                    MouseButtonOp::BeingPressed,
+                    YoleckClicksOnObjectsState::BeingDragged {
+                        entity,
+                        prev_screen_pos,
+                        offset,
+                    },
+                ) => {
+                    if 0.1 <= prev_screen_pos.distance_squared(screen_pos) {
+                        directives_writer.send(YoleckDirective::pass_to_entity(
+                            *entity,
+                            world_pos - *offset,
+                        ));
+                        *state = YoleckClicksOnObjectsState::BeingDragged {
+                            entity: *entity,
+                            prev_screen_pos: screen_pos,
+                            offset: *offset,
+                        };
+                    }
                 }
                 _ => {}
             }
@@ -142,7 +189,11 @@ impl YoleckSelectable {
     }
 
     fn is_world_pos_in(&self, transform: &GlobalTransform, cursor_in_world_pos: Vec2) -> bool {
-        let [x, y, _] = transform.compute_matrix().inverse().project_point3(cursor_in_world_pos.extend(0.0)).to_array();
+        let [x, y, _] = transform
+            .compute_matrix()
+            .inverse()
+            .project_point3(cursor_in_world_pos.extend(0.0))
+            .to_array();
         self.0.left <= x && x <= self.0.right && self.0.top <= y && y <= self.0.bottom
     }
 }

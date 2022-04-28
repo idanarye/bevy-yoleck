@@ -2,7 +2,9 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 
-use bevy_yoleck::{YoleckPlugin, YoleckRawEntry, YoleckSelectable, YoleckSource, YoleckState};
+use bevy_yoleck::{
+    YoleckEditContext, YoleckPlugin, YoleckRawEntry, YoleckSelectable, YoleckSource, YoleckState,
+};
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -64,7 +66,10 @@ impl YoleckSource for ExampleBox {
         cmd.insert(YoleckSelectable::rect(20.0, 20.0));
     }
 
-    fn edit(&mut self, ui: &mut egui::Ui) {
+    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext) {
+        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+            *self.position = **pos;
+        }
         ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
         self.color = self.color.as_rgba();
         if let Color::Rgba {
@@ -110,7 +115,10 @@ impl YoleckSource for ExampleBox2 {
         cmd.insert(YoleckSelectable::rect(30.0, 30.0));
     }
 
-    fn edit(&mut self, ui: &mut egui::Ui) {
+    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext) {
+        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+            *self.position = **pos;
+        }
         ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut self.position.y).prefix("Y:"));
     }
