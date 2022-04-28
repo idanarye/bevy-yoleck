@@ -18,7 +18,6 @@ impl Plugin for YoleckMouseActions2dPlugin {
 
 enum YoleckClicksOnObjectsState {
     Empty,
-    PendingSelection(Entity),
     PendingMidair {
         orig_screen_pos: Vec2,
         #[allow(dead_code)]
@@ -91,45 +90,30 @@ fn yoleck_clicks_on_objects(
 
             match (&mouse_button_op, &state) {
                 (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
-                    *state = if let Some((entity, entity_transform)) = yoleck
+                    let entity_under_cursor = yoleck
                         .entity_being_edited
                         .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
-                    {
+                        .or_else(|| {
+                            yolek_targets_query.iter().find_map(
+                                |(entity, entity_transform, entity_selectable)| {
+                                    entity_selectable
+                                        .is_world_pos_in(entity_transform, world_pos)
+                                        .then(|| (entity, entity_transform))
+                                },
+                            )
+                        });
+                    *state = if let Some((entity, entity_transform)) = entity_under_cursor {
+                        yoleck.entity_being_edited = Some(entity);
                         YoleckClicksOnObjectsState::BeingDragged {
                             entity,
                             prev_screen_pos: screen_pos,
                             offset: world_pos - entity_transform.translation.truncate(),
                         }
                     } else {
-                        let entity_under_cursor = yolek_targets_query.iter().find_map(
-                            |(entity, entity_transform, entity_selectable)| {
-                                entity_selectable
-                                    .is_world_pos_in(entity_transform, world_pos)
-                                    .then(|| entity)
-                            },
-                        );
-                        if let Some(entity) = entity_under_cursor {
-                            YoleckClicksOnObjectsState::PendingSelection(entity)
-                        } else {
-                            YoleckClicksOnObjectsState::PendingMidair {
-                                orig_screen_pos: screen_pos,
-                                world: world_pos,
-                            }
+                        YoleckClicksOnObjectsState::PendingMidair {
+                            orig_screen_pos: screen_pos,
+                            world: world_pos,
                         }
-                    }
-                }
-                (
-                    MouseButtonOp::JustReleased,
-                    YoleckClicksOnObjectsState::PendingSelection(start_entity),
-                ) => {
-                    if is_entity_still_pointed_at(*start_entity).is_some() {
-                        yoleck.entity_being_edited = Some(*start_entity);
-                    }
-                    *state = YoleckClicksOnObjectsState::Empty;
-                }
-                (_, YoleckClicksOnObjectsState::PendingSelection(start_entity)) => {
-                    if is_entity_still_pointed_at(*start_entity).is_none() {
-                        *state = YoleckClicksOnObjectsState::Empty;
                     }
                 }
                 (
