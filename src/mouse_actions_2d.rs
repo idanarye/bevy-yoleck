@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::utils::HashMap;
+use bevy_egui::EguiContext;
 
 use crate::{YoleckDirective, YoleckEditorState, YoleckState};
 
@@ -31,6 +32,7 @@ enum YoleckClicksOnObjectsState {
 }
 
 fn yoleck_clicks_on_objects(
+    mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     cameras_query: Query<(Entity, &GlobalTransform, &Camera), With<OrthographicProjection>>,
@@ -46,6 +48,9 @@ fn yoleck_clicks_on_objects(
     }
 
     let mouse_button_op = if buttons.just_pressed(MouseButton::Left) {
+        if egui_context.ctx_mut().is_pointer_over_area() {
+            return;
+        }
         MouseButtonOp::JustPressed
     } else if buttons.just_released(MouseButton::Left) {
         MouseButtonOp::JustReleased
