@@ -31,6 +31,7 @@ enum YoleckClicksOnObjectsState {
     },
 }
 
+#[allow(clippy::too_many_arguments)]
 fn yoleck_clicks_on_objects(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,

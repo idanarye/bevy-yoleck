@@ -33,6 +33,7 @@ impl Plugin for YoleckPlugin {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum YoleckEditorState {
     EditorActive,
+    GameActive,
 }
 
 pub enum YoleckDirectiveInner {
@@ -51,6 +52,37 @@ impl YoleckDirective {
     }
 }
 
+#[derive(Clone, Copy)]
+enum PopulateReason {
+    EditorInit,
+    EditorUpdate,
+    RealGame,
+}
+
+pub struct YoleckPopulateContext<'a> {
+    reason: PopulateReason,
+    // I may add stuff that need 'a later, and I don't want to change the signature
+    _phantom_data: PhantomData<&'a ()>,
+}
+
+impl<'a> YoleckPopulateContext<'a> {
+    pub fn is_in_editor(&self) -> bool {
+        match self.reason {
+            PopulateReason::EditorInit => true,
+            PopulateReason::EditorUpdate => true,
+            PopulateReason::RealGame => false,
+        }
+    }
+
+    pub fn is_first_tiome(&self) -> bool {
+        match self.reason {
+            PopulateReason::EditorInit => true,
+            PopulateReason::EditorUpdate => false,
+            PopulateReason::RealGame => true,
+        }
+    }
+}
+
 pub struct YoleckEditContext<'a> {
     passed: &'a HashMap<TypeId, &'a BoxedAny>,
 }
@@ -66,8 +98,8 @@ impl YoleckEditContext<'_> {
 }
 
 pub trait YoleckSource: Send + Sync {
-    fn populate(&self, cmd: &mut EntityCommands);
-    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext);
+    fn populate(&self, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
+    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui);
 }
 
 type BoxedAny = Box<dyn Send + Sync + Any>;
@@ -199,16 +231,21 @@ fn yoleck_editor(
                             if ui.button("Delete").clicked() {}
                         });
                         let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
-                        let edit_context = YoleckEditContext {
+                        let edit_ctx = YoleckEditContext {
                             passed: data_passed_to_entities
                                 .get(&entity)
                                 .unwrap_or(&dummy_data_passed_to_entity),
                         };
+                        let populate_ctx = YoleckPopulateContext {
+                            reason: PopulateReason::EditorUpdate,
+                            _phantom_data: Default::default(),
+                        };
                         handler.on_editor(
                             &mut yoleck_managed.data,
                             entity,
+                            &edit_ctx,
                             ui,
-                            &edit_context,
+                            &populate_ctx,
                             &mut commands,
                         );
                     });
@@ -224,15 +261,16 @@ fn yoleck_editor(
     });
 }
 
-pub trait YoleckTypeHandlerTrait: Send + Sync {
+trait YoleckTypeHandlerTrait: Send + Sync {
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
-    fn populate(&self, data: &BoxedAny, cmd: &mut EntityCommands);
+    fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
     fn on_editor(
         &self,
         data: &mut BoxedAny,
         entity: Entity,
+        editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
-        ctx: &YoleckEditContext,
+        populate_ctx: &YoleckPopulateContext,
         commands: &mut Commands,
     );
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value;
@@ -262,22 +300,23 @@ where
         Ok(dynamic)
     }
 
-    fn populate(&self, data: &BoxedAny, cmd: &mut EntityCommands) {
+    fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
         let concrete = data.downcast_ref::<T>().unwrap();
-        concrete.populate(cmd);
+        concrete.populate(ctx, cmd);
     }
 
     fn on_editor(
         &self,
         data: &mut BoxedAny,
         entity: Entity,
+        editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
-        ctx: &YoleckEditContext,
+        populate_ctx: &YoleckPopulateContext,
         commands: &mut Commands,
     ) {
         let concrete = data.downcast_mut::<T>().unwrap();
-        concrete.edit(ui, ctx);
-        concrete.populate(&mut commands.entity(entity));
+        concrete.edit(editor_ctx, ui);
+        concrete.populate(populate_ctx, &mut commands.entity(entity));
     }
 
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value {
@@ -324,7 +363,12 @@ fn yoleck_process_raw_entries(
     raw_entries_query: Query<(Entity, &YoleckRawEntry)>,
     mut commands: Commands,
     yoleck: Res<YoleckState>,
+    editor_state: Res<State<YoleckEditorState>>,
 ) {
+    let populate_reason = match editor_state.current() {
+        YoleckEditorState::EditorActive => PopulateReason::EditorInit,
+        YoleckEditorState::GameActive => PopulateReason::RealGame,
+    };
     for (entity, raw_entry) in raw_entries_query.iter() {
         let mut cmd = commands.entity(entity);
         cmd.remove::<YoleckRawEntry>();
@@ -333,7 +377,11 @@ fn yoleck_process_raw_entries(
             .get(&raw_entry.header.type_name)
             .unwrap();
         let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
-        handler.populate(&concrete, &mut cmd);
+        let populate_ctx = YoleckPopulateContext {
+            reason: populate_reason,
+            _phantom_data: Default::default(),
+        };
+        handler.populate(&concrete, &populate_ctx, &mut cmd);
         cmd.insert(YoleckManaged {
             name: raw_entry.header.name.to_owned(),
             type_name: raw_entry.header.type_name.to_owned(),

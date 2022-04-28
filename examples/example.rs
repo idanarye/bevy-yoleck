@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckPlugin, YoleckRawEntry, YoleckSelectable, YoleckSource, YoleckState,
+    YoleckEditContext, YoleckPlugin, YoleckPopulateContext, YoleckRawEntry, YoleckSelectable,
+    YoleckSource, YoleckState,
 };
 use serde::{Deserialize, Serialize};
 
@@ -53,7 +54,7 @@ struct ExampleBox {
 }
 
 impl YoleckSource for ExampleBox {
-    fn populate(&self, cmd: &mut EntityCommands) {
+    fn populate(&self, _ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: self.color,
@@ -66,7 +67,7 @@ impl YoleckSource for ExampleBox {
         cmd.insert(YoleckSelectable::rect(20.0, 20.0));
     }
 
-    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext) {
+    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
             *self.position = **pos;
         }
@@ -102,7 +103,7 @@ struct ExampleBox2 {
 }
 
 impl YoleckSource for ExampleBox2 {
-    fn populate(&self, cmd: &mut EntityCommands) {
+    fn populate(&self, _ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: Color::GREEN,
@@ -115,7 +116,7 @@ impl YoleckSource for ExampleBox2 {
         cmd.insert(YoleckSelectable::rect(30.0, 30.0));
     }
 
-    fn edit(&mut self, ui: &mut egui::Ui, ctx: &YoleckEditContext) {
+    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
             *self.position = **pos;
         }
