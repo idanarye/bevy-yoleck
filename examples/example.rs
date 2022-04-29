@@ -4,7 +4,7 @@ use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
     YoleckEditContext, YoleckPlugin, YoleckPopulateContext, YoleckRawEntry, YoleckSelectable,
-    YoleckSource, YoleckState,
+    YoleckSource, YoleckTypeHandlers,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,10 +13,10 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugin(EguiPlugin);
     app.add_plugin(YoleckPlugin);
-    app.add_startup_system(|mut yoleck: ResMut<YoleckState>| {
-        yoleck.add_handler::<ExampleBox>("ExampleBox".to_owned());
-        yoleck.add_handler::<ExampleBox2>("ExampleBox2".to_owned());
-    });
+    app.insert_resource(YoleckTypeHandlers::new([
+        ExampleBox::handler("ExampleBox"),
+        ExampleBox2::handler("ExampleBox2"),
+    ]));
     app.add_startup_system(setup_camera);
     app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
     app.run();

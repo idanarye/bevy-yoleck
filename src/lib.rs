@@ -18,8 +18,6 @@ impl Plugin for YoleckPlugin {
         app.add_state(YoleckEditorState::EditorActive);
         app.insert_resource(YoleckState {
             entity_being_edited: None,
-            type_handler_names: Default::default(),
-            type_handlers: Default::default(),
         });
         app.add_event::<YoleckDirective>();
         app.add_system_set(
@@ -100,6 +98,18 @@ impl YoleckEditContext<'_> {
 pub trait YoleckSource: Send + Sync {
     fn populate(&self, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
     fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui);
+
+    fn handler(name: impl ToString) -> Box<dyn YoleckTypeHandlerTrait>
+    where
+        Self: 'static,
+        Self: Serialize,
+        for<'de> Self: Deserialize<'de>,
+    {
+        Box::new(YoleckTypeHandlerFor::<Self> {
+            type_name: name.to_string(),
+            _phantom_data: Default::default(),
+        })
+    }
 }
 
 type BoxedAny = Box<dyn Send + Sync + Any>;
@@ -111,32 +121,45 @@ pub struct YoleckManaged {
     pub data: BoxedAny,
 }
 
-pub struct YoleckState {
-    entity_being_edited: Option<Entity>,
+pub struct YoleckTypeHandlers {
     type_handler_names: Vec<String>,
     type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
 }
 
-impl YoleckState {
-    pub fn add_handler<T: 'static>(&mut self, name: String)
-    where
-        T: YoleckSource,
-        T: Serialize,
-        for<'de> T: Deserialize<'de>,
-    {
-        self.type_handler_names.push(name.clone());
-        self.type_handlers.insert(
-            name,
-            Box::new(YoleckTypeHandlerFor::<T> {
-                _phantom_data: Default::default(),
-            }),
-        );
+impl YoleckTypeHandlers {
+    pub fn new(handlers: impl IntoIterator<Item = Box<dyn YoleckTypeHandlerTrait>>) -> Self {
+        let mut result = Self {
+            type_handler_names: Default::default(),
+            type_handlers: Default::default(),
+        };
+        for handler in handlers {
+            result.add_handler(handler);
+        }
+        result
     }
+
+    pub fn add_handler(&mut self, handler: Box<dyn YoleckTypeHandlerTrait>) {
+        let type_name = handler.type_name().to_owned();
+        match self.type_handlers.entry(type_name.clone()) {
+            bevy::utils::hashbrown::hash_map::Entry::Occupied(_) => {
+                panic!("Handler for {:?} already exists", type_name);
+            }
+            bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
+                entry.insert(handler);
+            }
+        }
+        self.type_handler_names.push(type_name);
+    }
+}
+
+pub struct YoleckState {
+    entity_being_edited: Option<Entity>,
 }
 
 fn yoleck_editor(
     mut egui_context: ResMut<EguiContext>,
     mut yoleck: ResMut<YoleckState>,
+    yoleck_type_handlers: Res<YoleckTypeHandlers>,
     mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
     mut commands: Commands,
     mut filter_types: Local<HashSet<String>>,
@@ -161,7 +184,10 @@ fn yoleck_editor(
 
         if ui.button("Save Level").clicked() {
             for (entity, yoleck_managed) in yoleck_managed_query.iter() {
-                let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
+                let handler = yoleck_type_handlers
+                    .type_handlers
+                    .get(&yoleck_managed.type_name)
+                    .unwrap();
                 println!(
                     "{:?}: {}",
                     entity,
@@ -181,7 +207,7 @@ fn yoleck_editor(
             .default_open(true)
             .show(ui, |ui| {
                 egui::Grid::new("level editor types table").show(ui, |ui| {
-                    for type_name in yoleck.type_handler_names.iter() {
+                    for type_name in yoleck_type_handlers.type_handler_names.iter() {
                         let mut should_show = filter_types.contains(type_name);
                         if ui.checkbox(&mut should_show, type_name).changed() {
                             if should_show {
@@ -230,7 +256,10 @@ fn yoleck_editor(
                             ui.text_edit_singleline(&mut yoleck_managed.name);
                             if ui.button("Delete").clicked() {}
                         });
-                        let handler = yoleck.type_handlers.get(&yoleck_managed.type_name).unwrap();
+                        let handler = yoleck_type_handlers
+                            .type_handlers
+                            .get(&yoleck_managed.type_name)
+                            .unwrap();
                         let edit_ctx = YoleckEditContext {
                             passed: data_passed_to_entities
                                 .get(&entity)
@@ -261,7 +290,8 @@ fn yoleck_editor(
     });
 }
 
-trait YoleckTypeHandlerTrait: Send + Sync {
+pub trait YoleckTypeHandlerTrait: Send + Sync {
+    fn type_name(&self) -> &str;
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
     fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
     fn on_editor(
@@ -283,6 +313,7 @@ where
     T: Serialize,
     for<'de> T: Deserialize<'de>,
 {
+    type_name: String,
     _phantom_data: PhantomData<fn() -> T>,
 }
 
@@ -293,6 +324,10 @@ where
     T: Serialize,
     for<'de> T: Deserialize<'de>,
 {
+    fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny> {
         let concrete: T = serde_json::from_value(data)?;
         let dynamic: BoxedAny = Box::new(concrete);
@@ -362,7 +397,7 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
 fn yoleck_process_raw_entries(
     raw_entries_query: Query<(Entity, &YoleckRawEntry)>,
     mut commands: Commands,
-    yoleck: Res<YoleckState>,
+    yoleck_type_handlers: Res<YoleckTypeHandlers>,
     editor_state: Res<State<YoleckEditorState>>,
 ) {
     let populate_reason = match editor_state.current() {
@@ -372,7 +407,7 @@ fn yoleck_process_raw_entries(
     for (entity, raw_entry) in raw_entries_query.iter() {
         let mut cmd = commands.entity(entity);
         cmd.remove::<YoleckRawEntry>();
-        let handler = yoleck
+        let handler = yoleck_type_handlers
             .type_handlers
             .get(&raw_entry.header.type_name)
             .unwrap();
