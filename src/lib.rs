@@ -156,12 +156,14 @@ pub struct YoleckState {
     entity_being_edited: Option<Entity>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn yoleck_editor(
     mut egui_context: ResMut<EguiContext>,
     mut yoleck: ResMut<YoleckState>,
     yoleck_type_handlers: Res<YoleckTypeHandlers>,
     mut yoleck_managed_query: Query<(Entity, &mut YoleckManaged)>,
     mut commands: Commands,
+    mut filter_custom_name: Local<String>,
     mut filter_types: Local<HashSet<String>>,
     mut directives_reader: EventReader<YoleckDirective>,
 ) {
@@ -203,90 +205,114 @@ fn yoleck_editor(
             }
         }
 
-        egui::CollapsingHeader::new("Types")
-            .default_open(true)
-            .show(ui, |ui| {
-                egui::Grid::new("level editor types table").show(ui, |ui| {
-                    for type_name in yoleck_type_handlers.type_handler_names.iter() {
-                        let mut should_show = filter_types.contains(type_name);
-                        if ui.checkbox(&mut should_show, type_name).changed() {
-                            if should_show {
-                                filter_types.insert(type_name.clone());
-                            } else {
-                                filter_types.remove(type_name);
-                            }
-                        }
-                        if ui.button("New").clicked() {
-                            let mut cmd = commands.spawn();
-                            cmd.insert(YoleckRawEntry {
-                                header: YoleckEntryHeader {
-                                    type_name: type_name.clone(),
-                                    name: "".to_owned(),
-                                },
-                                data: serde_json::Value::Object(Default::default()),
-                            });
-                            yoleck.entity_being_edited = Some(cmd.id());
-                        }
-                        ui.end_row();
-                    }
-                });
-            });
+        let popup_id = ui.make_persistent_id("add_new_entity_popup_id");
+        let button_response = ui.button("Add New Entity");
+        if button_response.clicked() {
+            ui.memory().toggle_popup(popup_id);
+        }
+        egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
+            for type_name in yoleck_type_handlers.type_handler_names.iter() {
+                if ui.button(type_name).clicked() {
+                    let mut cmd = commands.spawn();
+                    cmd.insert(YoleckRawEntry {
+                        header: YoleckEntryHeader {
+                            type_name: type_name.clone(),
+                            name: "".to_owned(),
+                        },
+                        data: serde_json::Value::Object(Default::default()),
+                    });
+                    yoleck.entity_being_edited = Some(cmd.id());
+                    ui.memory().toggle_popup(popup_id);
+                }
+            }
+        });
 
-        egui::ScrollArea::vertical()
-            .max_height(128.0)
-            .show(ui, |ui| {
-                for (entity, mut yoleck_managed) in yoleck_managed_query.iter_mut() {
-                    if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name)
-                    {
-                        continue;
-                    }
-                    let is_selected = yoleck.entity_being_edited == Some(entity);
-                    let header = egui::CollapsingHeader::new(if yoleck_managed.name.is_empty() {
-                        format!("{} {:?}", yoleck_managed.type_name, entity)
-                    } else {
-                        format!(
-                            "{} ({} {:?})",
-                            yoleck_managed.name, yoleck_managed.type_name, entity
-                        )
-                    });
-                    let header = header.selectable(true).selected(is_selected);
-                    let header = header.open(Some(is_selected));
-                    let resp = header.show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.text_edit_singleline(&mut yoleck_managed.name);
-                            if ui.button("Delete").clicked() {}
-                        });
-                        let handler = yoleck_type_handlers
-                            .type_handlers
-                            .get(&yoleck_managed.type_name)
-                            .unwrap();
-                        let edit_ctx = YoleckEditContext {
-                            passed: data_passed_to_entities
-                                .get(&entity)
-                                .unwrap_or(&dummy_data_passed_to_entity),
-                        };
-                        let populate_ctx = YoleckPopulateContext {
-                            reason: PopulateReason::EditorUpdate,
-                            _phantom_data: Default::default(),
-                        };
-                        handler.on_editor(
-                            &mut yoleck_managed.data,
-                            entity,
-                            &edit_ctx,
-                            ui,
-                            &populate_ctx,
-                            &mut commands,
-                        );
-                    });
-                    if resp.header_response.clicked() {
-                        if is_selected {
-                            yoleck.entity_being_edited = None;
+        fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
+            if yoleck_managed.name.is_empty() {
+                format!("{} {:?}", yoleck_managed.type_name, entity)
+            } else {
+                format!(
+                    "{} ({} {:?})",
+                    yoleck_managed.name, yoleck_managed.type_name, entity
+                )
+            }
+        }
+
+        egui::CollapsingHeader::new("Select").show(ui, |ui| {
+            egui::CollapsingHeader::new("Filter").show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("By Name:");
+                    ui.text_edit_singleline(&mut *filter_custom_name);
+                });
+                for type_name in yoleck_type_handlers.type_handler_names.iter() {
+                    let mut should_show = filter_types.contains(type_name);
+                    if ui.checkbox(&mut should_show, type_name).changed() {
+                        if should_show {
+                            filter_types.insert(type_name.clone());
                         } else {
-                            yoleck.entity_being_edited = Some(entity);
+                            filter_types.remove(type_name);
                         }
                     }
                 }
             });
+            for (entity, yoleck_managed) in yoleck_managed_query.iter_mut() {
+                if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
+                    continue;
+                }
+                if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
+                    continue;
+                }
+                let is_selected = yoleck.entity_being_edited == Some(entity);
+                if ui
+                    .selectable_label(is_selected, format_caption(entity, &yoleck_managed))
+                    .clicked()
+                {
+                    if is_selected {
+                        yoleck.entity_being_edited = None;
+                    } else {
+                        yoleck.entity_being_edited = Some(entity);
+                    }
+                }
+            }
+        });
+
+        if let Some((entity, mut yoleck_managed)) = yoleck
+            .entity_being_edited
+            .and_then(|entity| yoleck_managed_query.get_mut(entity).ok())
+        {
+            ui.horizontal(|ui| {
+                ui.heading(format!(
+                    "Editing {}",
+                    format_caption(entity, &yoleck_managed)
+                ));
+                if ui.button("Delete").clicked() {}
+            });
+            ui.horizontal(|ui| {
+                ui.label("Custom Name:");
+                ui.text_edit_singleline(&mut yoleck_managed.name);
+            });
+            let handler = yoleck_type_handlers
+                .type_handlers
+                .get(&yoleck_managed.type_name)
+                .unwrap();
+            let edit_ctx = YoleckEditContext {
+                passed: data_passed_to_entities
+                    .get(&entity)
+                    .unwrap_or(&dummy_data_passed_to_entity),
+            };
+            let populate_ctx = YoleckPopulateContext {
+                reason: PopulateReason::EditorUpdate,
+                _phantom_data: Default::default(),
+            };
+            handler.on_editor(
+                &mut yoleck_managed.data,
+                entity,
+                &edit_ctx,
+                ui,
+                &populate_ctx,
+                &mut commands,
+            );
+        }
     });
 }
 
