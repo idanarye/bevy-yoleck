@@ -35,6 +35,7 @@ pub enum YoleckEditorState {
 }
 
 pub enum YoleckDirectiveInner {
+    SetSelected(Option<Entity>),
     PassToEntity(Entity, TypeId, BoxedAny),
 }
 
@@ -47,6 +48,10 @@ impl YoleckDirective {
             TypeId::of::<T>(),
             Box::new(data),
         ))
+    }
+
+    pub fn set_selected(entity: Option<Entity>) -> Self {
+        Self(YoleckDirectiveInner::SetSelected(entity))
     }
 }
 
@@ -156,6 +161,12 @@ pub struct YoleckState {
     entity_being_edited: Option<Entity>,
 }
 
+impl YoleckState {
+    pub fn entity_being_edited(&self) -> Option<Entity> {
+        self.entity_being_edited
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn yoleck_editor(
     mut egui_context: ResMut<EguiContext>,
@@ -177,6 +188,9 @@ fn yoleck_editor(
                     .entry(*entity)
                     .or_default()
                     .insert(*type_id, data);
+            }
+            YoleckDirectiveInner::SetSelected(entity) => {
+                yoleck.entity_being_edited = *entity;
             }
         }
     }

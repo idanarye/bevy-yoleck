@@ -40,7 +40,7 @@ fn yoleck_clicks_on_objects(
     buttons: Res<Input<MouseButton>>,
     cameras_query: Query<(Entity, &GlobalTransform, &Camera), With<OrthographicProjection>>,
     yolek_targets_query: Query<(Entity, &GlobalTransform, &YoleckSelectable)>,
-    mut yoleck: ResMut<YoleckState>,
+    yoleck: ResMut<YoleckState>,
     mut state_by_camera: Local<HashMap<Entity, YoleckClicksOnObjectsState>>,
     mut directives_writer: EventWriter<YoleckDirective>,
 ) {
@@ -94,7 +94,7 @@ fn yoleck_clicks_on_objects(
             match (&mouse_button_op, &state) {
                 (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
                     let entity_under_cursor = yoleck
-                        .entity_being_edited
+                        .entity_being_edited()
                         .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
                         .or_else(|| {
                             yolek_targets_query.iter().find_map(
@@ -106,7 +106,7 @@ fn yoleck_clicks_on_objects(
                             )
                         });
                     *state = if let Some((entity, entity_transform)) = entity_under_cursor {
-                        yoleck.entity_being_edited = Some(entity);
+                        directives_writer.send(YoleckDirective::set_selected(Some(entity)));
                         YoleckClicksOnObjectsState::BeingDragged {
                             entity,
                             prev_screen_pos: screen_pos,
@@ -138,7 +138,7 @@ fn yoleck_clicks_on_objects(
                     },
                 ) => {
                     if orig_screen_pos.distance_squared(screen_pos) < 0.1 {
-                        yoleck.entity_being_edited = None;
+                        directives_writer.send(YoleckDirective::set_selected(None));
                     }
                     *state = YoleckClicksOnObjectsState::Empty;
                 }
