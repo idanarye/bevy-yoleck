@@ -1,10 +1,11 @@
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
+use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckPlugin, YoleckPopulateContext, YoleckRawEntry, YoleckSelectable,
-    YoleckSource, YoleckTypeHandlers,
+    YoleckEditContext, YoleckPlugin, YoleckPopulateContext, YoleckRawEntry, YoleckSource,
+    YoleckTypeHandlers,
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,12 +60,12 @@ impl YoleckSource for ExampleBox {
             sprite: Sprite {
                 color: self.color,
                 custom_size: Some(Vec2::new(20.0, 20.0)),
+                anchor: Anchor::BottomLeft,
                 ..Default::default()
             },
             transform: Transform::from_translation(self.position.extend(0.0)),
             ..Default::default()
         });
-        cmd.insert(YoleckSelectable::rect(20.0, 20.0));
     }
 
     fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
@@ -107,13 +108,13 @@ impl YoleckSource for ExampleBox2 {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: Color::GREEN,
+                anchor: Anchor::TopRight,
                 custom_size: Some(Vec2::new(30.0, 30.0)),
                 ..Default::default()
             },
             transform: Transform::from_translation(self.position.extend(0.0)),
             ..Default::default()
         });
-        cmd.insert(YoleckSelectable::rect(30.0, 30.0));
     }
 
     fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {

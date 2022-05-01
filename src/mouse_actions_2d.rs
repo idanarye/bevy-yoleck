@@ -1,6 +1,7 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
+use bevy::sprite::Anchor;
 use bevy::utils::HashMap;
 use bevy_egui::EguiContext;
 
@@ -33,13 +34,22 @@ enum YoleckClicksOnObjectsState {
     },
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn yoleck_clicks_on_objects(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     cameras_query: Query<(Entity, &GlobalTransform, &Camera), With<OrthographicProjection>>,
-    yolek_targets_query: Query<(Entity, &GlobalTransform, &YoleckSelectable)>,
+    yolek_targets_query: Query<(
+        Entity,
+        &GlobalTransform,
+        AnyOf<(
+            (&Sprite, &Handle<Image>),
+            (&TextureAtlasSprite, &Handle<TextureAtlas>),
+        )>,
+    )>,
+    image_assets: Res<Assets<Image>>,
+    texture_atlas_assets: Res<Assets<TextureAtlas>>,
     yoleck: ResMut<YoleckState>,
     mut state_by_camera: Local<HashMap<Entity, YoleckClicksOnObjectsState>>,
     mut directives_writer: EventWriter<YoleckDirective>,
@@ -64,6 +74,57 @@ fn yoleck_clicks_on_objects(
         return;
     };
 
+    let is_world_pos_in = |transform: &GlobalTransform,
+                           (regular_sprite, texture_atlas_sprite): (
+        Option<(&Sprite, &Handle<Image>)>,
+        Option<(&TextureAtlasSprite, &Handle<TextureAtlas>)>,
+    ),
+                           cursor_in_world_pos: Vec2|
+     -> bool {
+        let [x, y, _] = transform
+            .compute_matrix()
+            .inverse()
+            .project_point3(cursor_in_world_pos.extend(0.0))
+            .to_array();
+
+        let check = |anchor: &Anchor, size: Vec2| {
+            let anchor = anchor.as_vec();
+            let mut min_corner = Vec2::new(-0.5, -0.5) - anchor;
+            let mut max_corner = Vec2::new(0.5, 0.5) - anchor;
+            for corner in [&mut min_corner, &mut max_corner] {
+                corner.x *= size.x;
+                corner.y *= size.y;
+            }
+            min_corner.x <= x && x <= max_corner.x && min_corner.y <= y && y <= max_corner.y
+        };
+
+        if let Some((sprite, texture_handle)) = regular_sprite {
+            let size = if let Some(custom_size) = sprite.custom_size {
+                custom_size
+            } else if let Some(texture) = image_assets.get(texture_handle) {
+                texture.size()
+            } else {
+                return false;
+            };
+            if check(&sprite.anchor, size) {
+                return true;
+            }
+        }
+        if let Some((sprite, texture_atlas_handle)) = texture_atlas_sprite {
+            let size = if let Some(custom_size) = sprite.custom_size {
+                custom_size
+            } else if let Some(texture_atlas) = texture_atlas_assets.get(texture_atlas_handle) {
+                texture_atlas.textures[sprite.index].size()
+            } else {
+                return false;
+            };
+            if check(&sprite.anchor, size) {
+                return true;
+            }
+        }
+        false
+    };
+
     for (camera_entity, camera_transform, camera) in cameras_query.iter() {
         let window = if let RenderTarget::Window(window_id) = camera.target {
             windows.get(window_id).unwrap()
@@ -78,10 +139,8 @@ fn yoleck_clicks_on_objects(
                 .or_insert(YoleckClicksOnObjectsState::Empty);
 
             let is_entity_still_pointed_at = |entity: Entity| {
-                if let Ok((_, entity_transform, entity_selectable)) =
-                    yolek_targets_query.get(entity)
-                {
-                    if entity_selectable.is_world_pos_in(entity_transform, world_pos) {
+                if let Ok((_, entity_transform, sprite)) = yolek_targets_query.get(entity) {
+                    if is_world_pos_in(entity_transform, sprite, world_pos) {
                         Some(entity_transform)
                     } else {
                         None
@@ -98,9 +157,8 @@ fn yoleck_clicks_on_objects(
                         .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
                         .or_else(|| {
                             yolek_targets_query.iter().find_map(
-                                |(entity, entity_transform, entity_selectable)| {
-                                    entity_selectable
-                                        .is_world_pos_in(entity_transform, world_pos)
+                                |(entity, entity_transform, sprite)| {
+                                    is_world_pos_in(entity_transform, sprite, world_pos)
                                         .then(|| (entity, entity_transform))
                                 },
                             )
@@ -165,29 +223,6 @@ fn yoleck_clicks_on_objects(
                 _ => {}
             }
         }
-    }
-}
-
-#[derive(Component)]
-pub struct YoleckSelectable(Rect<f32>);
-
-impl YoleckSelectable {
-    pub fn rect(width: f32, height: f32) -> Self {
-        Self(Rect {
-            left: -width * 0.5,
-            right: width * 0.5,
-            top: -height * 0.5,
-            bottom: height * 0.5,
-        })
-    }
-
-    fn is_world_pos_in(&self, transform: &GlobalTransform, cursor_in_world_pos: Vec2) -> bool {
-        let [x, y, _] = transform
-            .compute_matrix()
-            .inverse()
-            .project_point3(cursor_in_world_pos.extend(0.0))
-            .to_array();
-        self.0.left <= x && x <= self.0.right && self.0.top <= y && y <= self.0.bottom
     }
 }
 
