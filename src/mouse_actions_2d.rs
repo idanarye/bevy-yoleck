@@ -1,3 +1,4 @@
+use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::utils::HashMap;
@@ -9,10 +10,12 @@ pub struct YoleckMouseActions2dPlugin;
 
 impl Plugin for YoleckMouseActions2dPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set(
+        app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .with_system(yoleck_clicks_on_objects),
-        );
+                .with_system(yoleck_clicks_on_objects)
+                .with_system(camera_2d_pan)
+                .with_system(camera_2d_zoom)
+        });
     }
 }
 
@@ -185,6 +188,109 @@ impl YoleckSelectable {
             .project_point3(cursor_in_world_pos.extend(0.0))
             .to_array();
         self.0.left <= x && x <= self.0.right && self.0.top <= y && y <= self.0.bottom
+    }
+}
+
+fn camera_2d_pan(
+    mut egui_context: ResMut<EguiContext>,
+    windows: Res<Windows>,
+    buttons: Res<Input<MouseButton>>,
+    mut cameras_query: Query<
+        (Entity, &mut Transform, &GlobalTransform, &Camera),
+        With<OrthographicProjection>,
+    >,
+    mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec2>>,
+) {
+    enum MouseButtonOp {
+        JustPressed,
+        BeingPressed,
+    }
+
+    let mouse_button_op = if buttons.just_pressed(MouseButton::Right) {
+        if egui_context.ctx_mut().is_pointer_over_area() {
+            return;
+        }
+        MouseButtonOp::JustPressed
+    } else if buttons.pressed(MouseButton::Right) {
+        MouseButtonOp::BeingPressed
+    } else {
+        last_cursor_world_pos_by_camera.clear();
+        return;
+    };
+
+    for (camera_entity, mut camera_transform, camera_global_transform, camera) in
+        cameras_query.iter_mut()
+    {
+        let window = if let RenderTarget::Window(window_id) = camera.target {
+            windows.get(window_id).unwrap()
+        } else {
+            continue;
+        };
+        if let Some(screen_pos) = window.cursor_position() {
+            let world_pos =
+                screen_pos_to_world_pos(screen_pos, window, camera_global_transform, camera);
+
+            match mouse_button_op {
+                MouseButtonOp::JustPressed => {
+                    last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
+                }
+                MouseButtonOp::BeingPressed => {
+                    if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity)
+                    {
+                        let movement = *prev_pos - world_pos;
+                        camera_transform.translation += movement.extend(0.0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn camera_2d_zoom(
+    mut egui_context: ResMut<EguiContext>,
+    windows: Res<Windows>,
+    mut cameras_query: Query<
+        (&mut Transform, &GlobalTransform, &Camera),
+        With<OrthographicProjection>,
+    >,
+    mut wheel_events_reader: EventReader<MouseWheel>,
+) {
+    if egui_context.ctx_mut().is_pointer_over_area() {
+        return;
+    }
+
+    let zoom_amount: f32 = wheel_events_reader
+        .iter()
+        .map(|wheel_event| match wheel_event.unit {
+            bevy::input::mouse::MouseScrollUnit::Line => wheel_event.y * 0.2,
+            bevy::input::mouse::MouseScrollUnit::Pixel => wheel_event.y * 0.1,
+        })
+        .sum();
+
+    if zoom_amount == 0.0 {
+        return;
+    }
+
+    let scale_by = (-zoom_amount).exp();
+
+    for (mut camera_transform, camera_global_transform, camera) in cameras_query.iter_mut() {
+        let window = if let RenderTarget::Window(window_id) = camera.target {
+            windows.get(window_id).unwrap()
+        } else {
+            continue;
+        };
+        if let Some(screen_pos) = window.cursor_position() {
+            let world_pos =
+                screen_pos_to_world_pos(screen_pos, window, camera_global_transform, camera);
+            camera_transform.scale.x *= scale_by;
+            camera_transform.scale.y *= scale_by;
+            let mut new_global_transform = *camera_global_transform;
+            new_global_transform.scale.x *= scale_by;
+            new_global_transform.scale.y *= scale_by;
+            let new_world_pos =
+                screen_pos_to_world_pos(screen_pos, window, &new_global_transform, camera);
+            camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
+        }
     }
 }
 
