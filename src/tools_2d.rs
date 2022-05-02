@@ -152,12 +152,21 @@ pub fn yoleck_clicks_on_objects(
                         .entity_being_edited()
                         .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
                         .or_else(|| {
-                            yolek_targets_query.iter().find_map(
-                                |(entity, entity_transform, sprite)| {
-                                    is_world_pos_in(entity_transform, sprite, world_pos)
-                                        .then(|| (entity, entity_transform))
-                                },
-                            )
+                            let mut result = None;
+                            for (entity, entity_transform, sprite) in yolek_targets_query.iter() {
+                                if is_world_pos_in(entity_transform, sprite, world_pos) {
+                                    if let Some((_, current_result_z)) = result {
+                                        if entity_transform.translation.z < current_result_z {
+                                            continue;
+                                        }
+                                    }
+                                    result = Some((
+                                        (entity, entity_transform),
+                                        entity_transform.translation.z,
+                                    ));
+                                }
+                            }
+                            result.map(|(result, _)| result)
                         });
                     *state = if let Some((entity, entity_transform)) = entity_under_cursor {
                         directives_writer.send(YoleckDirective::set_selected(Some(entity)));
