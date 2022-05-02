@@ -23,11 +23,6 @@ impl Plugin for YoleckTools2dPlugin {
 #[doc(hidden)]
 pub enum YoleckClicksOnObjectsState {
     Empty,
-    PendingMidair {
-        orig_screen_pos: Vec2,
-        #[allow(dead_code)]
-        world: Vec2,
-    },
     BeingDragged {
         entity: Entity,
         prev_screen_pos: Vec2,
@@ -172,34 +167,9 @@ pub fn yoleck_clicks_on_objects(
                             offset: world_pos - entity_transform.translation.truncate(),
                         }
                     } else {
-                        YoleckClicksOnObjectsState::PendingMidair {
-                            orig_screen_pos: screen_pos,
-                            world: world_pos,
-                        }
-                    }
-                }
-                (
-                    MouseButtonOp::BeingPressed,
-                    YoleckClicksOnObjectsState::PendingMidair {
-                        orig_screen_pos,
-                        world: _,
-                    },
-                ) => {
-                    if 0.1 <= orig_screen_pos.distance_squared(screen_pos) {
-                        *state = YoleckClicksOnObjectsState::Empty;
-                    }
-                }
-                (
-                    MouseButtonOp::JustReleased,
-                    YoleckClicksOnObjectsState::PendingMidair {
-                        orig_screen_pos,
-                        world: _,
-                    },
-                ) => {
-                    if orig_screen_pos.distance_squared(screen_pos) < 0.1 {
                         directives_writer.send(YoleckDirective::set_selected(None));
+                        YoleckClicksOnObjectsState::Empty
                     }
-                    *state = YoleckClicksOnObjectsState::Empty;
                 }
                 (
                     MouseButtonOp::BeingPressed,
