@@ -7,9 +7,9 @@ use bevy_egui::EguiContext;
 
 use crate::{YoleckDirective, YoleckEditorState, YoleckState};
 
-pub struct YoleckMouseActions2dPlugin;
+pub struct YoleckTools2dPlugin;
 
-impl Plugin for YoleckMouseActions2dPlugin {
+impl Plugin for YoleckTools2dPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
@@ -20,7 +20,8 @@ impl Plugin for YoleckMouseActions2dPlugin {
     }
 }
 
-enum YoleckClicksOnObjectsState {
+#[doc(hidden)]
+pub enum YoleckClicksOnObjectsState {
     Empty,
     PendingMidair {
         orig_screen_pos: Vec2,
@@ -35,7 +36,7 @@ enum YoleckClicksOnObjectsState {
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-fn yoleck_clicks_on_objects(
+pub fn yoleck_clicks_on_objects(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
@@ -226,7 +227,7 @@ fn yoleck_clicks_on_objects(
     }
 }
 
-fn camera_2d_pan(
+pub fn camera_2d_pan(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
@@ -281,7 +282,7 @@ fn camera_2d_pan(
     }
 }
 
-fn camera_2d_zoom(
+pub fn camera_2d_zoom(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     mut cameras_query: Query<

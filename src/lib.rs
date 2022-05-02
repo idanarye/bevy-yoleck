@@ -1,4 +1,5 @@
-mod mouse_actions_2d;
+#[cfg(feature = "tools_2d")]
+pub mod tools_2d;
 
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
@@ -22,7 +23,6 @@ impl Plugin for YoleckPlugin {
             SystemSet::on_update(YoleckEditorState::EditorActive).with_system(yoleck_editor),
         );
         app.add_system(yoleck_process_raw_entries);
-        app.add_plugin(mouse_actions_2d::YoleckMouseActions2dPlugin);
     }
 }
 

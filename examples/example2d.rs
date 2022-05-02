@@ -14,6 +14,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugin(EguiPlugin);
     app.add_plugin(YoleckPlugin);
+    app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
     app.insert_resource(YoleckTypeHandlers::new([
         ExampleBox::handler("ExampleBox"),
         ExampleBox2::handler("ExampleBox2"),
