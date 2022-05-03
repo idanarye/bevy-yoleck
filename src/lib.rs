@@ -1,7 +1,9 @@
 mod api;
 mod dynamic_source_handling;
 mod editor;
+mod editor_window;
 mod entity_management;
+mod level_files_manager;
 #[cfg(feature = "tools_2d")]
 pub mod tools_2d;
 
@@ -14,6 +16,7 @@ use self::api::PopulateReason;
 pub use self::api::{YoleckEditContext, YoleckEditorState, YoleckPopulateContext, YoleckSource};
 use self::dynamic_source_handling::{YoleckTypeHandlerFor, YoleckTypeHandlerTrait};
 pub use self::editor::YoleckDirective;
+pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{YoleckEntryHeader, YoleckRawEntry};
 
 pub struct YoleckPlugin;
@@ -24,10 +27,11 @@ impl Plugin for YoleckPlugin {
         app.insert_resource(YoleckState {
             entity_being_edited: None,
         });
+        app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
         app.add_system_set(
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .with_system(editor::yoleck_editor),
+                .with_system(editor_window::yoleck_editor_window.exclusive_system()),
         );
         app.add_system(entity_management::yoleck_process_raw_entries);
     }
@@ -80,5 +84,18 @@ pub struct YoleckState {
 impl YoleckState {
     pub fn entity_being_edited(&self) -> Option<Entity> {
         self.entity_being_edited
+    }
+}
+
+pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
+
+impl Default for YoleckEditorSections {
+    fn default() -> Self {
+        YoleckEditorSections(vec![
+            level_files_manager::level_files_manager_section.into(),
+            editor::new_entity_section.into(),
+            editor::entity_selection_section.into(),
+            editor::entity_editing_section.into(),
+        ])
     }
 }
