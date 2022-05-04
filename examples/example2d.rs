@@ -4,8 +4,8 @@ use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckPlugin, YoleckPopulateContext, YoleckRawEntry, YoleckSource,
-    YoleckTypeHandlers,
+    YoleckEditContext, YoleckEditorLevelsDirectoryPath, YoleckPlugin, YoleckPopulateContext,
+    YoleckRawEntry, YoleckSource, YoleckTypeHandlers,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,7 @@ fn main() {
         ExampleBox::handler("ExampleBox"),
         ExampleBox2::handler("ExampleBox2"),
     ]));
+    app.insert_resource(YoleckEditorLevelsDirectoryPath("examples".into()));
     app.add_startup_system(setup_camera);
     app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
     app.run();

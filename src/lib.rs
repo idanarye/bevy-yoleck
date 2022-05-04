@@ -8,6 +8,7 @@ mod level_files_manager;
 pub mod tools_2d;
 
 use std::any::Any;
+use std::path::Path;
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -18,6 +19,7 @@ use self::dynamic_source_handling::{YoleckTypeHandlerFor, YoleckTypeHandlerTrait
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 
 pub struct YoleckPlugin;
 
@@ -27,6 +29,9 @@ impl Plugin for YoleckPlugin {
         app.insert_resource(YoleckState {
             entity_being_edited: None,
         });
+        app.insert_resource(YoleckEditorLevelsDirectoryPath(
+            Path::new(".").join("assets").join("levels"),
+        ));
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
         app.add_system_set(
