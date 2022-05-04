@@ -7,6 +7,8 @@ use bevy_egui::egui;
 
 use crate::{YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckTypeHandlers};
 
+const EXTENSION: &str = ".yol";
+
 pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 
 pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
@@ -83,8 +85,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                 if !file_name.is_empty() {
                                     #[allow(clippy::collapsible_else_if)]
                                     if ui.button("Create").clicked() {
-                                        if !file_name.ends_with(".yoleck") {
-                                            file_name.push_str(".yoleck");
+                                        if !file_name.ends_with(EXTENSION) {
+                                            file_name.push_str(EXTENSION);
                                         }
                                         info!("Creating {}", file_name);
                                         create_new_level_file = None
