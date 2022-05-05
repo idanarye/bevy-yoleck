@@ -8,11 +8,13 @@ use bevy_egui::egui;
 use crate::{YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckTypeHandlers};
 
 const EXTENSION: &str = ".yol";
+const EXTENSION_WITHOUT_DOT: &str = "yol";
 
 pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 
 pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
+        Commands,
         ResMut<YoleckEditorLevelsDirectoryPath>,
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
@@ -21,11 +23,43 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
     let mut should_list_files = true;
     let mut loaded_files: io::Result<Vec<PathBuf>> = Ok(vec![]);
 
-    let mut create_new_level_file: Option<String> = None;
+    #[derive(Debug)]
+    enum SelectedLevelFile {
+        Unsaved(String),
+        Existing(String),
+    }
+
+    let mut selected_level_file = SelectedLevelFile::Unsaved(String::new());
 
     move |world, ui: &mut egui::Ui| {
-        let (mut levels_directory, yoleck_type_handlers, yoleck_managed_query) =
+        let (mut commands, mut levels_directory, yoleck_type_handlers, yoleck_managed_query) =
             system_state.get_mut(world);
+
+        let gen_raw_entries = || {
+            yoleck_managed_query
+                .iter()
+                .map(|(_entity, yoleck_managed)| {
+                    let handler = yoleck_type_handlers
+                        .type_handlers
+                        .get(&yoleck_managed.type_name)
+                        .unwrap();
+                    YoleckRawEntry {
+                        header: YoleckEntryHeader {
+                            type_name: yoleck_managed.type_name.clone(),
+                            name: yoleck_managed.name.clone(),
+                        },
+                        data: handler.make_raw(&yoleck_managed.data),
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let clear_level = |commands: &mut Commands| {
+            for (entity, _) in yoleck_managed_query.iter() {
+                commands.entity(entity).despawn_recursive();
+            }
+        };
+
         if ui.button("Save Level").clicked() {
             for (entity, yoleck_managed) in yoleck_managed_query.iter() {
                 let handler = yoleck_type_handlers
@@ -57,6 +91,17 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     }
                 });
                 levels_directory.0 = path_str.into();
+
+                let save_existing = |filename: &str| -> io::Result<()> {
+                    let fd = fs::OpenOptions::new()
+                        .write(true)
+                        .create(false)
+                        .truncate(true)
+                        .open(levels_directory.0.join(filename))?;
+                    serde_json::to_writer(fd, &gen_raw_entries())?;
+                    Ok(())
+                };
+
                 if should_list_files {
                     should_list_files = false;
                     loaded_files = fs::read_dir(&levels_directory.0).and_then(|files| {
@@ -73,28 +118,91 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                             .max_height(30.0)
                             .show(ui, |ui| {
                                 for file in files {
-                                    if let Some(file) = file.to_str() {
-                                        ui.label(file);
+                                    if file.extension()
+                                        != Some(std::ffi::OsStr::new(EXTENSION_WITHOUT_DOT))
+                                    {
+                                        continue;
+                                    }
+                                    if let Some(file_name) =
+                                        file.file_name().and_then(|n| n.to_str())
+                                    {
+                                        let is_selected =
+                                            if let SelectedLevelFile::Existing(selected_name) =
+                                                &selected_level_file
+                                            {
+                                                selected_name == file_name
+                                            } else {
+                                                false
+                                            };
+                                        if ui.selectable_label(is_selected, file_name).clicked()
+                                            && !is_selected
+                                        {
+                                            match &selected_level_file {
+                                                SelectedLevelFile::Unsaved(_) => {
+                                                    if yoleck_managed_query.is_empty() {
+                                                        selected_level_file =
+                                                            SelectedLevelFile::Existing(
+                                                                file_name.to_owned(),
+                                                            );
+                                                    } else {
+                                                        warn!("You have some unsaved file");
+                                                        continue;
+                                                    }
+                                                }
+                                                SelectedLevelFile::Existing(current_file) => {
+                                                    save_existing(current_file).unwrap();
+                                                    clear_level(&mut commands);
+                                                    selected_level_file =
+                                                        SelectedLevelFile::Existing(
+                                                            file_name.to_owned(),
+                                                        );
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             });
                         ui.horizontal(|ui| {
                             #[allow(clippy::collapsible_else_if)]
-                            if let Some(file_name) = &mut create_new_level_file {
-                                ui.text_edit_singleline(file_name);
-                                if !file_name.is_empty() {
-                                    #[allow(clippy::collapsible_else_if)]
-                                    if ui.button("Create").clicked() {
+                            match &mut selected_level_file {
+                                SelectedLevelFile::Unsaved(file_name) => {
+                                    ui.text_edit_singleline(file_name);
+                                    let button = ui.add_enabled(
+                                        !file_name.is_empty(),
+                                        egui::Button::new("Create"),
+                                    );
+                                    if button.clicked() {
                                         if !file_name.ends_with(EXTENSION) {
                                             file_name.push_str(EXTENSION);
                                         }
-                                        info!("Creating {}", file_name);
-                                        create_new_level_file = None
+                                        let mut full_path = levels_directory.0.clone();
+                                        full_path.push(&file_name);
+                                        match fs::OpenOptions::new()
+                                            .write(true)
+                                            .create_new(true)
+                                            .open(&full_path)
+                                        {
+                                            Ok(fd) => {
+                                                serde_json::to_writer(fd, &gen_raw_entries())
+                                                    .unwrap();
+                                                selected_level_file = SelectedLevelFile::Existing(
+                                                    file_name.to_owned(),
+                                                );
+                                                should_list_files = true;
+                                            }
+                                            Err(err) => {
+                                                warn!("Cannot open {:?} - {}", full_path, err);
+                                            }
+                                        }
                                     }
                                 }
-                            } else {
-                                if ui.button("New File").clicked() {
-                                    create_new_level_file = Some(String::new());
+                                SelectedLevelFile::Existing(current_file) => {
+                                    if ui.button("New Level").clicked() {
+                                        save_existing(current_file).unwrap();
+                                        clear_level(&mut commands);
+                                        selected_level_file =
+                                            SelectedLevelFile::Unsaved(String::new());
+                                    }
                                 }
                             }
                         });
@@ -104,5 +212,6 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     }
                 }
             });
+        system_state.apply(world);
     }
 }
