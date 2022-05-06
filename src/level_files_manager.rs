@@ -93,11 +93,13 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 levels_directory.0 = path_str.into();
 
                 let save_existing = |filename: &str| -> io::Result<()> {
+                    let file_path = levels_directory.0.join(filename);
+                    info!("Saving current level to {:?}", file_path);
                     let fd = fs::OpenOptions::new()
                         .write(true)
                         .create(false)
                         .truncate(true)
-                        .open(levels_directory.0.join(filename))?;
+                        .open(file_path)?;
                     serde_json::to_writer(fd, &gen_raw_entries())?;
                     Ok(())
                 };
@@ -134,28 +136,39 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             } else {
                                                 false
                                             };
-                                        if ui.selectable_label(is_selected, file_name).clicked()
-                                            && !is_selected
-                                        {
-                                            match &selected_level_file {
-                                                SelectedLevelFile::Unsaved(_) => {
-                                                    if yoleck_managed_query.is_empty() {
+                                        if ui.selectable_label(is_selected, file_name).clicked() {
+                                            if is_selected {
+                                                save_existing(file_name).unwrap();
+                                            } else {
+                                                match &selected_level_file {
+                                                    SelectedLevelFile::Unsaved(_) => {
+                                                        if yoleck_managed_query.is_empty() {
+                                                            selected_level_file =
+                                                                SelectedLevelFile::Existing(
+                                                                    file_name.to_owned(),
+                                                                );
+                                                        } else {
+                                                            warn!("You have some unsaved file");
+                                                            continue;
+                                                        }
+                                                    }
+                                                    SelectedLevelFile::Existing(current_file) => {
+                                                        save_existing(current_file).unwrap();
+                                                        clear_level(&mut commands);
                                                         selected_level_file =
                                                             SelectedLevelFile::Existing(
                                                                 file_name.to_owned(),
                                                             );
-                                                    } else {
-                                                        warn!("You have some unsaved file");
-                                                        continue;
                                                     }
                                                 }
-                                                SelectedLevelFile::Existing(current_file) => {
-                                                    save_existing(current_file).unwrap();
-                                                    clear_level(&mut commands);
-                                                    selected_level_file =
-                                                        SelectedLevelFile::Existing(
-                                                            file_name.to_owned(),
-                                                        );
+                                                let fd = fs::File::open(
+                                                    levels_directory.0.join(file_name),
+                                                )
+                                                .unwrap();
+                                                let data: Vec<YoleckRawEntry> =
+                                                    serde_json::from_reader(fd).unwrap();
+                                                for entry in data.into_iter() {
+                                                    commands.spawn().insert(entry);
                                                 }
                                             }
                                         }
@@ -175,14 +188,18 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                         if !file_name.ends_with(EXTENSION) {
                                             file_name.push_str(EXTENSION);
                                         }
-                                        let mut full_path = levels_directory.0.clone();
-                                        full_path.push(&file_name);
+                                        let mut file_path = levels_directory.0.clone();
+                                        file_path.push(&file_name);
                                         match fs::OpenOptions::new()
                                             .write(true)
                                             .create_new(true)
-                                            .open(&full_path)
+                                            .open(&file_path)
                                         {
                                             Ok(fd) => {
+                                                info!(
+                                                    "Saving current new level to {:?}",
+                                                    file_path
+                                                );
                                                 serde_json::to_writer(fd, &gen_raw_entries())
                                                     .unwrap();
                                                 selected_level_file = SelectedLevelFile::Existing(
@@ -191,7 +208,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                 should_list_files = true;
                                             }
                                             Err(err) => {
-                                                warn!("Cannot open {:?} - {}", full_path, err);
+                                                warn!("Cannot open {:?} - {}", file_path, err);
                                             }
                                         }
                                     }

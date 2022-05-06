@@ -21,7 +21,9 @@ fn main() {
     ]));
     app.insert_resource(YoleckEditorLevelsDirectoryPath("examples".into()));
     app.add_startup_system(setup_camera);
-    app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
+    if false {
+        app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
+    }
     app.run();
 }
 
