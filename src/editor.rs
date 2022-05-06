@@ -174,7 +174,10 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         "Editing {}",
                         format_caption(entity, &yoleck_managed)
                     ));
-                    if ui.button("Delete").clicked() {}
+                    if ui.button("Delete").clicked() {
+                        commands.entity(entity).despawn_recursive();
+                        yoleck.entity_being_edited = None;
+                    }
                 });
                 ui.horizontal(|ui| {
                     ui.label("Custom Name:");
@@ -193,14 +196,19 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     reason: PopulateReason::EditorUpdate,
                     _phantom_data: Default::default(),
                 };
-                handler.on_editor(
-                    &mut yoleck_managed.data,
-                    entity,
-                    &edit_ctx,
-                    ui,
-                    &populate_ctx,
-                    &mut commands,
-                );
+                // `entity_being_edited` will be `None` if we deleted the entity - in which case we
+                // don't want to call `on_editor` which will attempt to run more commands on it and
+                // panic.
+                if yoleck.entity_being_edited.is_some() {
+                    handler.on_editor(
+                        &mut yoleck_managed.data,
+                        entity,
+                        &edit_ctx,
+                        ui,
+                        &populate_ctx,
+                        &mut commands,
+                    );
+                }
             }
         }
         system_state.apply(world);
