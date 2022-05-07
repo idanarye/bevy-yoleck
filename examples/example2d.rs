@@ -4,50 +4,39 @@ use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckEditorLevelsDirectoryPath, YoleckPlugin, YoleckPopulateContext,
-    YoleckRawEntry, YoleckSource, YoleckTypeHandlers,
+    YoleckEditContext, YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame,
+    YoleckPopulateContext, YoleckSource, YoleckTypeHandlers,
 };
 use serde::{Deserialize, Serialize};
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(EguiPlugin);
-    app.add_plugin(YoleckPlugin);
-    app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
+    let level = std::env::args().nth(1);
+    if let Some(level) = level {
+        app.add_plugin(YoleckPluginForGame);
+        app.add_startup_system(
+            move |asset_server: Res<AssetServer>,
+                  mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
+                *yoleck_loading_command =
+                    YoleckLoadingCommand::FromAsset(asset_server.load(&level));
+            },
+        );
+    } else {
+        app.add_plugin(EguiPlugin);
+        app.add_plugin(YoleckPluginForEditor);
+        app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
+    }
     app.insert_resource(YoleckTypeHandlers::new([
         ExampleBox::handler("ExampleBox"),
         ExampleBox2::handler("ExampleBox2"),
     ]));
-    app.insert_resource(YoleckEditorLevelsDirectoryPath("examples".into()));
     app.add_startup_system(setup_camera);
-    if false {
-        app.add_startup_system(setup_entities); // TODO: replace with entity setup from data;
-    }
     app.run();
 }
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-}
-
-fn setup_entities(mut commands: Commands) {
-    let data = r#"[
-        [{"type": "ExampleBox"}, {
-            "position": [0.0, -50.0],
-            "color":{"Rgba":{"alpha":1.0,"blue":0.0,"green":0.0,"red":1.0}}
-        }],
-        [{"type": "ExampleBox", "name": "box2"}, {
-            "position": [0.0, 50.0],
-            "color":{"Rgba":{"alpha":1.0,"blue":1.0,"green":0.0,"red":0.0}}
-        }],
-        [{"type": "ExampleBox2"}, {
-            "position": [0.0, 0.0]
-        }]
-    ]"#;
-    for entry in serde_json::from_str::<Vec<YoleckRawEntry>>(data).unwrap() {
-        commands.spawn().insert(entry);
-    }
 }
 
 #[derive(Serialize, Deserialize)]

@@ -18,14 +18,36 @@ pub use self::api::{YoleckEditContext, YoleckEditorState, YoleckPopulateContext,
 use self::dynamic_source_handling::{YoleckTypeHandlerFor, YoleckTypeHandlerTrait};
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
-pub use self::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+pub use self::entity_management::{
+    YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
+};
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 
-pub struct YoleckPlugin;
+struct YoleckPluginBase;
+pub struct YoleckPluginForGame;
+pub struct YoleckPluginForEditor;
 
-impl Plugin for YoleckPlugin {
+impl Plugin for YoleckPluginBase {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(YoleckLoadingCommand::NoCommand);
+        app.add_asset::<YoleckRawLevel>();
+        app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
+        app.add_system(entity_management::yoleck_process_raw_entries);
+        app.add_system(entity_management::yoleck_process_loading_command);
+    }
+}
+
+impl Plugin for YoleckPluginForGame {
+    fn build(&self, app: &mut App) {
+        app.add_state(YoleckEditorState::GameActive);
+        app.add_plugin(YoleckPluginBase);
+    }
+}
+
+impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_state(YoleckEditorState::EditorActive);
+        app.add_plugin(YoleckPluginBase);
         app.insert_resource(YoleckState {
             entity_being_edited: None,
         });
@@ -38,7 +60,6 @@ impl Plugin for YoleckPlugin {
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(editor_window::yoleck_editor_window.exclusive_system()),
         );
-        app.add_system(entity_management::yoleck_process_raw_entries);
     }
 }
 

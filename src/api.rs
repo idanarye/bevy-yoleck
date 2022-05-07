@@ -36,7 +36,7 @@ impl<'a> YoleckPopulateContext<'a> {
         }
     }
 
-    pub fn is_first_tiome(&self) -> bool {
+    pub fn is_first_time(&self) -> bool {
         match self.reason {
             PopulateReason::EditorInit => true,
             PopulateReason::EditorUpdate => false,

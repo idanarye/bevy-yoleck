@@ -1,10 +1,12 @@
+use bevy::asset::{AssetLoader, LoadedAsset};
 use bevy::prelude::*;
+use bevy::reflect::TypeUuid;
 use serde::{Deserialize, Serialize};
 
 use crate::api::PopulateReason;
 use crate::{YoleckEditorState, YoleckManaged, YoleckPopulateContext, YoleckTypeHandlers};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct YoleckEntryHeader {
     #[serde(rename = "type")]
     pub type_name: String,
@@ -12,7 +14,7 @@ pub struct YoleckEntryHeader {
     pub name: String,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 pub struct YoleckRawEntry {
     pub header: YoleckEntryHeader,
     pub data: serde_json::Value,
@@ -66,5 +68,52 @@ pub(crate) fn yoleck_process_raw_entries(
             type_name: raw_entry.header.type_name.to_owned(),
             data: concrete,
         });
+    }
+}
+
+pub(crate) fn yoleck_process_loading_command(
+    mut commands: Commands,
+    mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+    raw_levels_assets: Res<Assets<YoleckRawLevel>>,
+) {
+    if let YoleckLoadingCommand::FromAsset(handle) = &*yoleck_loading_command {
+        if let Some(asset) = raw_levels_assets.get(handle) {
+            *yoleck_loading_command = YoleckLoadingCommand::NoCommand;
+            for entry in asset.entires.iter() {
+                commands.spawn().insert(entry.clone());
+            }
+        }
+    }
+}
+
+pub enum YoleckLoadingCommand {
+    NoCommand,
+    FromAsset(Handle<YoleckRawLevel>),
+}
+
+pub(crate) struct YoleckLevelAssetLoader;
+
+#[derive(TypeUuid)]
+#[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
+pub struct YoleckRawLevel {
+    pub entires: Vec<YoleckRawEntry>,
+}
+
+impl AssetLoader for YoleckLevelAssetLoader {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::asset::BoxedFuture<'a, Result<(), anyhow::Error>> {
+        Box::pin(async move {
+            let json = std::str::from_utf8(bytes)?;
+            let entries: Vec<YoleckRawEntry> = serde_json::from_str(json)?;
+            load_context.set_default_asset(LoadedAsset::new(YoleckRawLevel { entires: entries }));
+            Ok(())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["yol"]
     }
 }
