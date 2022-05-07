@@ -1,11 +1,13 @@
+use std::path::Path;
+
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame,
-    YoleckPopulateContext, YoleckSource, YoleckTypeHandlers,
+    YoleckEditContext, YoleckEditorState, YoleckLoadingCommand, YoleckPluginForEditor,
+    YoleckPluginForGame, YoleckPopulateContext, YoleckSource, YoleckTypeHandlers,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +20,9 @@ fn main() {
         app.add_startup_system(
             move |asset_server: Res<AssetServer>,
                   mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
-                *yoleck_loading_command =
-                    YoleckLoadingCommand::FromAsset(asset_server.load(&level));
+                *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
+                    asset_server.load(Path::new("levels").join(&level)),
+                );
             },
         );
     } else {
@@ -32,12 +35,18 @@ fn main() {
         ExampleBox2::handler("ExampleBox2"),
     ]));
     app.add_startup_system(setup_camera);
+    app.add_system_set(
+        SystemSet::on_update(YoleckEditorState::GameActive).with_system(move_the_boxes),
+    );
     app.run();
 }
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 }
+
+#[derive(Component)]
+struct Velocity(Vec2);
 
 #[derive(Serialize, Deserialize)]
 struct ExampleBox {
@@ -58,7 +67,8 @@ impl YoleckSource for ExampleBox {
             },
             transform: Transform::from_translation(self.position.extend(0.0)),
             ..Default::default()
-        });
+        })
+        .insert(Velocity(Vec2::new(1.0, 0.0)));
     }
 
     fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
@@ -116,5 +126,11 @@ impl YoleckSource for ExampleBox2 {
         }
         ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut self.position.y).prefix("Y:"));
+    }
+}
+
+fn move_the_boxes(mut query: Query<(&mut Transform, &Velocity)>) {
+    for (mut transform, velocity) in query.iter_mut() {
+        transform.translation += velocity.0.extend(0.0);
     }
 }

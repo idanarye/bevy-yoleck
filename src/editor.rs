@@ -6,8 +6,8 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::{
-    BoxedAny, PopulateReason, YoleckEditContext, YoleckEntryHeader, YoleckManaged,
-    YoleckPopulateContext, YoleckRawEntry, YoleckState, YoleckTypeHandlers,
+    BoxedAny, PopulateReason, YoleckEditContext, YoleckEditorState, YoleckEntryHeader,
+    YoleckManaged, YoleckPopulateContext, YoleckRawEntry, YoleckState, YoleckTypeHandlers,
 };
 
 pub enum YoleckDirectiveInner {
@@ -43,11 +43,20 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 }
 
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
-    let mut system_state =
-        SystemState::<(Commands, Res<YoleckTypeHandlers>, ResMut<YoleckState>)>::new(world);
+    let mut system_state = SystemState::<(
+        Commands,
+        Res<YoleckTypeHandlers>,
+        ResMut<YoleckState>,
+        Res<State<YoleckEditorState>>,
+    )>::new(world);
 
     move |world, ui| {
-        let (mut commands, yoleck_type_handlers, mut yoleck) = system_state.get_mut(world);
+        let (mut commands, yoleck_type_handlers, mut yoleck, editor_state) =
+            system_state.get_mut(world);
+
+        if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+            return;
+        }
 
         let popup_id = ui.make_persistent_id("add_new_entity_popup_id");
         let button_response = ui.button("Add New Entity");
@@ -84,10 +93,16 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
         ResMut<YoleckState>,
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
+        Res<State<YoleckEditorState>>,
     )>::new(world);
 
     move |world, ui| {
-        let (mut yoleck, yoleck_type_handlers, yoleck_managed_query) = system_state.get_mut(world);
+        let (mut yoleck, yoleck_type_handlers, yoleck_managed_query, editor_state) =
+            system_state.get_mut(world);
+
+        if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+            return;
+        }
 
         egui::CollapsingHeader::new("Select").show(ui, |ui| {
             egui::CollapsingHeader::new("Filter").show(ui, |ui| {
@@ -136,6 +151,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Query<(Entity, &mut YoleckManaged)>,
         EventReader<YoleckDirective>,
         Commands,
+        Res<State<YoleckEditorState>>,
     )>::new(world);
 
     move |world, ui| {
@@ -146,7 +162,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut yoleck_managed_query,
                 mut directives_reader,
                 mut commands,
+                editor_state,
             ) = system_state.get_mut(world);
+
+            if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+                return;
+            }
 
             let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, &BoxedAny>> =
                 Default::default();
