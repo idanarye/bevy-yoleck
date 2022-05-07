@@ -152,6 +152,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         EventReader<YoleckDirective>,
         Commands,
         Res<State<YoleckEditorState>>,
+        Res<AssetServer>,
     )>::new(world);
 
     move |world, ui| {
@@ -163,6 +164,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut directives_reader,
                 mut commands,
                 editor_state,
+                asset_server,
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
@@ -214,6 +216,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         .unwrap_or(&dummy_data_passed_to_entity),
                 };
                 let populate_ctx = YoleckPopulateContext {
+                    asset_server: &asset_server,
                     reason: PopulateReason::EditorUpdate,
                     _phantom_data: Default::default(),
                 };

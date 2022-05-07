@@ -45,6 +45,7 @@ pub(crate) fn yoleck_process_raw_entries(
     mut commands: Commands,
     yoleck_type_handlers: Res<YoleckTypeHandlers>,
     editor_state: Res<State<YoleckEditorState>>,
+    asset_server: Res<AssetServer>,
 ) {
     let populate_reason = match editor_state.current() {
         YoleckEditorState::EditorActive => PopulateReason::EditorInit,
@@ -59,6 +60,7 @@ pub(crate) fn yoleck_process_raw_entries(
             .unwrap();
         let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
         let populate_ctx = YoleckPopulateContext {
+            asset_server: &asset_server,
             reason: populate_reason,
             _phantom_data: Default::default(),
         };

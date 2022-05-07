@@ -22,6 +22,7 @@ pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
+pub use bevy_egui;
 pub use bevy_egui::egui;
 
 struct YoleckPluginBase;

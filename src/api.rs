@@ -2,6 +2,7 @@ use std::any::TypeId;
 use std::marker::PhantomData;
 
 use bevy::ecs::system::EntityCommands;
+use bevy::prelude::AssetServer;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,7 @@ pub(crate) enum PopulateReason {
 }
 
 pub struct YoleckPopulateContext<'a> {
+    pub asset_server: &'a AssetServer,
     pub(crate) reason: PopulateReason,
     // I may add stuff that need 'a later, and I don't want to change the signature
     pub(crate) _phantom_data: PhantomData<&'a ()>,
