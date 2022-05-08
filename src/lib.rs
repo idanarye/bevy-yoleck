@@ -59,10 +59,6 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
         app.add_system(editor_window::yoleck_editor_window.exclusive_system());
-        // app.add_system_set(
-        // SystemSet::on_update(YoleckEditorState::EditorActive)
-        // .with_system(editor_window::yoleck_editor_window.exclusive_system()),
-        // );
     }
 }
 

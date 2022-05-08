@@ -148,7 +148,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         Res<YoleckTypeHandlers>,
-        Query<(Entity, &mut YoleckManaged)>,
+        Query<(Entity, &mut YoleckManaged, Option<&GlobalTransform>)>,
         EventReader<YoleckDirective>,
         Commands,
         Res<State<YoleckEditorState>>,
@@ -188,7 +188,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 }
             }
 
-            if let Some((entity, mut yoleck_managed)) = yoleck
+            if let Some((entity, mut yoleck_managed, old_global_transform)) = yoleck
                 .entity_being_edited
                 .and_then(|entity| yoleck_managed_query.get_mut(entity).ok())
             {
@@ -224,7 +224,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 // don't want to call `on_editor` which will attempt to run more commands on it and
                 // panic.
                 if yoleck.entity_being_edited.is_some() {
-                    handler.on_editor(
+                    let mut cmd = handler.on_editor(
                         &mut yoleck_managed.data,
                         entity,
                         &edit_ctx,
@@ -232,6 +232,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         &populate_ctx,
                         &mut commands,
                     );
+                    if let Some(old_global_transform) = old_global_transform {
+                        // The `GlobalTransform` was overriden with a default `GlobalTransform`
+                        // that will be set later by a system, but things like `tools_2d` that rely
+                        // on the `GlobalTransform` may run before that happens.
+                        cmd.insert(old_global_transform.clone());
+                    }
                 }
             }
         }

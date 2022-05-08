@@ -11,15 +11,15 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn type_name(&self) -> &str;
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
     fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
-    fn on_editor(
+    fn on_editor<'w, 's, 'a>(
         &self,
         data: &mut BoxedAny,
         entity: Entity,
         editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
         populate_ctx: &YoleckPopulateContext,
-        commands: &mut Commands,
-    );
+        commands: &'a mut Commands<'w, 's>,
+    ) -> EntityCommands<'w, 's, 'a>;
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value;
 }
 
@@ -57,18 +57,20 @@ where
         concrete.populate(ctx, cmd);
     }
 
-    fn on_editor(
+    fn on_editor<'w, 's, 'a>(
         &self,
         data: &mut BoxedAny,
         entity: Entity,
         editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
         populate_ctx: &YoleckPopulateContext,
-        commands: &mut Commands,
-    ) {
+        commands: &'a mut Commands<'w, 's>,
+    ) -> EntityCommands<'w, 's, 'a> {
         let concrete = data.downcast_mut::<T>().unwrap();
         concrete.edit(editor_ctx, ui);
-        concrete.populate(populate_ctx, &mut commands.entity(entity));
+        let mut cmd = commands.entity(entity);
+        concrete.populate(populate_ctx, &mut cmd);
+        cmd
     }
 
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value {
