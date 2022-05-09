@@ -4,6 +4,7 @@ mod editor;
 mod editor_window;
 mod entity_management;
 mod level_files_manager;
+mod level_index;
 #[cfg(feature = "tools_2d")]
 pub mod tools_2d;
 

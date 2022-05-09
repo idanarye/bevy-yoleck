@@ -236,7 +236,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         // The `GlobalTransform` was overriden with a default `GlobalTransform`
                         // that will be set later by a system, but things like `tools_2d` that rely
                         // on the `GlobalTransform` may run before that happens.
-                        cmd.insert(old_global_transform.clone());
+                        cmd.insert(*old_global_transform);
                     }
                 }
             }

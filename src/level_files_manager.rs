@@ -3,8 +3,10 @@ use std::{fs, io};
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 use bevy_egui::egui;
 
+use crate::level_index::YoleckLevelFileEntry;
 use crate::{
     YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckTypeHandlers,
 };
@@ -24,7 +26,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
     )>::new(world);
 
     let mut should_list_files = true;
-    let mut loaded_files: io::Result<Vec<PathBuf>> = Ok(vec![]);
+    let mut loaded_files_index: io::Result<Vec<YoleckLevelFileEntry>> = Ok(vec![]);
 
     #[derive(Debug)]
     enum SelectedLevelFile {
@@ -114,6 +116,20 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     });
                     levels_directory.0 = path_str.into();
 
+                    let mk_files_index = || levels_directory.0.join("index.yoli");
+
+                    let save_index = |loaded_files_index: &[YoleckLevelFileEntry]| {
+                        let index_file = mk_files_index();
+                        match fs::File::create(&index_file) {
+                            Ok(fd) => {
+                                serde_json::to_writer(fd, &loaded_files_index).unwrap();
+                            }
+                            Err(err) => {
+                                warn!("Cannot open {:?} - {}", index_file, err);
+                            }
+                        }
+                    };
+
                     let save_existing = |filename: &str| -> io::Result<()> {
                         let file_path = levels_directory.0.join(filename);
                         info!("Saving current level to {:?}", file_path);
@@ -128,51 +144,77 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
 
                     if should_list_files {
                         should_list_files = false;
-                        loaded_files = fs::read_dir(&levels_directory.0).and_then(|files| {
-                            let mut result = Vec::new();
+                        loaded_files_index = fs::read_dir(&levels_directory.0).and_then(|files| {
+                            let index_file = mk_files_index();
+                            let mut files_index: Vec<YoleckLevelFileEntry> =
+                                match fs::File::open(&index_file) {
+                                    Ok(fd) => serde_json::from_reader(fd)?,
+                                    Err(err) => {
+                                        warn!("Cannot open {:?} - {}", index_file, err);
+                                        Vec::new()
+                                    }
+                                };
+                            let mut existing_files: HashMap<String, usize> = files_index
+                                .iter()
+                                .enumerate()
+                                .map(|(index, file)| (file.filename.clone(), index))
+                                .collect();
                             for file in files {
-                                result.push(file?.path());
+                                let file = file?;
+                                if file.path().extension()
+                                    != Some(std::ffi::OsStr::new(EXTENSION_WITHOUT_DOT))
+                                {
+                                    continue;
+                                }
+                                let filename = file.file_name().to_string_lossy().into();
+                                if existing_files.remove(&filename).is_none() {
+                                    files_index.push(YoleckLevelFileEntry { filename });
+                                }
                             }
-                            Ok(result)
+                            // TODO: deal with removed files (leftovers in existing_files)
+                            save_index(&files_index);
+                            Ok(files_index)
                         });
                     }
-                    match &loaded_files {
+                    match &mut loaded_files_index {
                         Ok(files) => {
+                            let mut swap_with_previous = None;
                             egui::ScrollArea::vertical()
                                 .max_height(30.0)
                                 .show(ui, |ui| {
-                                    for file in files {
-                                        if file.extension()
-                                            != Some(std::ffi::OsStr::new(EXTENSION_WITHOUT_DOT))
-                                        {
-                                            continue;
-                                        }
-                                        if let Some(file_name) =
-                                            file.file_name().and_then(|n| n.to_str())
-                                        {
-                                            let is_selected =
-                                                if let SelectedLevelFile::Existing(selected_name) =
-                                                    &selected_level_file
-                                                {
-                                                    selected_name == file_name
-                                                } else {
-                                                    false
-                                                };
-                                            if ui.selectable_label(is_selected, file_name).clicked()
+                                    for (index, file) in files.iter().enumerate() {
+                                        let is_selected =
+                                            if let SelectedLevelFile::Existing(selected_name) =
+                                                &selected_level_file
+                                            {
+                                                *selected_name == file.filename
+                                            } else {
+                                                false
+                                            };
+                                        ui.horizontal(|ui| {
+                                            if ui.button("^").clicked() {
+                                                swap_with_previous = Some(index);
+                                            }
+                                            if ui.button("v").clicked() {
+                                                swap_with_previous = Some(index + 1);
+                                            }
+                                            if ui
+                                                .selectable_label(is_selected, &file.filename)
+                                                .clicked()
                                             {
                                                 if is_selected {
-                                                    save_existing(file_name).unwrap();
+                                                    save_existing(&file.filename).unwrap();
                                                 } else {
                                                     match &selected_level_file {
                                                         SelectedLevelFile::Unsaved(_) => {
                                                             if yoleck_managed_query.is_empty() {
                                                                 selected_level_file =
                                                                     SelectedLevelFile::Existing(
-                                                                        file_name.to_owned(),
+                                                                        file.filename.clone(),
                                                                     );
                                                             } else {
                                                                 warn!("You have some unsaved file");
-                                                                continue;
+                                                                return;
                                                             }
                                                         }
                                                         SelectedLevelFile::Existing(
@@ -182,12 +224,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                             clear_level(&mut commands);
                                                             selected_level_file =
                                                                 SelectedLevelFile::Existing(
-                                                                    file_name.to_owned(),
+                                                                    file.filename.clone(),
                                                                 );
                                                         }
                                                     }
                                                     let fd = fs::File::open(
-                                                        levels_directory.0.join(file_name),
+                                                        levels_directory.0.join(&file.filename),
                                                     )
                                                     .unwrap();
                                                     let data: Vec<YoleckRawEntry> =
@@ -197,9 +239,13 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                     }
                                                 }
                                             }
-                                        }
+                                        });
                                     }
                                 });
+                            if let Some(swap_with_previous) = swap_with_previous {
+                                files.swap(swap_with_previous, swap_with_previous - 1);
+                                save_index(files);
+                            }
                             ui.horizontal(|ui| {
                                 #[allow(clippy::collapsible_else_if)]
                                 match &mut selected_level_file {
