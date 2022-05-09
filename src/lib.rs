@@ -23,6 +23,7 @@ pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
+pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
 pub use bevy_egui;
 pub use bevy_egui::egui;
 
@@ -35,6 +36,8 @@ impl Plugin for YoleckPluginBase {
         app.insert_resource(YoleckLoadingCommand::NoCommand);
         app.add_asset::<YoleckRawLevel>();
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
+        app.add_asset::<YoleckLevelIndex>();
+        app.add_asset_loader(level_index::YoleckLevelIndexLoader);
         app.add_system(entity_management::yoleck_process_raw_entries);
         app.add_system(entity_management::yoleck_process_loading_command);
     }

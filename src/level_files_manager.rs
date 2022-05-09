@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 
-use crate::level_index::YoleckLevelFileEntry;
+use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
     YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckTypeHandlers,
 };
@@ -26,7 +26,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
     )>::new(world);
 
     let mut should_list_files = true;
-    let mut loaded_files_index: io::Result<Vec<YoleckLevelFileEntry>> = Ok(vec![]);
+    let mut loaded_files_index: io::Result<Vec<YoleckLevelIndexEntry>> = Ok(vec![]);
 
     #[derive(Debug)]
     enum SelectedLevelFile {
@@ -118,7 +118,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
 
                     let mk_files_index = || levels_directory.0.join("index.yoli");
 
-                    let save_index = |loaded_files_index: &[YoleckLevelFileEntry]| {
+                    let save_index = |loaded_files_index: &[YoleckLevelIndexEntry]| {
                         let index_file = mk_files_index();
                         match fs::File::create(&index_file) {
                             Ok(fd) => {
@@ -146,7 +146,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                         should_list_files = false;
                         loaded_files_index = fs::read_dir(&levels_directory.0).and_then(|files| {
                             let index_file = mk_files_index();
-                            let mut files_index: Vec<YoleckLevelFileEntry> =
+                            let mut files_index: Vec<YoleckLevelIndexEntry> =
                                 match fs::File::open(&index_file) {
                                     Ok(fd) => serde_json::from_reader(fd)?,
                                     Err(err) => {
@@ -168,7 +168,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                 }
                                 let filename = file.file_name().to_string_lossy().into();
                                 if existing_files.remove(&filename).is_none() {
-                                    files_index.push(YoleckLevelFileEntry { filename });
+                                    files_index.push(YoleckLevelIndexEntry { filename });
                                 }
                             }
                             // TODO: deal with removed files (leftovers in existing_files)
