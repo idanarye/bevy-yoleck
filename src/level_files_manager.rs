@@ -3,7 +3,7 @@ use std::{fs, io};
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::HashSet;
 use bevy_egui::egui;
 
 use crate::level_index::YoleckLevelIndexEntry;
@@ -154,10 +154,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                         Vec::new()
                                     }
                                 };
-                            let mut existing_files: HashMap<String, usize> = files_index
+                            let mut existing_files: HashSet<String> = files_index
                                 .iter()
-                                .enumerate()
-                                .map(|(index, file)| (file.filename.clone(), index))
+                                .map(|file| file.filename.clone())
                                 .collect();
                             for file in files {
                                 let file = file?;
@@ -167,11 +166,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                     continue;
                                 }
                                 let filename = file.file_name().to_string_lossy().into();
-                                if existing_files.remove(&filename).is_none() {
+                                if !existing_files.remove(&filename) {
                                     files_index.push(YoleckLevelIndexEntry { filename });
                                 }
                             }
-                            // TODO: deal with removed files (leftovers in existing_files)
+                            files_index.retain(|file| !existing_files.contains(&file.filename));
                             save_index(&files_index);
                             Ok(files_index)
                         });
@@ -192,10 +191,19 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                 false
                                             };
                                         ui.horizontal(|ui| {
-                                            if ui.button("^").clicked() {
+                                            if ui
+                                                .add_enabled(0 < index, egui::Button::new("^"))
+                                                .clicked()
+                                            {
                                                 swap_with_previous = Some(index);
                                             }
-                                            if ui.button("v").clicked() {
+                                            if ui
+                                                .add_enabled(
+                                                    index < files.len() - 1,
+                                                    egui::Button::new("v"),
+                                                )
+                                                .clicked()
+                                            {
                                                 swap_with_previous = Some(index + 1);
                                             }
                                             if ui
