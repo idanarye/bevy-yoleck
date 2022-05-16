@@ -30,7 +30,6 @@ where
     T: Serialize,
     for<'de> T: Deserialize<'de>,
 {
-    pub(crate) type_name: String,
     pub(crate) _phantom_data: PhantomData<fn() -> T>,
 }
 
@@ -42,7 +41,7 @@ where
     for<'de> T: Deserialize<'de>,
 {
     fn type_name(&self) -> &str {
-        &self.type_name
+        T::NAME
     }
 
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny> {

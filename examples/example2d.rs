@@ -31,8 +31,8 @@ fn main() {
         app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
     }
     app.insert_resource(YoleckTypeHandlers::new([
-        ExampleBox::handler("ExampleBox"),
-        ExampleBox2::handler("ExampleBox2"),
+        ExampleBox::handler(),
+        ExampleBox2::handler(),
     ]));
     app.add_startup_system(setup_camera);
     app.add_system_set(
@@ -57,6 +57,8 @@ struct ExampleBox {
 }
 
 impl YoleckSource for ExampleBox {
+    const NAME: &'static str = "ExampleBox";
+
     fn populate(&self, _ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
@@ -107,6 +109,8 @@ struct ExampleBox2 {
 }
 
 impl YoleckSource for ExampleBox2 {
+    const NAME: &'static str = "ExampleBox2";
+
     fn populate(&self, _ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
