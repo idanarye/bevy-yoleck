@@ -46,7 +46,7 @@ fn setup_camera(mut commands: Commands) {
 #[derive(Component)]
 struct Velocity(Vec2);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct ExampleBox {
     #[serde(default)]
     position: Vec2,
@@ -100,7 +100,7 @@ impl YoleckSource for ExampleBox {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct ExampleBox2 {
     #[serde(default)]
     position: Vec2,

@@ -61,7 +61,9 @@ impl YoleckEditContext<'_> {
     }
 }
 
-pub trait YoleckSource: 'static + Send + Sync + Serialize + for<'a> Deserialize<'a> {
+pub trait YoleckSource:
+    'static + Send + Sync + Clone + PartialEq + Serialize + for<'a> Deserialize<'a>
+{
     const NAME: &'static str;
 
     fn populate(&self, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);

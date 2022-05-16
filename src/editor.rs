@@ -148,12 +148,14 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         Res<YoleckTypeHandlers>,
-        Query<(Entity, &mut YoleckManaged, Option<&GlobalTransform>)>,
+        Query<(Entity, &mut YoleckManaged)>,
         EventReader<YoleckDirective>,
         Commands,
         Res<State<YoleckEditorState>>,
         Res<AssetServer>,
     )>::new(world);
+
+    let mut comparison_cache = None;
 
     move |world, ui| {
         {
@@ -188,7 +190,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 }
             }
 
-            if let Some((entity, mut yoleck_managed, old_global_transform)) = yoleck
+            if let Some((entity, mut yoleck_managed)) = yoleck
                 .entity_being_edited
                 .and_then(|entity| yoleck_managed_query.get_mut(entity).ok())
             {
@@ -220,24 +222,20 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     reason: PopulateReason::EditorUpdate,
                     _phantom_data: Default::default(),
                 };
+
                 // `entity_being_edited` will be `None` if we deleted the entity - in which case we
                 // don't want to call `on_editor` which will attempt to run more commands on it and
                 // panic.
                 if yoleck.entity_being_edited.is_some() {
-                    let mut cmd = handler.on_editor(
+                    handler.on_editor(
                         &mut yoleck_managed.data,
+                        &mut comparison_cache,
                         entity,
                         &edit_ctx,
                         ui,
                         &populate_ctx,
                         &mut commands,
                     );
-                    if let Some(old_global_transform) = old_global_transform {
-                        // The `GlobalTransform` was overriden with a default `GlobalTransform`
-                        // that will be set later by a system, but things like `tools_2d` that rely
-                        // on the `GlobalTransform` may run before that happens.
-                        cmd.insert(*old_global_transform);
-                    }
                 }
             }
         }
