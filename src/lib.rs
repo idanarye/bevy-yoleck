@@ -13,7 +13,6 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
-use serde::{Deserialize, Serialize};
 
 use self::api::PopulateReason;
 pub use self::api::{YoleckEditContext, YoleckEditorState, YoleckPopulateContext, YoleckSource};
@@ -69,22 +68,11 @@ impl Plugin for YoleckPluginForEditor {
 }
 
 pub trait YoleckExtForApp {
-    fn add_yoleck_handler<T>(&mut self)
-    where
-        T: YoleckSource,
-        T: 'static,
-        T: Serialize,
-        for<'de> T: Deserialize<'de>;
+    fn add_yoleck_handler<T: YoleckSource>(&mut self);
 }
 
 impl YoleckExtForApp for App {
-    fn add_yoleck_handler<T>(&mut self)
-    where
-        T: YoleckSource,
-        T: 'static,
-        T: Serialize,
-        for<'de> T: Deserialize<'de>,
-    {
+    fn add_yoleck_handler<T: YoleckSource>(&mut self) {
         let mut handlers = self
             .world
             .get_resource_or_insert_with(YoleckTypeHandlers::default);

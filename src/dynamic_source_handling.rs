@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::egui;
-use serde::{Deserialize, Serialize};
 
 use crate::{BoxedAny, YoleckEditContext, YoleckPopulateContext, YoleckSource};
 
@@ -23,23 +22,11 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value;
 }
 
-pub(crate) struct YoleckTypeHandlerFor<T>
-where
-    T: 'static,
-    T: YoleckSource,
-    T: Serialize,
-    for<'de> T: Deserialize<'de>,
-{
+pub(crate) struct YoleckTypeHandlerFor<T: YoleckSource> {
     pub(crate) _phantom_data: PhantomData<fn() -> T>,
 }
 
-impl<T> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T>
-where
-    T: 'static,
-    T: YoleckSource,
-    T: Serialize,
-    for<'de> T: Deserialize<'de>,
-{
+impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
     fn type_name(&self) -> &str {
         T::NAME
     }

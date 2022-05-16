@@ -61,18 +61,13 @@ impl YoleckEditContext<'_> {
     }
 }
 
-pub trait YoleckSource: Send + Sync {
+pub trait YoleckSource: 'static + Send + Sync + Serialize + for<'a> Deserialize<'a> {
     const NAME: &'static str;
 
     fn populate(&self, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
     fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui);
 
-    fn handler() -> Box<dyn YoleckTypeHandlerTrait>
-    where
-        Self: 'static,
-        Self: Serialize,
-        for<'de> Self: Deserialize<'de>,
-    {
+    fn handler() -> Box<dyn YoleckTypeHandlerTrait> {
         Box::new(YoleckTypeHandlerFor::<Self> {
             _phantom_data: Default::default(),
         })
