@@ -6,8 +6,8 @@ use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckEditorState, YoleckLoadingCommand, YoleckPluginForEditor,
-    YoleckPluginForGame, YoleckPopulateContext, YoleckSource, YoleckTypeHandlers,
+    YoleckEditContext, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulateContext, YoleckSource,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,10 +30,8 @@ fn main() {
         app.add_plugin(YoleckPluginForEditor);
         app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
     }
-    app.insert_resource(YoleckTypeHandlers::new([
-        ExampleBox::handler(),
-        ExampleBox2::handler(),
-    ]));
+    app.add_yoleck_handler::<ExampleBox>();
+    app.add_yoleck_handler::<ExampleBox2>();
     app.add_startup_system(setup_camera);
     app.add_system_set(
         SystemSet::on_update(YoleckEditorState::GameActive).with_system(move_the_boxes),

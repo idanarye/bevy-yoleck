@@ -13,6 +13,7 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
+use serde::{Deserialize, Serialize};
 
 use self::api::PopulateReason;
 pub use self::api::{YoleckEditContext, YoleckEditorState, YoleckPopulateContext, YoleckSource};
@@ -34,6 +35,7 @@ pub struct YoleckPluginForEditor;
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
         app.insert_resource(YoleckLoadingCommand::NoCommand);
+        app.init_resource::<YoleckTypeHandlers>();
         app.add_asset::<YoleckRawLevel>();
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.add_asset::<YoleckLevelIndex>();
@@ -66,6 +68,30 @@ impl Plugin for YoleckPluginForEditor {
     }
 }
 
+pub trait YoleckExtForApp {
+    fn add_yoleck_handler<T>(&mut self)
+    where
+        T: YoleckSource,
+        T: 'static,
+        T: Serialize,
+        for<'de> T: Deserialize<'de>;
+}
+
+impl YoleckExtForApp for App {
+    fn add_yoleck_handler<T>(&mut self)
+    where
+        T: YoleckSource,
+        T: 'static,
+        T: Serialize,
+        for<'de> T: Deserialize<'de>,
+    {
+        let mut handlers = self
+            .world
+            .get_resource_or_insert_with(YoleckTypeHandlers::default);
+        handlers.add_handler(T::handler());
+    }
+}
+
 type BoxedAny = Box<dyn Send + Sync + Any>;
 
 #[derive(Component)]
@@ -75,24 +101,14 @@ pub struct YoleckManaged {
     pub data: BoxedAny,
 }
 
+#[derive(Default)]
 pub struct YoleckTypeHandlers {
     type_handler_names: Vec<String>,
     type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
 }
 
 impl YoleckTypeHandlers {
-    pub fn new(handlers: impl IntoIterator<Item = Box<dyn YoleckTypeHandlerTrait>>) -> Self {
-        let mut result = Self {
-            type_handler_names: Default::default(),
-            type_handlers: Default::default(),
-        };
-        for handler in handlers {
-            result.add_handler(handler);
-        }
-        result
-    }
-
-    pub fn add_handler(&mut self, handler: Box<dyn YoleckTypeHandlerTrait>) {
+    fn add_handler(&mut self, handler: Box<dyn YoleckTypeHandlerTrait>) {
         let type_name = handler.type_name().to_owned();
         match self.type_handlers.entry(type_name.clone()) {
             bevy::utils::hashbrown::hash_map::Entry::Occupied(_) => {
