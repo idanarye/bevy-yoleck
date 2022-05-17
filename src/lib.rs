@@ -57,6 +57,7 @@ impl Plugin for YoleckPluginForEditor {
         app.add_plugin(YoleckPluginBase);
         app.insert_resource(YoleckState {
             entity_being_edited: None,
+            level_needs_saving: false,
         });
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels"),
@@ -112,6 +113,7 @@ impl YoleckTypeHandlers {
 
 pub struct YoleckState {
     entity_being_edited: Option<Entity>,
+    level_needs_saving: bool,
 }
 
 impl YoleckState {

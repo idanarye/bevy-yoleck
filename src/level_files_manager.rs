@@ -8,7 +8,8 @@ use bevy_egui::egui;
 
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
-    YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckTypeHandlers,
+    YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckState,
+    YoleckTypeHandlers,
 };
 
 const EXTENSION: &str = ".yol";
@@ -19,6 +20,7 @@ pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         Commands,
+        ResMut<YoleckState>,
         ResMut<YoleckEditorLevelsDirectoryPath>,
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
@@ -41,6 +43,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
     move |world, ui: &mut egui::Ui| {
         let (
             mut commands,
+            mut yoleck,
             mut levels_directory,
             yoleck_type_handlers,
             yoleck_managed_query,
@@ -210,32 +213,13 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                 .selectable_label(is_selected, &file.filename)
                                                 .clicked()
                                             {
-                                                if is_selected {
-                                                    save_existing(&file.filename).unwrap();
-                                                } else {
-                                                    match &selected_level_file {
-                                                        SelectedLevelFile::Unsaved(_) => {
-                                                            if yoleck_managed_query.is_empty() {
-                                                                selected_level_file =
-                                                                    SelectedLevelFile::Existing(
-                                                                        file.filename.clone(),
-                                                                    );
-                                                            } else {
-                                                                warn!("You have some unsaved file");
-                                                                return;
-                                                            }
-                                                        }
+                                                #[allow(clippy::collapsible_else_if)]
+                                                if !is_selected && !yoleck.level_needs_saving {
+                                                    clear_level(&mut commands);
+                                                    selected_level_file =
                                                         SelectedLevelFile::Existing(
-                                                            current_file,
-                                                        ) => {
-                                                            save_existing(current_file).unwrap();
-                                                            clear_level(&mut commands);
-                                                            selected_level_file =
-                                                                SelectedLevelFile::Existing(
-                                                                    file.filename.clone(),
-                                                                );
-                                                        }
-                                                    }
+                                                            file.filename.clone(),
+                                                        );
                                                     let fd = fs::File::open(
                                                         levels_directory.0.join(&file.filename),
                                                     )
@@ -245,6 +229,13 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                     for entry in data.into_iter() {
                                                         commands.spawn().insert(entry);
                                                     }
+                                                }
+                                            }
+                                            if is_selected && yoleck.level_needs_saving {
+                                                #[allow(clippy::collapsible_else_if)]
+                                                if ui.button("SAVE").clicked() {
+                                                    save_existing(&file.filename).unwrap();
+                                                    yoleck.level_needs_saving = false;
                                                 }
                                             }
                                         });
@@ -286,6 +277,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                             file_name.to_owned(),
                                                         );
                                                     should_list_files = true;
+                                                    yoleck.level_needs_saving = false;
                                                 }
                                                 Err(err) => {
                                                     warn!("Cannot open {:?} - {}", file_path, err);
@@ -293,9 +285,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             }
                                         }
                                     }
-                                    SelectedLevelFile::Existing(current_file) => {
-                                        if ui.button("New Level").clicked() {
-                                            save_existing(current_file).unwrap();
+                                    SelectedLevelFile::Existing(_) => {
+                                        let button = ui.add_enabled(
+                                            !yoleck.level_needs_saving,
+                                            egui::Button::new("New Level"),
+                                        );
+                                        if button.clicked() {
                                             clear_level(&mut commands);
                                             selected_level_file =
                                                 SelectedLevelFile::Unsaved(String::new());

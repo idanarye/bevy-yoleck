@@ -76,6 +76,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
                         data: serde_json::Value::Object(Default::default()),
                     });
                     yoleck.entity_being_edited = Some(cmd.id());
+                    yoleck.level_needs_saving = true;
                     ui.memory().toggle_popup(popup_id);
                 }
             }
@@ -173,6 +174,8 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 return;
             }
 
+            //info!("{}", yoleck.level_needs_saving);
+
             let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, &BoxedAny>> =
                 Default::default();
             let dummy_data_passed_to_entity = HashMap::<TypeId, &BoxedAny>::new();
@@ -227,7 +230,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 // don't want to call `on_editor` which will attempt to run more commands on it and
                 // panic.
                 if yoleck.entity_being_edited.is_some() {
-                    handler.on_editor(
+                    let on_editor_result = handler.on_editor(
                         &mut yoleck_managed.data,
                         &mut comparison_cache,
                         entity,
@@ -236,6 +239,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         &populate_ctx,
                         &mut commands,
                     );
+                    if matches!(
+                        on_editor_result,
+                        crate::dynamic_source_handling::YoleckOnEditorResult::Changed
+                    ) {
+                        yoleck.level_needs_saving = true;
+                    }
                 }
             }
         }
