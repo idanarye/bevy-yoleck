@@ -1,10 +1,9 @@
 use std::marker::PhantomData;
 
-use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::{BoxedAny, YoleckEditContext, YoleckPopulateContext, YoleckSource};
+use crate::{BoxedAny, YoleckEditContext, YoleckSource};
 
 pub enum YoleckOnEditorResult {
     Unchanged,
@@ -14,7 +13,6 @@ pub enum YoleckOnEditorResult {
 pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn type_name(&self) -> &str;
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
-    fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands);
     #[allow(clippy::too_many_arguments)]
     fn on_editor(
         &self,
@@ -23,14 +21,23 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
         entity: Entity,
         editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
-        populate_ctx: &YoleckPopulateContext,
-        commands: &mut Commands,
     ) -> YoleckOnEditorResult;
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value;
+    fn initialize_systems(&mut self, world: &mut World);
+    fn run_populate_systems(&mut self, world: &mut World);
 }
 
-pub(crate) struct YoleckTypeHandlerFor<T: YoleckSource> {
+pub struct YoleckTypeHandlerFor<T: YoleckSource> {
     pub(crate) _phantom_data: PhantomData<fn() -> T>,
+    pub populate_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
+}
+
+impl<T: YoleckSource> YoleckTypeHandlerFor<T> {
+    pub fn populate_with<P>(mut self, system: impl IntoSystem<(), (), P>) -> Self {
+        self.populate_systems
+            .push(Box::new(IntoSystem::into_system(system)));
+        self
+    }
 }
 
 impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
@@ -45,11 +52,6 @@ impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
         Ok(dynamic)
     }
 
-    fn populate(&self, data: &BoxedAny, ctx: &YoleckPopulateContext, cmd: &mut EntityCommands) {
-        let concrete = data.downcast_ref::<T>().unwrap();
-        concrete.populate(ctx, cmd);
-    }
-
     fn on_editor(
         &self,
         data: &mut BoxedAny,
@@ -57,8 +59,6 @@ impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
         entity: Entity,
         editor_ctx: &YoleckEditContext,
         ui: &mut egui::Ui,
-        populate_ctx: &YoleckPopulateContext,
-        commands: &mut Commands,
     ) -> YoleckOnEditorResult {
         let concrete = data.downcast_mut::<T>().unwrap();
         let check_against = match comparison_cache {
@@ -74,10 +74,8 @@ impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
             }
         };
         concrete.edit(editor_ctx, ui);
-        if populate_ctx.is_first_time() || check_against != concrete {
+        if check_against != concrete {
             *check_against = concrete.clone();
-            let mut cmd = commands.entity(entity);
-            concrete.populate(populate_ctx, &mut cmd);
             YoleckOnEditorResult::Changed
         } else {
             YoleckOnEditorResult::Unchanged
@@ -87,5 +85,18 @@ impl<T: YoleckSource> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T> {
     fn make_raw(&self, data: &BoxedAny) -> serde_json::Value {
         let concrete = data.downcast_ref::<T>().unwrap();
         serde_json::to_value(concrete).unwrap()
+    }
+
+    fn initialize_systems(&mut self, world: &mut World) {
+        for system in self.populate_systems.iter_mut() {
+            system.initialize(world);
+        }
+    }
+
+    fn run_populate_systems(&mut self, world: &mut World) {
+        for system in self.populate_systems.iter_mut() {
+            system.run((), world);
+            system.apply_buffers(world);
+        }
     }
 }

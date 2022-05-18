@@ -14,8 +14,10 @@ use std::path::Path;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use self::api::PopulateReason;
-pub use self::api::{YoleckEditContext, YoleckEditorState, YoleckPopulateContext, YoleckSource};
+use self::api::YoleckUserSystemContext;
+pub use self::api::{
+    YoleckEditContext, YoleckEditorState, YoleckPopulate, YoleckPopulateContext, YoleckSource,
+};
 use self::dynamic_source_handling::{YoleckTypeHandlerFor, YoleckTypeHandlerTrait};
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
@@ -31,15 +33,25 @@ struct YoleckPluginBase;
 pub struct YoleckPluginForGame;
 pub struct YoleckPluginForEditor;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
+enum YoleckSystemLabels {
+    ProcessRawEntities,
+}
+
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
+        app.insert_resource(YoleckUserSystemContext::Nope);
         app.insert_resource(YoleckLoadingCommand::NoCommand);
         app.init_resource::<YoleckTypeHandlers>();
         app.add_asset::<YoleckRawLevel>();
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.add_asset::<YoleckLevelIndex>();
         app.add_asset_loader(level_index::YoleckLevelIndexLoader);
-        app.add_system(entity_management::yoleck_process_raw_entries);
+        app.add_system(
+            entity_management::yoleck_process_raw_entries
+                .exclusive_system()
+                .label(YoleckSystemLabels::ProcessRawEntities),
+        );
         app.add_system(entity_management::yoleck_process_loading_command);
     }
 }
@@ -64,20 +76,25 @@ impl Plugin for YoleckPluginForEditor {
         ));
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
-        app.add_system(editor_window::yoleck_editor_window.exclusive_system());
+        app.add_system(
+            editor_window::yoleck_editor_window
+                .exclusive_system()
+                .after(YoleckSystemLabels::ProcessRawEntities),
+        );
     }
 }
 
 pub trait YoleckExtForApp {
-    fn add_yoleck_handler<T: YoleckSource>(&mut self);
+    fn add_yoleck_handler(&mut self, handler: impl 'static + YoleckTypeHandlerTrait);
 }
 
 impl YoleckExtForApp for App {
-    fn add_yoleck_handler<T: YoleckSource>(&mut self) {
+    fn add_yoleck_handler(&mut self, mut handler: impl 'static + YoleckTypeHandlerTrait) {
+        handler.initialize_systems(&mut self.world);
         let mut handlers = self
             .world
             .get_resource_or_insert_with(YoleckTypeHandlers::default);
-        handlers.add_handler(T::handler());
+        handlers.add_handler(Box::new(handler));
     }
 }
 

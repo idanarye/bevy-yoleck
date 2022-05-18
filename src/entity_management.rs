@@ -1,10 +1,12 @@
 use bevy::asset::{AssetLoader, LoadedAsset};
+use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
 use bevy::reflect::TypeUuid;
+use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::api::PopulateReason;
-use crate::{YoleckEditorState, YoleckManaged, YoleckPopulateContext, YoleckTypeHandlers};
+use crate::api::YoleckUserSystemContext;
+use crate::{YoleckEditorState, YoleckManaged, YoleckTypeHandlers};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct YoleckEntryHeader {
@@ -40,37 +42,49 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
     }
 }
 
-pub(crate) fn yoleck_process_raw_entries(
-    raw_entries_query: Query<(Entity, &YoleckRawEntry)>,
-    mut commands: Commands,
-    yoleck_type_handlers: Res<YoleckTypeHandlers>,
-    editor_state: Res<State<YoleckEditorState>>,
-    asset_server: Res<AssetServer>,
-) {
-    let populate_reason = match editor_state.current() {
-        YoleckEditorState::EditorActive => PopulateReason::EditorInit,
-        YoleckEditorState::GameActive => PopulateReason::RealGame,
+pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
+    let is_in_editor = match world.resource::<State<YoleckEditorState>>().current() {
+        YoleckEditorState::EditorActive => true,
+        YoleckEditorState::GameActive => false,
     };
-    for (entity, raw_entry) in raw_entries_query.iter() {
-        let mut cmd = commands.entity(entity);
-        cmd.remove::<YoleckRawEntry>();
-        let handler = yoleck_type_handlers
-            .type_handlers
-            .get(&raw_entry.header.type_name)
-            .unwrap();
-        let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
-        let populate_ctx = YoleckPopulateContext {
-            asset_server: &asset_server,
-            reason: populate_reason,
-            _phantom_data: Default::default(),
-        };
-        handler.populate(&concrete, &populate_ctx, &mut cmd);
-        cmd.insert(YoleckManaged {
-            name: raw_entry.header.name.to_owned(),
-            type_name: raw_entry.header.type_name.to_owned(),
-            data: concrete,
-        });
-    }
+    world.resource_scope(|world, mut yoleck_type_handlers: Mut<YoleckTypeHandlers>| {
+        let mut entities_by_type = HashMap::<String, Vec<Entity>>::new();
+        let mut commands_queue = CommandQueue::default();
+        let mut raw_entries_query = world.query::<(Entity, &YoleckRawEntry)>();
+        let mut commands = Commands::new(&mut commands_queue, world);
+        for (entity, raw_entry) in raw_entries_query.iter(world) {
+            entities_by_type
+                .entry(raw_entry.header.type_name.clone())
+                .or_default()
+                .push(entity);
+            let mut cmd = commands.entity(entity);
+            cmd.remove::<YoleckRawEntry>();
+            let handler = yoleck_type_handlers
+                .type_handlers
+                .get(&raw_entry.header.type_name)
+                .unwrap();
+            let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
+            cmd.insert(YoleckManaged {
+                name: raw_entry.header.name.to_owned(),
+                type_name: raw_entry.header.type_name.to_owned(),
+                data: concrete,
+            });
+        }
+        commands_queue.apply(world);
+        for (type_name, entities) in entities_by_type {
+            let handler = yoleck_type_handlers
+                .type_handlers
+                .get_mut(&type_name)
+                .unwrap();
+            *world.resource_mut::<YoleckUserSystemContext>() =
+                YoleckUserSystemContext::PopulateInitiated {
+                    is_in_editor,
+                    entities,
+                };
+            handler.run_populate_systems(world);
+        }
+        *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
+    });
 }
 
 pub(crate) fn yoleck_process_loading_command(
