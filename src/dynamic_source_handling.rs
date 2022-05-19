@@ -44,6 +44,10 @@ impl<T> YoleckTypeHandlerFor<T> {
         }
     }
 
+    pub fn with(self, source: impl FnOnce(Self) -> Self) -> Self {
+        source(self)
+    }
+
     pub fn edit_with<P>(mut self, system: impl IntoSystem<(), (), P>) -> Self {
         self.edit_systems
             .push(Box::new(IntoSystem::into_system(system)));

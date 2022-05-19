@@ -5,8 +5,8 @@ use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
+    YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
+    YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,11 +32,15 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
             .populate_with(populate_box)
+            .with(project_position(|data: &mut ExampleBox| &mut data.position))
             .edit_with(edit_box)
     });
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
             .populate_with(populate_box2)
+            .with(project_position(|data: &mut ExampleBox2| {
+                &mut data.position
+            }))
             .edit_with(edit_box2)
     });
     app.add_startup_system(setup_camera);
@@ -74,7 +78,6 @@ fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
                 anchor: Anchor::BottomLeft,
                 ..Default::default()
             },
-            transform: Transform::from_translation(data.position.extend(0.0)),
             ..Default::default()
         });
         if !ctx.is_in_editor() {
@@ -120,7 +123,7 @@ struct ExampleBox2 {
 }
 
 fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
-    populate.populate(|_ctx, data, mut cmd| {
+    populate.populate(|_ctx, _data, mut cmd| {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: Color::GREEN,
@@ -128,7 +131,6 @@ fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
                 custom_size: Some(Vec2::new(30.0, 30.0)),
                 ..Default::default()
             },
-            transform: Transform::from_translation(data.position.extend(0.0)),
             ..Default::default()
         });
     });
@@ -147,5 +149,17 @@ fn edit_box2(mut edit: YoleckEdit<ExampleBox2>) {
 fn move_the_boxes(mut query: Query<(&mut Transform, &Velocity)>) {
     for (mut transform, velocity) in query.iter_mut() {
         transform.translation += velocity.0.extend(0.0);
+    }
+}
+
+fn project_position<T: 'static>(
+    projection: impl 'static + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec2,
+) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
+    move |handler| {
+        handler.populate_with(move |mut populate: YoleckPopulate<T>| {
+            populate.populate(|_ctx, data, mut cmd| {
+                cmd.insert(Transform::from_translation(projection(data).extend(0.0)));
+            });
+        })
     }
 }

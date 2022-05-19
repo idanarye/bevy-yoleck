@@ -19,8 +19,8 @@ use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckEdit, YoleckEditContext, YoleckEditorState, YoleckPopulate, YoleckPopulateContext,
 };
-use self::dynamic_source_handling::YoleckTypeHandlerTrait;
 pub use self::dynamic_source_handling::YoleckTypeHandlerFor;
+use self::dynamic_source_handling::YoleckTypeHandlerTrait;
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{

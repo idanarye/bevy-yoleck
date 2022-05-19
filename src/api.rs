@@ -98,7 +98,7 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
 
 #[derive(SystemParam)]
 pub struct YoleckPopulate<'w, 's, T: 'static> {
-    query: Query<'w, 's, &'static YoleckManaged>,
+    query: Query<'w, 's, &'static mut YoleckManaged>,
     context: Res<'w, YoleckUserSystemContext>,
     commands: Commands<'w, 's>,
     #[system_param(ignore)]
@@ -106,7 +106,10 @@ pub struct YoleckPopulate<'w, 's, T: 'static> {
 }
 
 impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
-    pub fn populate(&mut self, mut dlg: impl FnMut(&YoleckPopulateContext, &T, EntityCommands)) {
+    pub fn populate(
+        &mut self,
+        mut dlg: impl FnMut(&YoleckPopulateContext, &mut T, EntityCommands),
+    ) {
         match &*self.context {
             YoleckUserSystemContext::Nope | YoleckUserSystemContext::Edit { .. } => {
                 panic!("Wrong state");
@@ -116,13 +119,13 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
                     reason: PopulateReason::EditorUpdate,
                     _phantom_data: Default::default(),
                 };
-                let yoleck_managed = self
+                let mut yoleck_managed = self
                     .query
-                    .get(*entity)
+                    .get_mut(*entity)
                     .expect("Edited entity does not exist");
                 let data = yoleck_managed
                     .data
-                    .downcast_ref::<T>()
+                    .downcast_mut::<T>()
                     .expect("Edited data is of wrong type");
                 dlg(&populate_context, data, self.commands.entity(*entity));
             }
@@ -139,13 +142,13 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
                     _phantom_data: Default::default(),
                 };
                 for entity in entities {
-                    let yoleck_managed = self
+                    let mut yoleck_managed = self
                         .query
-                        .get(*entity)
+                        .get_mut(*entity)
                         .expect("Edited entity does not exist");
                     let data = yoleck_managed
                         .data
-                        .downcast_ref::<T>()
+                        .downcast_mut::<T>()
                         .expect("Edited data is of wrong type");
                     dlg(&populate_context, data, self.commands.entity(*entity));
                 }
