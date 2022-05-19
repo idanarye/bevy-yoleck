@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::sync::Arc;
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
@@ -6,14 +7,15 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::api::YoleckUserSystemContext;
+use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
-    BoxedAny, YoleckEditContext, YoleckEditorState, YoleckEntryHeader, YoleckManaged,
-    YoleckRawEntry, YoleckState, YoleckTypeHandlers,
+    BoxedArc, YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckState,
+    YoleckTypeHandlers,
 };
 
 pub enum YoleckDirectiveInner {
     SetSelected(Option<Entity>),
-    PassToEntity(Entity, TypeId, BoxedAny),
+    PassToEntity(Entity, TypeId, BoxedArc),
 }
 
 pub struct YoleckDirective(YoleckDirectiveInner);
@@ -23,7 +25,7 @@ impl YoleckDirective {
         Self(YoleckDirectiveInner::PassToEntity(
             entity,
             TypeId::of::<T>(),
-            Box::new(data),
+            Arc::new(data),
         ))
     }
 
@@ -150,7 +152,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         ResMut<YoleckUserSystemContext>,
-        Res<YoleckTypeHandlers>,
         Query<(Entity, &mut YoleckManaged)>,
         EventReader<YoleckDirective>,
         Commands,
@@ -165,7 +166,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             let (
                 mut yoleck,
                 mut yoleck_user_system_context,
-                yoleck_type_handlers,
                 mut yoleck_managed_query,
                 mut directives_reader,
                 mut commands,
@@ -176,16 +176,15 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 return;
             }
 
-            let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, &BoxedAny>> =
+            let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, BoxedArc>> =
                 Default::default();
-            let dummy_data_passed_to_entity = HashMap::<TypeId, &BoxedAny>::new();
             for directive in directives_reader.iter() {
                 match &directive.0 {
                     YoleckDirectiveInner::PassToEntity(entity, type_id, data) => {
                         data_passed_to_entities
                             .entry(*entity)
                             .or_default()
-                            .insert(*type_id, data);
+                            .insert(*type_id, data.clone());
                     }
                     YoleckDirectiveInner::SetSelected(entity) => {
                         yoleck.entity_being_edited = *entity;
@@ -211,47 +210,36 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     ui.label("Custom Name:");
                     ui.text_edit_singleline(&mut yoleck_managed.name);
                 });
-                let handler = yoleck_type_handlers
-                    .type_handlers
-                    .get(&yoleck_managed.type_name)
-                    .unwrap();
-                let edit_ctx = YoleckEditContext {
-                    passed: data_passed_to_entities
-                        .get(&entity)
-                        .unwrap_or(&dummy_data_passed_to_entity),
-                };
 
                 // `entity_being_edited` will be `None` if we deleted the entity - in which case we
                 // don't want to call `on_editor` which will attempt to run more commands on it and
                 // panic.
                 if yoleck.entity_being_edited.is_some() {
-                    let on_editor_result = handler.on_editor(
-                        &mut yoleck_managed.data,
-                        &mut comparison_cache,
+                    handler_to_run = Some(yoleck_managed.type_name.clone());
+                    *yoleck_user_system_context = YoleckUserSystemContext::Edit {
                         entity,
-                        &edit_ctx,
-                        ui,
-                    );
-                    if matches!(
-                        on_editor_result,
-                        crate::dynamic_source_handling::YoleckOnEditorResult::Changed
-                    ) {
-                        yoleck.level_needs_saving = true;
-                        *yoleck_user_system_context =
-                            YoleckUserSystemContext::PopulateEdited(entity);
-                        handler_to_run = Some(yoleck_managed.type_name.clone());
-                    }
+                        passed: data_passed_to_entities.remove(&entity).unwrap_or_default(),
+                    };
                 }
             }
         }
         system_state.apply(world);
         if let Some(type_name) = handler_to_run {
             world.resource_scope(|world, mut yoleck_type_handlers: Mut<YoleckTypeHandlers>| {
+                let entity = world
+                    .resource::<YoleckUserSystemContext>()
+                    .get_edit_entity();
                 let handler = yoleck_type_handlers
                     .type_handlers
                     .get_mut(&type_name)
                     .unwrap();
-                handler.run_populate_systems(world);
+                let edit_result =
+                    handler.run_edit_systems(world, ui, entity, &mut comparison_cache);
+                if matches!(edit_result, YoleckEditingResult::Changed) {
+                    *world.resource_mut::<YoleckUserSystemContext>() =
+                        YoleckUserSystemContext::PopulateEdited(entity);
+                    handler.run_populate_systems(world);
+                }
             });
             *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
         }

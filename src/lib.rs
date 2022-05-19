@@ -10,15 +10,17 @@ pub mod tools_2d;
 
 use std::any::Any;
 use std::path::Path;
+use std::sync::Arc;
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckEditContext, YoleckEditorState, YoleckPopulate, YoleckPopulateContext, YoleckSource,
+    YoleckEdit, YoleckEditContext, YoleckEditorState, YoleckPopulate, YoleckPopulateContext,
 };
-use self::dynamic_source_handling::{YoleckTypeHandlerFor, YoleckTypeHandlerTrait};
+use self::dynamic_source_handling::YoleckTypeHandlerTrait;
+pub use self::dynamic_source_handling::YoleckTypeHandlerFor;
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{
@@ -98,6 +100,7 @@ impl YoleckExtForApp for App {
     }
 }
 
+type BoxedArc = Arc<dyn Send + Sync + Any>;
 type BoxedAny = Box<dyn Send + Sync + Any>;
 
 #[derive(Component)]

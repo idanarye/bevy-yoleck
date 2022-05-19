@@ -5,8 +5,8 @@ use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
 use bevy_yoleck::{
-    YoleckEditContext, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckSource,
+    YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +29,16 @@ fn main() {
         app.add_plugin(YoleckPluginForEditor);
         app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
     }
-    app.add_yoleck_handler(ExampleBox::handler().populate_with(populate_box));
-    app.add_yoleck_handler(ExampleBox2::handler().populate_with(populate_box2));
+    app.add_yoleck_handler({
+        YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
+            .populate_with(populate_box)
+            .edit_with(edit_box)
+    });
+    app.add_yoleck_handler({
+        YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
+            .populate_with(populate_box2)
+            .edit_with(edit_box2)
+    });
     app.add_startup_system(setup_camera);
     if true {
         app.add_system(move_the_boxes);
@@ -57,38 +65,6 @@ struct ExampleBox {
     color: Color,
 }
 
-impl YoleckSource for ExampleBox {
-    const NAME: &'static str = "ExampleBox";
-
-    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
-        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-            *self.position = **pos;
-        }
-        ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
-        self.color = self.color.as_rgba();
-        if let Color::Rgba {
-            red,
-            green,
-            blue,
-            alpha,
-        } = &mut self.color
-        {
-            let color32: egui::Color32 =
-                egui::Rgba::from_rgba_unmultiplied(*red, *green, *blue, *alpha).into();
-            let mut rgba: egui::Rgba = color32.into();
-            egui::widgets::color_picker::color_edit_button_rgba(
-                ui,
-                &mut rgba,
-                egui::color_picker::Alpha::OnlyBlend,
-            );
-            *red = rgba.r();
-            *green = rgba.g();
-            *blue = rgba.b();
-            *alpha = rgba.a();
-        }
-    }
-}
-
 fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
     populate.populate(|ctx, data, mut cmd| {
         cmd.insert_bundle(SpriteBundle {
@@ -107,25 +83,43 @@ fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
     });
 }
 
+fn edit_box(mut edit: YoleckEdit<ExampleBox>) {
+    edit.edit(|ctx, data, ui| {
+        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+            *data.position = **pos;
+        }
+        ui.add(egui::DragValue::new(&mut data.position.x).prefix("X:"));
+        data.color = data.color.as_rgba();
+        if let Color::Rgba {
+            red,
+            green,
+            blue,
+            alpha,
+        } = &mut data.color
+        {
+            let color32: egui::Color32 =
+                egui::Rgba::from_rgba_unmultiplied(*red, *green, *blue, *alpha).into();
+            let mut rgba: egui::Rgba = color32.into();
+            egui::widgets::color_picker::color_edit_button_rgba(
+                ui,
+                &mut rgba,
+                egui::color_picker::Alpha::OnlyBlend,
+            );
+            *red = rgba.r();
+            *green = rgba.g();
+            *blue = rgba.b();
+            *alpha = rgba.a();
+        }
+    });
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct ExampleBox2 {
     #[serde(default)]
     position: Vec2,
 }
 
-impl YoleckSource for ExampleBox2 {
-    const NAME: &'static str = "ExampleBox2";
-
-    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui) {
-        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-            *self.position = **pos;
-        }
-        ui.add(egui::DragValue::new(&mut self.position.x).prefix("X:"));
-        ui.add(egui::DragValue::new(&mut self.position.y).prefix("Y:"));
-    }
-}
-
-fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>, _cmd: Commands) {
+fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
@@ -137,6 +131,16 @@ fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>, _cmd: Commands) {
             transform: Transform::from_translation(data.position.extend(0.0)),
             ..Default::default()
         });
+    });
+}
+
+fn edit_box2(mut edit: YoleckEdit<ExampleBox2>) {
+    edit.edit(|ctx, data, ui| {
+        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+            *data.position = **pos;
+        }
+        ui.add(egui::DragValue::new(&mut data.position.x).prefix("X:"));
+        ui.add(egui::DragValue::new(&mut data.position.y).prefix("Y:"));
     });
 }
 

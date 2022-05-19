@@ -5,9 +5,8 @@ use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
-use serde::{Deserialize, Serialize};
 
-use crate::{BoxedAny, YoleckManaged, YoleckTypeHandlerFor};
+use crate::{BoxedArc, YoleckManaged};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum YoleckEditorState {
@@ -47,7 +46,7 @@ impl<'a> YoleckPopulateContext<'a> {
 }
 
 pub struct YoleckEditContext<'a> {
-    pub(crate) passed: &'a HashMap<TypeId, &'a BoxedAny>,
+    pub(crate) passed: &'a HashMap<TypeId, BoxedArc>,
 }
 
 impl YoleckEditContext<'_> {
@@ -60,17 +59,39 @@ impl YoleckEditContext<'_> {
     }
 }
 
-pub trait YoleckSource:
-    'static + Send + Sync + Clone + PartialEq + Serialize + for<'a> Deserialize<'a>
-{
-    const NAME: &'static str;
+pub struct YoleckUiForEditSystem(pub egui::Ui);
 
-    fn edit(&mut self, ctx: &YoleckEditContext, ui: &mut egui::Ui);
+#[derive(SystemParam)]
+pub struct YoleckEdit<'w, 's, T: 'static> {
+    #[allow(dead_code)]
+    query: Query<'w, 's, &'static mut YoleckManaged>,
+    #[allow(dead_code)]
+    context: Res<'w, YoleckUserSystemContext>,
+    pub ui: ResMut<'w, YoleckUiForEditSystem>,
+    #[system_param(ignore)]
+    _phantom_data: PhantomData<fn() -> T>,
+}
 
-    fn handler() -> YoleckTypeHandlerFor<Self> {
-        YoleckTypeHandlerFor::<Self> {
-            _phantom_data: Default::default(),
-            populate_systems: vec![],
+impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
+    pub fn edit(&mut self, mut dlg: impl FnMut(&YoleckEditContext, &mut T, &mut egui::Ui)) {
+        match &*self.context {
+            YoleckUserSystemContext::Nope
+            | YoleckUserSystemContext::PopulateEdited(_)
+            | YoleckUserSystemContext::PopulateInitiated { .. } => {
+                panic!("Wrong state");
+            }
+            YoleckUserSystemContext::Edit { entity, passed } => {
+                let edit_context = YoleckEditContext { passed };
+                let mut yoleck_managed = self
+                    .query
+                    .get_mut(*entity)
+                    .expect("Edited entity does not exist");
+                let data = yoleck_managed
+                    .data
+                    .downcast_mut::<T>()
+                    .expect("Edited data is of wrong type");
+                dlg(&edit_context, data, &mut self.ui.0);
+            }
         }
     }
 }
@@ -87,7 +108,9 @@ pub struct YoleckPopulate<'w, 's, T: 'static> {
 impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     pub fn populate(&mut self, mut dlg: impl FnMut(&YoleckPopulateContext, &T, EntityCommands)) {
         match &*self.context {
-            YoleckUserSystemContext::Nope => panic!("Wrong state"),
+            YoleckUserSystemContext::Nope | YoleckUserSystemContext::Edit { .. } => {
+                panic!("Wrong state");
+            }
             YoleckUserSystemContext::PopulateEdited(entity) => {
                 let populate_context = YoleckPopulateContext {
                     reason: PopulateReason::EditorUpdate,
@@ -133,9 +156,23 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
 
 pub enum YoleckUserSystemContext {
     Nope,
+    Edit {
+        entity: Entity,
+        passed: HashMap<TypeId, BoxedArc>,
+    },
     PopulateEdited(Entity),
     PopulateInitiated {
         is_in_editor: bool,
         entities: Vec<Entity>,
     },
+}
+
+impl YoleckUserSystemContext {
+    pub(crate) fn get_edit_entity(&self) -> Entity {
+        if let Self::Edit { entity, .. } = self {
+            *entity
+        } else {
+            panic!("Wrong state");
+        }
+    }
 }
