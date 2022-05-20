@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
+use bevy_yoleck::tools_2d::{handle_position_adjustable_z, handle_position_fixed_z};
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
     YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
@@ -32,16 +33,18 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
             .populate_with(populate_box)
-            .with(project_position(|data: &mut ExampleBox| &mut data.position))
+            .with(handle_position_adjustable_z(|data: &mut ExampleBox| {
+                &mut data.position
+            }))
             .edit_with(edit_box)
     });
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
             .populate_with(populate_box2)
-            .with(project_position(|data: &mut ExampleBox2| {
-                &mut data.position
-            }))
-            .edit_with(edit_box2)
+            .with(handle_position_fixed_z(
+                |data: &mut ExampleBox2| &mut data.position,
+                0.0,
+            ))
     });
     app.add_startup_system(setup_camera);
     if true {
@@ -55,7 +58,9 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    let mut camera = OrthographicCameraBundle::new_2d();
+    camera.transform.translation.z = 100.0;
+    commands.spawn_bundle(camera);
 }
 
 #[derive(Component)]
@@ -64,7 +69,7 @@ struct Velocity(Vec2);
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct ExampleBox {
     #[serde(default)]
-    position: Vec2,
+    position: Vec3,
     #[serde(default)]
     color: Color,
 }
@@ -87,11 +92,7 @@ fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
 }
 
 fn edit_box(mut edit: YoleckEdit<ExampleBox>) {
-    edit.edit(|ctx, data, ui| {
-        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-            *data.position = **pos;
-        }
-        ui.add(egui::DragValue::new(&mut data.position.x).prefix("X:"));
+    edit.edit(|_ctx, data, ui| {
         data.color = data.color.as_rgba();
         if let Color::Rgba {
             red,
@@ -136,30 +137,8 @@ fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
     });
 }
 
-fn edit_box2(mut edit: YoleckEdit<ExampleBox2>) {
-    edit.edit(|ctx, data, ui| {
-        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-            *data.position = **pos;
-        }
-        ui.add(egui::DragValue::new(&mut data.position.x).prefix("X:"));
-        ui.add(egui::DragValue::new(&mut data.position.y).prefix("Y:"));
-    });
-}
-
 fn move_the_boxes(mut query: Query<(&mut Transform, &Velocity)>) {
     for (mut transform, velocity) in query.iter_mut() {
         transform.translation += velocity.0.extend(0.0);
-    }
-}
-
-fn project_position<T: 'static>(
-    projection: impl 'static + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec2,
-) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
-    move |handler| {
-        handler.populate_with(move |mut populate: YoleckPopulate<T>| {
-            populate.populate(|_ctx, data, mut cmd| {
-                cmd.insert(Transform::from_translation(projection(data).extend(0.0)));
-            });
-        })
     }
 }

@@ -1,11 +1,14 @@
+use crate::bevy_egui::{egui, EguiContext};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::sprite::Anchor;
 use bevy::utils::HashMap;
-use bevy_egui::EguiContext;
 
-use crate::{YoleckDirective, YoleckEditorState, YoleckState};
+use crate::{
+    YoleckDirective, YoleckEdit, YoleckEditorState, YoleckPopulate, YoleckState,
+    YoleckTypeHandlerFor,
+};
 
 pub struct YoleckTools2dPlugin;
 
@@ -331,4 +334,65 @@ fn screen_pos_to_world_pos(
 
     // reduce it to a 2D value
     world_pos.truncate()
+}
+
+pub fn handle_position_fixed_z<T: 'static>(
+    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec2,
+    fixed_z: f32,
+) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
+    move |handler| {
+        handler
+            .edit_with({
+                let projection = projection.clone();
+                move |mut edit: YoleckEdit<T>| {
+                    edit.edit(|ctx, data, ui| {
+                        let edited_position = projection(data);
+                        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+                            *edited_position = *pos;
+                        }
+                        ui.horizontal(|ui| {
+                            ui.add(egui::DragValue::new(&mut edited_position.x).prefix("X:"));
+                            ui.add(egui::DragValue::new(&mut edited_position.y).prefix("Y:"));
+                        });
+                    });
+                }
+            })
+            .populate_with(move |mut populate: YoleckPopulate<T>| {
+                populate.populate(|_ctx, data, mut cmd| {
+                    cmd.insert(Transform::from_translation(
+                        projection(data).extend(fixed_z),
+                    ));
+                });
+            })
+    }
+}
+
+pub fn handle_position_adjustable_z<T: 'static>(
+    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec3,
+) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
+    move |handler| {
+        handler
+            .edit_with({
+                let projection = projection.clone();
+                move |mut edit: YoleckEdit<T>| {
+                    edit.edit(|ctx, data, ui| {
+                        let edited_position = projection(data);
+                        if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+                            edited_position.x = pos.x;
+                            edited_position.y = pos.y;
+                        }
+                        ui.horizontal(|ui| {
+                            ui.add(egui::DragValue::new(&mut edited_position.x).prefix("X:"));
+                            ui.add(egui::DragValue::new(&mut edited_position.y).prefix("Y:"));
+                            ui.add(egui::DragValue::new(&mut edited_position.z).prefix("Z:"));
+                        });
+                    });
+                }
+            })
+            .populate_with(move |mut populate: YoleckPopulate<T>| {
+                populate.populate(|_ctx, data, mut cmd| {
+                    cmd.insert(Transform::from_translation(*projection(data)));
+                });
+            })
+    }
 }
