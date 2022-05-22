@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy_egui::{egui, EguiPlugin};
 
-use bevy_yoleck::tools_2d::{handle_position_adjustable_z, handle_position_fixed_z};
+use bevy_yoleck::tools_2d::position_edit_adapter;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
     YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
@@ -33,7 +33,7 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
             .populate_with(populate_box)
-            .with(handle_position_adjustable_z(|data: &mut ExampleBox| {
+            .with(position_edit_adapter(|data: &mut ExampleBox| {
                 &mut data.position
             }))
             .edit_with(edit_box)
@@ -41,10 +41,9 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
             .populate_with(populate_box2)
-            .with(handle_position_fixed_z(
-                |data: &mut ExampleBox2| &mut data.position,
-                0.0,
-            ))
+            .with(position_edit_adapter(|data: &mut ExampleBox2| {
+                &mut data.position
+            }))
     });
     app.add_startup_system(setup_camera);
     if true {
@@ -69,7 +68,9 @@ struct Velocity(Vec2);
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct ExampleBox {
     #[serde(default)]
-    position: Vec3,
+    position: Vec2,
+    #[serde(default)]
+    z: f32,
     #[serde(default)]
     color: Color,
 }
@@ -83,6 +84,7 @@ fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
                 anchor: Anchor::BottomLeft,
                 ..Default::default()
             },
+            transform: Transform::from_translation(data.position.extend(data.z)),
             ..Default::default()
         });
         if !ctx.is_in_editor() {
@@ -93,6 +95,7 @@ fn populate_box(mut populate: YoleckPopulate<ExampleBox>) {
 
 fn edit_box(mut edit: YoleckEdit<ExampleBox>) {
     edit.edit(|_ctx, data, ui| {
+        ui.add(egui::DragValue::new(&mut data.z).prefix("Z:"));
         data.color = data.color.as_rgba();
         if let Color::Rgba {
             red,
@@ -124,7 +127,7 @@ struct ExampleBox2 {
 }
 
 fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
-    populate.populate(|_ctx, _data, mut cmd| {
+    populate.populate(|_ctx, data, mut cmd| {
         cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: Color::GREEN,
@@ -132,6 +135,7 @@ fn populate_box2(mut populate: YoleckPopulate<ExampleBox2>) {
                 custom_size: Some(Vec2::new(30.0, 30.0)),
                 ..Default::default()
             },
+            transform: Transform::from_translation(data.position.extend(0.0)),
             ..Default::default()
         });
     });
