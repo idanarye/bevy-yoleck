@@ -14,6 +14,8 @@ readme = "README.md"
 anyhow = "^1"
 bevy = { version = "^0.7", default-features = false }
 bevy_egui = { version = "0.14.0", default-features = false }
+bevy_mod_picking = { version = "0.6.1", optional = true }
+bevy_transform_gizmo = { version = "0.2.1", optional = true }
 serde = "^1"
 serde_json = "^1"
 
@@ -22,6 +24,10 @@ tools_2d = [
     "bevy/bevy_text",
     "bevy/bevy_sprite",
 ]
+tools_3d = [
+    "bevy_mod_picking",
+    "bevy_transform_gizmo",
+]
 
  [dev-dependencies]
  bevy = { version = "0.7", default-features = false, features = ["bevy_sprite", "x11"] }
@@ -29,3 +35,7 @@ tools_2d = [
 [[example]]
 name = "example2d"
 required-features = ["tools_2d"]
+
+[[example]]
+name = "example3d"
+required-features = ["tools_3d", "bevy/bevy_pbr"]
