@@ -204,6 +204,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     if ui.button("Delete").clicked() {
                         commands.entity(entity).despawn_recursive();
                         yoleck.entity_being_edited = None;
+                        yoleck.level_needs_saving = true;
                     }
                 });
                 ui.horizontal(|ui| {
@@ -236,6 +237,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 let edit_result =
                     handler.run_edit_systems(world, ui, entity, &mut comparison_cache);
                 if matches!(edit_result, YoleckEditingResult::Changed) {
+                    world.resource_mut::<YoleckState>().level_needs_saving = true;
                     *world.resource_mut::<YoleckUserSystemContext>() =
                         YoleckUserSystemContext::PopulateEdited(entity);
                     handler.run_populate_systems(world);
