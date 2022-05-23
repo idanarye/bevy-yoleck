@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
+    app.init_resource::<FontAsset>();
     let level = std::env::args().nth(1);
     if let Some(level) = level {
         app.add_plugin(YoleckPluginForGame);
@@ -33,17 +34,25 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
             .populate_with(populate_box)
-            .with(position_edit_adapter(|data: &mut ExampleBox| {
-                &mut data.position
+            .with(position_edit_adapter(|example_box: &mut ExampleBox| {
+                &mut example_box.position
             }))
             .edit_with(edit_box)
     });
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
             .populate_with(populate_box2)
-            .with(position_edit_adapter(|data: &mut ExampleBox2| {
-                &mut data.position
+            .with(position_edit_adapter(|example_box2: &mut ExampleBox2| {
+                &mut example_box2.position
             }))
+    });
+    app.add_yoleck_handler({
+        YoleckTypeHandlerFor::<FloatingText>::new("FloatingText")
+            .populate_with(populate_text)
+            .with(position_edit_adapter(|floating_text: &mut FloatingText| {
+                &mut floating_text.position
+            }))
+            .edit_with(edit_text)
     });
     app.add_startup_system(setup_camera);
     if true {
@@ -60,6 +69,18 @@ fn setup_camera(mut commands: Commands) {
     let mut camera = OrthographicCameraBundle::new_2d();
     camera.transform.translation.z = 100.0;
     commands.spawn_bundle(camera);
+}
+
+struct FontAsset(Handle<Font>);
+
+impl FromWorld for FontAsset {
+    fn from_world(world: &mut World) -> Self {
+        Self(
+            world
+                .resource::<AssetServer>()
+                .load("fonts/FiraSans-Bold.ttf"),
+        )
+    }
 }
 
 #[derive(Component)]
@@ -145,4 +166,51 @@ fn move_the_boxes(mut query: Query<(&mut Transform, &Velocity)>) {
     for (mut transform, velocity) in query.iter_mut() {
         transform.translation += velocity.0.extend(0.0);
     }
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub struct FloatingText {
+    #[serde(default)]
+    position: Vec2,
+    #[serde(default)]
+    text: String,
+    #[serde(default = "default_scale")]
+    scale: f32,
+}
+
+fn default_scale() -> f32 {
+    1.0
+}
+
+fn populate_text(mut populate: YoleckPopulate<FloatingText>, font_asset: Res<FontAsset>) {
+    populate.populate(|_ctx, data, mut cmd| {
+        cmd.insert_bundle(Text2dBundle {
+            text: {
+                Text::with_section(
+                    data.text.clone(),
+                    TextStyle {
+                        font: font_asset.0.clone(),
+                        font_size: 72.0,
+                        color: Color::WHITE,
+                    },
+                    TextAlignment {
+                        ..Default::default()
+                    },
+                )
+            },
+            transform: Transform {
+                translation: data.position.extend(10.0),
+                rotation: Default::default(),
+                scale: Vec3::new(data.scale, data.scale, 1.0),
+            },
+            ..Default::default()
+        });
+    });
+}
+
+fn edit_text(mut edit: YoleckEdit<FloatingText>) {
+    edit.edit(|_ctx, data, ui| {
+        ui.text_edit_multiline(&mut data.text);
+        ui.add(egui::Slider::new(&mut data.scale, 0.5..=5.0).logarithmic(true));
+    });
 }

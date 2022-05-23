@@ -18,7 +18,10 @@ serde = "^1"
 serde_json = "^1"
 
 [features]
-tools_2d = ["bevy/bevy_sprite"]
+tools_2d = [
+    "bevy/bevy_text",
+    "bevy/bevy_sprite",
+]
 
  [dev-dependencies]
  bevy = { version = "0.7", default-features = false, features = ["bevy_sprite", "x11"] }

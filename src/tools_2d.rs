@@ -3,6 +3,7 @@ use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::sprite::Anchor;
+use bevy::text::Text2dSize;
 use bevy::utils::HashMap;
 
 use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandlerFor};
@@ -42,6 +43,7 @@ pub fn yoleck_clicks_on_objects(
         AnyOf<(
             (&Sprite, &Handle<Image>),
             (&TextureAtlasSprite, &Handle<TextureAtlas>),
+            &Text2dSize,
         )>,
     )>,
     image_assets: Res<Assets<Image>>,
@@ -71,9 +73,10 @@ pub fn yoleck_clicks_on_objects(
     };
 
     let is_world_pos_in = |transform: &GlobalTransform,
-                           (regular_sprite, texture_atlas_sprite): (
+                           (regular_sprite, texture_atlas_sprite, text_2d): (
         Option<(&Sprite, &Handle<Image>)>,
         Option<(&TextureAtlasSprite, &Handle<TextureAtlas>)>,
+        Option<&Text2dSize>,
     ),
                            cursor_in_world_pos: Vec2|
      -> bool {
@@ -115,6 +118,14 @@ pub fn yoleck_clicks_on_objects(
                 return false;
             };
             if check(&sprite.anchor, size) {
+                return true;
+            }
+        }
+        if let Some(text_2d_size) = text_2d {
+            if check(
+                &Anchor::TopLeft,
+                Vec2::new(text_2d_size.size.width, text_2d_size.size.height),
+            ) {
                 return true;
             }
         }
