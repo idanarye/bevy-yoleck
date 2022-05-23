@@ -1,5 +1,8 @@
 use crate::bevy_egui::egui;
-use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckPopulate, YoleckTypeHandlerFor};
+use crate::{
+    YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
+    YoleckTypeHandlerFor,
+};
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
 use bevy_mod_picking::{DefaultPickingPlugins, PickableBundle, PickingEvent, PickingPluginsState};
@@ -15,6 +18,7 @@ impl Plugin for YoleckTools3dPlugin {
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(enable_disable)
                 .with_system(process_picking_events)
+                .with_system(process_events_from_yoleck)
                 .with_system(process_gizmo_events)
         });
     }
@@ -64,6 +68,31 @@ fn process_picking_events(
     } else if deselect {
         // only if nothing was selected this frame
         directives_writer.send(YoleckDirective::set_selected(None));
+    }
+}
+
+fn process_events_from_yoleck(
+    mut yoleck_reader: EventReader<YoleckEditorEvent>,
+    mut selection_query: Query<(Entity, &mut bevy_mod_picking::Selection)>,
+) {
+    for event in yoleck_reader.iter() {
+        match event {
+            YoleckEditorEvent::EntitySelected(selected_entity) => {
+                for (entity, mut selection) in selection_query.iter_mut() {
+                    selection.set_selected(entity == *selected_entity);
+                }
+            }
+            YoleckEditorEvent::EntityDeselected(deselected_entity) => {
+                if let Ok((_, mut selection)) = selection_query.get_mut(*deselected_entity) {
+                    selection.set_selected(false);
+                }
+            }
+            YoleckEditorEvent::EditedEntityPopulated(repopulated_entity) => {
+                if let Ok((_, mut selection)) = selection_query.get_mut(*repopulated_entity) {
+                    selection.set_selected(true);
+                }
+            }
+        }
     }
 }
 

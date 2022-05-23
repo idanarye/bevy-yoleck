@@ -179,3 +179,9 @@ impl YoleckUserSystemContext {
         }
     }
 }
+
+pub enum YoleckEditorEvent {
+    EntitySelected(Entity),
+    EntityDeselected(Entity),
+    EditedEntityPopulated(Entity),
+}

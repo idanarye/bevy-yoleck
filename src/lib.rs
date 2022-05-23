@@ -19,7 +19,8 @@ use bevy::utils::HashMap;
 
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckEdit, YoleckEditContext, YoleckEditorState, YoleckPopulate, YoleckPopulateContext,
+    YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
+    YoleckPopulateContext,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandlerFor;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -70,6 +71,7 @@ impl Plugin for YoleckPluginForGame {
 impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_state(YoleckEditorState::EditorActive);
+        app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
         app.insert_resource(YoleckState {
             entity_being_edited: None,
