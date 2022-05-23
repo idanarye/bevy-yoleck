@@ -344,19 +344,23 @@ fn screen_pos_to_world_pos(
     world_pos.truncate()
 }
 
+pub struct Transform2dProjection<'a> {
+    pub translation: &'a mut Vec2,
+}
+
 pub fn position_edit_adapter<T: 'static>(
-    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec2,
+    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform2dProjection<'a>,
 ) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
     move |handler| {
         handler.edit_with(move |mut edit: YoleckEdit<T>| {
             edit.edit(|ctx, data, ui| {
-                let edited_position = projection(data);
+                let Transform2dProjection { translation } = projection(data);
                 if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-                    *edited_position = *pos;
+                    *translation = *pos;
                 }
                 ui.horizontal(|ui| {
-                    ui.add(egui::DragValue::new(&mut edited_position.x).prefix("X:"));
-                    ui.add(egui::DragValue::new(&mut edited_position.y).prefix("Y:"));
+                    ui.add(egui::DragValue::new(&mut translation.x).prefix("X:"));
+                    ui.add(egui::DragValue::new(&mut translation.y).prefix("Y:"));
                 });
             });
         })

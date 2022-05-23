@@ -100,28 +100,52 @@ fn process_gizmo_events(
     mut gizmo_reader: EventReader<TransformGizmoEvent>,
     mut directives_writer: EventWriter<YoleckDirective>,
     selection_query: Query<(Entity, &bevy_mod_picking::Selection)>,
+    global_transform_query: Query<&GlobalTransform>,
 ) {
+    let selected_entity = || {
+        selection_query.iter().find_map(|(entity, selection)| {
+            if selection.selected() {
+                Some(entity)
+            } else {
+                None
+            }
+        })
+    };
     for event in gizmo_reader.iter() {
         match event.interaction {
             bevy_transform_gizmo::TransformGizmoInteraction::TranslateAxis { .. } => {
-                for (entity, selection) in selection_query.iter() {
-                    if selection.selected() {
+                if let Some(entity) = selected_entity() {
+                    directives_writer.send(YoleckDirective::pass_to_entity(
+                        entity,
+                        event.to.translation,
+                    ));
+                }
+            }
+            bevy_transform_gizmo::TransformGizmoInteraction::TranslateOrigin => {}
+            bevy_transform_gizmo::TransformGizmoInteraction::RotateAxis { .. } => {
+                if let Some(entity) = selected_entity() {
+                    // For some reason event.to.rotation doesn't work, so we need to grab it from
+                    // the component...
+                    if let Ok(global_transform) = global_transform_query.get(entity) {
                         directives_writer.send(YoleckDirective::pass_to_entity(
                             entity,
-                            event.to.translation,
+                            global_transform.rotation,
                         ));
                     }
                 }
             }
-            bevy_transform_gizmo::TransformGizmoInteraction::TranslateOrigin => {}
-            bevy_transform_gizmo::TransformGizmoInteraction::RotateAxis { .. } => {}
             bevy_transform_gizmo::TransformGizmoInteraction::ScaleAxis { .. } => {}
         }
     }
 }
 
+pub struct Transform3dProjection<'a> {
+    pub translation: &'a mut Vec3,
+    pub rotation: Option<&'a mut Quat>,
+}
+
 pub fn transform_edit_adapter<T: 'static>(
-    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> &'a mut Vec3,
+    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform3dProjection<'a>,
 ) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
     move |handler| {
         handler
@@ -133,15 +157,23 @@ pub fn transform_edit_adapter<T: 'static>(
             })
             .edit_with(move |mut edit: YoleckEdit<T>| {
                 edit.edit(|ctx, data, ui| {
-                    let edited_position = projection(data);
+                    let Transform3dProjection {
+                        translation,
+                        rotation,
+                    } = projection(data);
                     if let Some(pos) = ctx.get_passed_data::<Vec3>() {
-                        *edited_position = *pos;
+                        *translation = *pos;
                     }
                     ui.horizontal(|ui| {
-                        ui.add(egui::DragValue::new(&mut edited_position.x).prefix("X:"));
-                        ui.add(egui::DragValue::new(&mut edited_position.y).prefix("Y:"));
-                        ui.add(egui::DragValue::new(&mut edited_position.z).prefix("Z:"));
+                        ui.add(egui::DragValue::new(&mut translation.x).prefix("X:"));
+                        ui.add(egui::DragValue::new(&mut translation.y).prefix("Y:"));
+                        ui.add(egui::DragValue::new(&mut translation.z).prefix("Z:"));
                     });
+                    if let Some(rotation) = rotation {
+                        if let Some(rot) = ctx.get_passed_data::<Quat>() {
+                            *rotation = *rot;
+                        }
+                    }
                 });
             })
     }

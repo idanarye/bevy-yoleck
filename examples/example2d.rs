@@ -35,7 +35,9 @@ fn main() {
         YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
             .populate_with(populate_box)
             .with(position_edit_adapter(|example_box: &mut ExampleBox| {
-                &mut example_box.position
+                bevy_yoleck::tools_2d::Transform2dProjection {
+                    translation: &mut example_box.position,
+                }
             }))
             .edit_with(edit_box)
     });
@@ -43,14 +45,18 @@ fn main() {
         YoleckTypeHandlerFor::<ExampleBox2>::new("ExampleBox2")
             .populate_with(populate_box2)
             .with(position_edit_adapter(|example_box2: &mut ExampleBox2| {
-                &mut example_box2.position
+                bevy_yoleck::tools_2d::Transform2dProjection {
+                    translation: &mut example_box2.position,
+                }
             }))
     });
     app.add_yoleck_handler({
         YoleckTypeHandlerFor::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
             .with(position_edit_adapter(|floating_text: &mut FloatingText| {
-                &mut floating_text.position
+                bevy_yoleck::tools_2d::Transform2dProjection {
+                    translation: &mut floating_text.position,
+                }
             }))
             .edit_with(edit_text)
     });
