@@ -4,6 +4,9 @@
 
 # Bevy YOLECK
 
+* https://idanarye.github.io/bevy-yoleck/demos/example2d
+* https://idanarye.github.io/bevy-yoleck/demos/example3d
+
 ## Features
 
 ## Planned features
