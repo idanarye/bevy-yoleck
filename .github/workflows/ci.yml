@@ -146,6 +146,7 @@ jobs:
           </html>
           EOF
           done &&
+          cp -R assets/ target/doc/demos/ &&
           pip install ghp-import --user && export PATH=$HOME/.local/bin:$PATH &&
           ghp-import --no-jekyll target/doc &&
           git push -fq https://${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git gh-pages
