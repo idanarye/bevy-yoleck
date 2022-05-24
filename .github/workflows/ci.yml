@@ -129,7 +129,7 @@ jobs:
         run: |-
           cargo doc --verbose --all-features &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html &&
-          cargo build --examples --features tools_2d --features tools_3d --features bevy/bevy_pbr --target wasm32-unknown-unknown &&
+          cargo build --examples --features tools_2d --features tools_3d --features bevy/bevy_pbr --features bevy/png --target wasm32-unknown-unknown &&
           for demowasm in $(cd target/wasm32-unknown-unknown/debug/examples; ls *.wasm | grep -v -); do
               wasm-bindgen target/wasm32-unknown-unknown/debug/examples/$demowasm --out-dir target/doc/demos/ --target web
               cat > target/doc/demos/${demowasm%.*}.html <<EOF
