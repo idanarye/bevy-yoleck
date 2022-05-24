@@ -37,7 +37,7 @@ tools_3d = [
 
 [[example]]
 name = "example2d"
-required-features = ["tools_2d"]
+required-features = ["tools_2d", "bevy/png"]
 
 [[example]]
 name = "example3d"

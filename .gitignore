@@ -1,5 +1,5 @@
 /target
-assets/levels/*.yol
-assets/levels/*.yoli
+assets/levels2d/*.yol
+assets/levels2d/*.yoli
 assets/levels3d/*.yol
 assets/levels3d/*.yoli
