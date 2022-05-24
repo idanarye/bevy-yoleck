@@ -1,7 +1,8 @@
 use std::path::Path;
 
+use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiPlugin};
+use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 use bevy_yoleck::tools_2d::{position_edit_adapter, Transform2dProjection};
 use bevy_yoleck::{
@@ -14,7 +15,6 @@ use serde::{Deserialize, Serialize};
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.init_resource::<GameAssets>();
     let level = std::env::args().nth(1);
     if let Some(level) = level {
         app.add_plugin(YoleckPluginForGame);
@@ -37,6 +37,7 @@ fn main() {
         ));
         app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
     }
+    app.init_resource::<GameAssets>();
 
     app.add_startup_system(setup_camera);
 
@@ -48,6 +49,17 @@ fn main() {
                     translation: &mut data.position,
                 }
             }))
+    });
+
+    app.add_yoleck_handler({
+        YoleckTypeHandlerFor::<Fruit>::new("Fruit")
+            .populate_with(populate_fruit)
+            .with(position_edit_adapter(|data: &mut Fruit| {
+                Transform2dProjection {
+                    translation: &mut data.position,
+                }
+            }))
+            .edit_with(edit_fruit)
     });
 
     app.add_yoleck_handler({
@@ -75,15 +87,56 @@ fn setup_camera(mut commands: Commands) {
 
 struct GameAssets {
     player_sprite: Handle<Image>,
+    fruits_sprite_sheet: Handle<TextureAtlas>,
+    fruits_sprite_sheet_egui: (egui::TextureId, Vec<egui::Rect>),
     #[allow(dead_code)]
     font: Handle<Font>,
 }
 
 impl FromWorld for GameAssets {
     fn from_world(world: &mut World) -> Self {
-        let asset_server = world.resource::<AssetServer>();
+        let (asset_server, mut texture_atlas_assets, egui_context) = SystemState::<(
+            Res<AssetServer>,
+            ResMut<Assets<TextureAtlas>>,
+            Option<ResMut<EguiContext>>,
+        )>::new(world)
+        .get_mut(world);
+        let fruits_atlas = TextureAtlas::from_grid(
+            asset_server.load("sprites/fruits.png"),
+            Vec2::new(64.0, 64.0),
+            3,
+            1,
+        );
+        let fruits_egui = if let Some(mut egui_context) = egui_context {
+            (
+                egui_context.add_image(fruits_atlas.texture.clone()),
+                fruits_atlas
+                    .textures
+                    .iter()
+                    .map(|rect| {
+                        [
+                            [
+                                rect.min.x / fruits_atlas.size.x,
+                                rect.min.y / fruits_atlas.size.y,
+                            ]
+                            .into(),
+                            [
+                                rect.max.x / fruits_atlas.size.x,
+                                rect.max.y / fruits_atlas.size.y,
+                            ]
+                            .into(),
+                        ]
+                        .into()
+                    })
+                    .collect(),
+            )
+        } else {
+            Default::default()
+        };
         Self {
             player_sprite: asset_server.load("sprites/player.png"),
+            fruits_sprite_sheet: texture_atlas_assets.add(fruits_atlas),
+            fruits_sprite_sheet_egui: fruits_egui,
             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
         }
     }
@@ -136,6 +189,49 @@ fn control_player(
     for (player_control, mut player_transform) in player_query.iter_mut() {
         player_transform.translation += velocity * player_control.speed * time.delta_seconds();
     }
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Fruit {
+    #[serde(default)]
+    position: Vec2,
+    #[serde(default)]
+    fruit_index: usize,
+}
+
+fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
+    populate.populate(|_ctx, data, mut cmd| {
+        cmd.insert_bundle(SpriteSheetBundle {
+            sprite: TextureAtlasSprite {
+                index: data.fruit_index,
+                custom_size: Some(Vec2::new(100.0, 100.0)),
+                ..Default::default()
+            },
+            transform: Transform::from_translation(data.position.extend(0.0)),
+            texture_atlas: assets.fruits_sprite_sheet.clone(),
+            ..Default::default()
+        });
+        cmd.insert(PlayerControl { speed: 400.0 });
+    });
+}
+
+fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>) {
+    edit.edit(|_ctx, data, ui| {
+        ui.horizontal(|ui| {
+            let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
+            for (index, rect) in rects.iter().enumerate() {
+                if ui
+                    .add_enabled(
+                        index != data.fruit_index,
+                        egui::ImageButton::new(*texture_id, [100.0, 100.0]).uv(*rect),
+                    )
+                    .clicked()
+                {
+                    data.fruit_index = index;
+                }
+            }
+        });
+    });
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
