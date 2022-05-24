@@ -7,6 +7,9 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/idanarye/bevy-yoleck"
 documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
+exclude = [
+    "assets",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

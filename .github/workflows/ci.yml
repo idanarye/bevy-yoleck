@@ -102,12 +102,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --doc
+          args: --doc --all-features
       - name: Check docs
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps
+          args: --no-deps --all-features
   docs-and-demos-ghpages:
     name: Update Docs and Demos in GitHub Pages
     runs-on: ubuntu-latest
@@ -127,7 +127,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
-          cargo doc --verbose &&
+          cargo doc --verbose --all-features &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html &&
           cargo build --examples --features tools_2d --features tools_3d --features bevy/bevy_pbr --target wasm32-unknown-unknown &&
           for demowasm in $(cd target/wasm32-unknown-unknown/debug/examples; ls *.wasm | grep -v -); do
