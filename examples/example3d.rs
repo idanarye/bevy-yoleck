@@ -7,8 +7,8 @@ use bevy_yoleck::tools_3d::{
     Transform3dProjection,
 };
 use bevy_yoleck::{
-    YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
+    YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
+    YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -93,7 +93,8 @@ fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameA
         cmd.insert_bundle(TransformBundle {
             local: Transform::from_translation(data.position).with_rotation(data.rotation),
             ..Default::default()
-        }).with_children(|commands| {
+        })
+        .with_children(|commands| {
             commands.spawn_scene(assets.spaceship_model.clone());
         });
         cmd.insert(IsSpaceship);
