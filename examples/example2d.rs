@@ -143,9 +143,7 @@ impl FromWorld for GameAssets {
 }
 
 #[derive(Component)]
-struct PlayerControl {
-    speed: f32,
-}
+struct IsPlayer;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct Player {
@@ -164,12 +162,12 @@ fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>
             texture: assets.player_sprite.clone(),
             ..Default::default()
         });
-        cmd.insert(PlayerControl { speed: 400.0 });
+        cmd.insert(IsPlayer);
     });
 }
 
 fn control_player(
-    mut player_query: Query<(&PlayerControl, &mut Transform)>,
+    mut player_query: Query<&mut Transform, With<IsPlayer>>,
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
 ) {
@@ -186,8 +184,9 @@ fn control_player(
     if input.pressed(KeyCode::Right) {
         velocity += Vec3::X;
     }
-    for (player_control, mut player_transform) in player_query.iter_mut() {
-        player_transform.translation += velocity * player_control.speed * time.delta_seconds();
+    velocity *= 400.0;
+    for mut player_transform in player_query.iter_mut() {
+        player_transform.translation += velocity * time.delta_seconds();
     }
 }
 
@@ -211,7 +210,6 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
             texture_atlas: assets.fruits_sprite_sheet.clone(),
             ..Default::default()
         });
-        cmd.insert(PlayerControl { speed: 400.0 });
     });
 }
 
