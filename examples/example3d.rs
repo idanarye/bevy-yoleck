@@ -2,9 +2,10 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use bevy_mod_picking::PickingCameraBundle;
-use bevy_transform_gizmo::GizmoPickSource;
-use bevy_yoleck::tools_3d::{transform_edit_adapter, Transform3dProjection};
+use bevy_yoleck::tools_3d::{
+    transform_edit_adapter, OrbitCameraBundle, OrbitCameraController, Tools3DCameraBundle,
+    Transform3dProjection,
+};
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand,
     YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
@@ -62,12 +63,17 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let mut camera = PerspectiveCameraBundle::new_3d();
-    camera.transform.translation.z = 100.0;
-    commands
-        .spawn_bundle(camera)
-        .insert_bundle(PickingCameraBundle::default())
-        .insert(GizmoPickSource::default());
+    let camera = Tools3DCameraBundle::new(OrbitCameraBundle::new(
+        {
+            let mut controller = OrbitCameraController::default();
+            controller.mouse_translate_sensitivity *= 10.0;
+            controller
+        },
+        PerspectiveCameraBundle::new_3d(),
+        Vec3::new(0.0, 100.0, 0.0),
+        Vec3::ZERO,
+    ));
+    commands.spawn_bundle(camera);
 }
 
 #[derive(Default)]

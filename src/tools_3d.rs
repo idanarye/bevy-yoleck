@@ -5,8 +5,15 @@ use crate::{
 };
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
-use bevy_mod_picking::{DefaultPickingPlugins, PickableBundle, PickingEvent, PickingPluginsState};
-use bevy_transform_gizmo::{GizmoTransformable, TransformGizmoEvent, TransformGizmoPlugin};
+use bevy_mod_picking::{
+    DefaultPickingPlugins, PickableBundle, PickingCameraBundle, PickingEvent, PickingPluginsState,
+};
+use bevy_transform_gizmo::{
+    GizmoPickSource, GizmoTransformable, TransformGizmoEvent, TransformGizmoPlugin,
+};
+use smooth_bevy_cameras::controllers::orbit::OrbitCameraPlugin;
+pub use smooth_bevy_cameras::controllers::orbit::{OrbitCameraBundle, OrbitCameraController};
+use smooth_bevy_cameras::LookTransformPlugin;
 
 pub struct YoleckTools3dPlugin;
 
@@ -14,6 +21,8 @@ impl Plugin for YoleckTools3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(DefaultPickingPlugins);
         app.add_plugin(TransformGizmoPlugin::default());
+        app.add_plugin(LookTransformPlugin);
+        app.add_plugin(OrbitCameraPlugin::default());
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(enable_disable)
@@ -25,9 +34,11 @@ impl Plugin for YoleckTools3dPlugin {
 }
 
 fn enable_disable(
+    mut prev: Local<Option<bool>>,
     yoleck_editor_state: Res<State<YoleckEditorState>>,
     mut egui_context: ResMut<EguiContext>,
     mut picking_plugins_state: ResMut<PickingPluginsState>,
+    mut orbit_camera_controller_query: Query<&mut OrbitCameraController>,
 ) {
     let should_set_to = if matches!(
         *yoleck_editor_state.current(),
@@ -37,9 +48,16 @@ fn enable_disable(
     } else {
         !egui_context.ctx_mut().is_pointer_over_area()
     };
+    if *prev == Some(should_set_to) {
+        return;
+    }
+    *prev = Some(should_set_to);
     picking_plugins_state.enable_picking = should_set_to;
     picking_plugins_state.enable_highlighting = should_set_to;
     picking_plugins_state.enable_interacting = should_set_to;
+    for mut orbit_camera_controller in orbit_camera_controller_query.iter_mut() {
+        orbit_camera_controller.enabled = should_set_to;
+    }
 }
 
 fn process_picking_events(
@@ -135,6 +153,25 @@ fn process_gizmo_events(
                 }
             }
             bevy_transform_gizmo::TransformGizmoInteraction::ScaleAxis { .. } => {}
+        }
+    }
+}
+
+#[derive(Bundle)]
+pub struct Tools3DCameraBundle {
+    #[bundle]
+    pub orbit_camera_bundle: OrbitCameraBundle,
+    #[bundle]
+    pub picking_camera_bundle: PickingCameraBundle,
+    pub gizmo_pick_source: GizmoPickSource,
+}
+
+impl Tools3DCameraBundle {
+    pub fn new(orbit_camera_bundle: OrbitCameraBundle) -> Self {
+        Self {
+            orbit_camera_bundle,
+            picking_camera_bundle: Default::default(),
+            gizmo_pick_source: Default::default(),
         }
     }
 }
