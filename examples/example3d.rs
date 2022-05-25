@@ -7,7 +7,7 @@ use bevy_yoleck::tools_3d::{
     Transform3dProjection,
 };
 use bevy_yoleck::{
-    YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand,
+    YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand,
     YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
 };
 use serde::{Deserialize, Serialize};
@@ -35,31 +35,31 @@ fn main() {
         app.add_plugin(bevy_yoleck::tools_3d::YoleckTools3dPlugin);
     }
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<ExampleBox>::new("ExampleBox")
-            .populate_with(populate_box)
-            .with(transform_edit_adapter(|example_box: &mut ExampleBox| {
+        YoleckTypeHandlerFor::<Spaceship>::new("Spaceship")
+            .populate_with(populate_spaceship)
+            .with(transform_edit_adapter(|data: &mut Spaceship| {
                 Transform3dProjection {
-                    translation: &mut example_box.position,
-                    rotation: Some(&mut example_box.rotation),
+                    translation: &mut data.position,
+                    rotation: Some(&mut data.rotation),
                 }
             }))
-            .edit_with(edit_box)
     });
-    app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<ExampleCapsule>::new("ExampleCapsule")
-            .populate_with(populate_capsule)
-            .with(transform_edit_adapter(
-                |example_capsule: &mut ExampleCapsule| Transform3dProjection {
-                    translation: &mut example_capsule.position,
-                    rotation: None,
-                },
-            ))
-            .edit_with(edit_capsule)
-    });
-    app.init_resource::<ExampleAssets>();
+    app.init_resource::<GameAssets>();
     app.add_startup_system(setup_camera);
-    app.add_startup_system(setup_meshes);
     app.run();
+}
+
+struct GameAssets {
+    spaceship_model: Handle<Scene>,
+}
+
+impl FromWorld for GameAssets {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+        Self {
+            spaceship_model: asset_server.load("models/spaceship.glb#Scene0"),
+        }
+    }
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -76,64 +76,26 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(camera);
 }
 
-#[derive(Default)]
-struct ExampleAssets {
-    cube_mesh: Handle<Mesh>,
-    capsule_mesh: Handle<Mesh>,
-}
-
-fn setup_meshes(mut example_assets: ResMut<ExampleAssets>, mut mesh_assets: ResMut<Assets<Mesh>>) {
-    example_assets.cube_mesh = mesh_assets.add(shape::Cube::new(10.0).into());
-    example_assets.capsule_mesh = mesh_assets.add(
-        shape::Capsule {
-            radius: 5.0,
-            rings: 10,
-            depth: 4.0,
-            latitudes: 10,
-            longitudes: 10,
-            uv_profile: shape::CapsuleUvProfile::Uniform,
-        }
-        .into(),
-    );
-}
+#[derive(Component)]
+struct IsSpaceship;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct ExampleBox {
+struct Spaceship {
     #[serde(default)]
     position: Vec3,
     #[serde(default)]
     rotation: Quat,
 }
 
-fn populate_box(mut populate: YoleckPopulate<ExampleBox>, example_assets: Res<ExampleAssets>) {
+fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert_bundle(PbrBundle {
-            mesh: example_assets.cube_mesh.clone(),
-            transform: Transform::from_translation(data.position).with_rotation(data.rotation),
+        cmd.despawn_descendants();
+        cmd.insert_bundle(TransformBundle {
+            local: Transform::from_translation(data.position).with_rotation(data.rotation),
             ..Default::default()
+        }).with_children(|commands| {
+            commands.spawn_scene(assets.spaceship_model.clone());
         });
+        cmd.insert(IsSpaceship);
     });
 }
-
-fn edit_box(_edit: YoleckEdit<ExampleBox>) {}
-
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct ExampleCapsule {
-    #[serde(default)]
-    position: Vec3,
-}
-
-fn populate_capsule(
-    mut populate: YoleckPopulate<ExampleCapsule>,
-    example_assets: Res<ExampleAssets>,
-) {
-    populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert_bundle(PbrBundle {
-            mesh: example_assets.capsule_mesh.clone(),
-            transform: Transform::from_translation(data.position),
-            ..Default::default()
-        });
-    });
-}
-
-fn edit_capsule(_edit: YoleckEdit<ExampleCapsule>) {}

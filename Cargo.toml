@@ -43,4 +43,4 @@ required-features = ["tools_2d", "bevy/png"]
 
 [[example]]
 name = "example3d"
-required-features = ["tools_3d", "bevy/bevy_pbr"]
+required-features = ["tools_3d", "bevy/bevy_pbr", "bevy/bevy_gltf"]

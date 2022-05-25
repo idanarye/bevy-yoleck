@@ -91,7 +91,6 @@ struct GameAssets {
     player_sprite: Handle<Image>,
     fruits_sprite_sheet: Handle<TextureAtlas>,
     fruits_sprite_sheet_egui: (egui::TextureId, Vec<egui::Rect>),
-    #[allow(dead_code)]
     font: Handle<Font>,
 }
 
