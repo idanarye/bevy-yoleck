@@ -289,7 +289,7 @@ pub fn camera_2d_zoom(
         .iter()
         .map(|wheel_event| match wheel_event.unit {
             bevy::input::mouse::MouseScrollUnit::Line => wheel_event.y * 0.2,
-            bevy::input::mouse::MouseScrollUnit::Pixel => wheel_event.y * 0.1,
+            bevy::input::mouse::MouseScrollUnit::Pixel => wheel_event.y * 0.001,
         })
         .sum();
 
