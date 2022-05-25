@@ -73,9 +73,11 @@ fn main() {
             .edit_with(edit_text)
     });
 
-    app.add_system_set(
-        SystemSet::on_update(YoleckEditorState::GameActive).with_system(control_player),
-    );
+    app.add_system_set({
+        SystemSet::on_update(YoleckEditorState::GameActive)
+            .with_system(control_player)
+            .with_system(eat_fruits)
+    });
     app.run();
 }
 
@@ -190,6 +192,9 @@ fn control_player(
     }
 }
 
+#[derive(Component)]
+struct IsFruit;
+
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 struct Fruit {
     #[serde(default)]
@@ -210,6 +215,7 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
             texture_atlas: assets.fruits_sprite_sheet.clone(),
             ..Default::default()
         });
+        cmd.insert(IsFruit);
     });
 }
 
@@ -230,6 +236,24 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>) {
             }
         });
     });
+}
+
+fn eat_fruits(
+    player_query: Query<&Transform, With<IsPlayer>>,
+    fruits_query: Query<(Entity, &Transform), With<IsFruit>>,
+    mut commands: Commands,
+) {
+    for player_transform in player_query.iter() {
+        for (fruit_entity, fruit_transform) in fruits_query.iter() {
+            if player_transform
+                .translation
+                .distance_squared(fruit_transform.translation)
+                < 100.0f32.powi(2)
+            {
+                commands.entity(fruit_entity).despawn_recursive();
+            }
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
