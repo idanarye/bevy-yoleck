@@ -180,6 +180,7 @@ impl YoleckUserSystemContext {
     }
 }
 
+#[derive(Debug)]
 pub enum YoleckEditorEvent {
     EntitySelected(Entity),
     EntityDeselected(Entity),

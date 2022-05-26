@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_yoleck::tools_3d::{
     transform_edit_adapter, OrbitCameraBundle, OrbitCameraController, Tools3DCameraBundle,
-    Transform3dProjection,
+    Transform3dProjection, WillContainClickableChildren,
 };
 use bevy_yoleck::{
     YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
@@ -105,10 +105,11 @@ fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameA
         cmd.insert_bundle(TransformBundle {
             local: Transform::from_translation(data.position).with_rotation(data.rotation),
             ..Default::default()
-        })
-        .with_children(|commands| {
+        });
+        cmd.with_children(|commands| {
             commands.spawn_scene(assets.spaceship_model.clone());
         });
+        cmd.insert(WillContainClickableChildren);
         cmd.insert(IsSpaceship);
     });
 }
