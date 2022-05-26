@@ -70,10 +70,22 @@ fn setup_camera(mut commands: Commands) {
             controller
         },
         PerspectiveCameraBundle::new_3d(),
-        Vec3::new(0.0, 100.0, 0.0),
+        Vec3::new(0.0, 10.0, 10.0),
         Vec3::ZERO,
     ));
     commands.spawn_bundle(camera);
+
+    commands.spawn_bundle(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 50_000.0,
+            shadows_enabled: true,
+            ..Default::default()
+        },
+        transform: Transform::from_xyz(10.0, 10.0, 20.0)
+            .looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
+        ..Default::default()
+    });
 }
 
 #[derive(Component)]
