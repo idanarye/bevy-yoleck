@@ -4,7 +4,8 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::tools_2d::{position_edit_adapter, Transform2dProjection};
+use bevy_yoleck::editools_2d::{position_edit_adapter, Transform2dProjection};
+use bevy_yoleck::editools_3d::WillContainClickableChildren;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
@@ -35,7 +36,7 @@ fn main() {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(bevy_yoleck::tools_2d::YoleckTools2dPlugin);
+        app.add_plugin(bevy_yoleck::editools_2d::YoleckEditools2dPlugin);
     }
     app.init_resource::<GameAssets>();
 
@@ -66,7 +67,7 @@ fn main() {
         YoleckTypeHandlerFor::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
             .with(position_edit_adapter(|floating_text: &mut FloatingText| {
-                bevy_yoleck::tools_2d::Transform2dProjection {
+                bevy_yoleck::editools_2d::Transform2dProjection {
                     translation: &mut floating_text.position,
                 }
             }))
@@ -204,16 +205,25 @@ struct Fruit {
 
 fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert_bundle(SpriteSheetBundle {
-            sprite: TextureAtlasSprite {
-                index: data.fruit_index,
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_translation(data.position.extend(0.0)),
-            texture_atlas: assets.fruits_sprite_sheet.clone(),
+        cmd.despawn_descendants();
+        cmd.insert_bundle(TransformBundle {
+            local: Transform::from_translation(data.position.extend(0.0)),
             ..Default::default()
         });
+        // Could have placed them on the main entity, but with this the children picking feature
+        // can be tested and demonstrated.
+        cmd.with_children(|commands| {
+            commands.spawn_bundle(SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: data.fruit_index,
+                    custom_size: Some(Vec2::new(100.0, 100.0)),
+                    ..Default::default()
+                },
+                texture_atlas: assets.fruits_sprite_sheet.clone(),
+                ..Default::default()
+            });
+        });
+        cmd.insert(WillContainClickableChildren);
         cmd.insert(IsFruit);
     });
 }

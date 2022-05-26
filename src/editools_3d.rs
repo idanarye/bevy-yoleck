@@ -1,4 +1,6 @@
 use crate::bevy_egui::egui;
+pub use crate::editools::WillContainClickableChildren;
+use crate::editools::{handle_clickable_children_system, RouteClickTo};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
     YoleckTypeHandlerFor,
@@ -15,9 +17,9 @@ use smooth_bevy_cameras::controllers::orbit::OrbitCameraPlugin;
 pub use smooth_bevy_cameras::controllers::orbit::{OrbitCameraBundle, OrbitCameraController};
 use smooth_bevy_cameras::LookTransformPlugin;
 
-pub struct YoleckTools3dPlugin;
+pub struct YoleckEditools3dPlugin;
 
-impl Plugin for YoleckTools3dPlugin {
+impl Plugin for YoleckEditools3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(DefaultPickingPlugins);
         app.add_plugin(TransformGizmoPlugin::default());
@@ -29,8 +31,8 @@ impl Plugin for YoleckTools3dPlugin {
                 .with_system(process_picking_events)
                 .with_system(process_events_from_yoleck)
                 .with_system(process_gizmo_events)
+                .with_system(handle_clickable_children_system::<With<Handle<Mesh>>, PickableBundle>)
         });
-        app.add_system(handle_clickable_children);
     }
 }
 
@@ -227,42 +229,5 @@ pub fn transform_edit_adapter<T: 'static>(
                     }
                 });
             })
-    }
-}
-
-#[derive(Component)]
-pub struct WillContainClickableChildren;
-
-#[derive(Component)]
-pub struct RouteClickTo(Entity);
-
-fn handle_clickable_children(
-    parents_query: Query<(Entity, &Children), With<WillContainClickableChildren>>,
-    children_query: Query<&Children>,
-    should_add_query: Query<Entity, With<Handle<Mesh>>>,
-    mut commands: Commands,
-) {
-    for (parent, children) in parents_query.iter() {
-        if children.is_empty() {
-            continue;
-        }
-        let mut any_added = false;
-        let mut children_to_check: Vec<Entity> = children.iter().copied().collect();
-        while let Some(child) = children_to_check.pop() {
-            if let Ok(child_children) = children_query.get(child) {
-                children_to_check.extend(child_children.iter().copied());
-            }
-            if should_add_query.get(child).is_ok() {
-                let mut cmd = commands.entity(child);
-                cmd.insert(RouteClickTo(parent));
-                cmd.insert_bundle(PickableBundle::default());
-                any_added = true;
-            }
-        }
-        if any_added {
-            commands
-                .entity(parent)
-                .remove::<WillContainClickableChildren>();
-        }
     }
 }

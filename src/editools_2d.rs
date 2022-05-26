@@ -1,4 +1,5 @@
 use crate::bevy_egui::{egui, EguiContext};
+use crate::editools::{handle_clickable_children_system, RouteClickTo};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -8,15 +9,25 @@ use bevy::utils::HashMap;
 
 use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandlerFor};
 
-pub struct YoleckTools2dPlugin;
+pub struct YoleckEditools2dPlugin;
 
-impl Plugin for YoleckTools2dPlugin {
+impl Plugin for YoleckEditools2dPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(yoleck_clicks_on_objects)
                 .with_system(camera_2d_pan)
                 .with_system(camera_2d_zoom)
+                .with_system(
+                    handle_clickable_children_system::<
+                        Or<(
+                            (With<Sprite>, With<Handle<Image>>),
+                            (With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
+                            With<Text2dSize>,
+                        )>,
+                        (),
+                    >,
+                )
         });
     }
 }
@@ -46,6 +57,7 @@ pub fn yoleck_clicks_on_objects(
             &Text2dSize,
         )>,
     )>,
+    root_resolver: Query<&RouteClickTo>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     yoleck: ResMut<YoleckState>,
@@ -180,6 +192,12 @@ pub fn yoleck_clicks_on_objects(
                             result.map(|(result, _)| result)
                         });
                     *state = if let Some((entity, entity_transform)) = entity_under_cursor {
+                        let entity =
+                            if let Ok(RouteClickTo(root_entity)) = root_resolver.get(entity) {
+                                *root_entity
+                            } else {
+                                entity
+                            };
                         directives_writer.send(YoleckDirective::set_selected(Some(entity)));
                         YoleckClicksOnObjectsState::BeingDragged {
                             entity,

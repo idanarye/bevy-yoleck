@@ -24,11 +24,14 @@ serde_json = "^1"
 smooth-bevy-cameras = { version = "0.4.0", optional = true }
 
 [features]
-tools_2d = [
+editools = []
+editools_2d = [
+    "editools",
     "bevy/bevy_text",
     "bevy/bevy_sprite",
 ]
-tools_3d = [
+editools_3d = [
+    "editools",
     "bevy_mod_picking",
     "bevy_transform_gizmo",
     "smooth-bevy-cameras",
@@ -39,8 +42,8 @@ tools_3d = [
 
 [[example]]
 name = "example2d"
-required-features = ["tools_2d", "bevy/png"]
+required-features = ["editools_2d", "bevy/png"]
 
 [[example]]
 name = "example3d"
-required-features = ["tools_3d", "bevy/bevy_pbr", "bevy/bevy_gltf"]
+required-features = ["editools_3d", "bevy/bevy_pbr", "bevy/bevy_gltf"]
