@@ -7,8 +7,8 @@ use bevy_yoleck::editools_3d::{
     Transform3dProjection, WillContainClickableChildren,
 };
 use bevy_yoleck::{
-    YoleckEditorLevelsDirectoryPath, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
-    YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
+    YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +46,9 @@ fn main() {
     });
     app.init_resource::<GameAssets>();
     app.add_startup_system(setup_camera);
+    app.add_system_set({
+        SystemSet::on_update(YoleckEditorState::GameActive).with_system(control_spaceship)
+    });
     app.run();
 }
 
@@ -112,4 +115,27 @@ fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameA
         cmd.insert(WillContainClickableChildren);
         cmd.insert(IsSpaceship);
     });
+}
+
+fn control_spaceship(
+    mut spaceship_query: Query<&mut Transform, With<IsSpaceship>>,
+    time: Res<Time>,
+    input: Res<Input<KeyCode>>,
+) {
+    let calc_axis = |neg: KeyCode, pos: KeyCode| match (input.pressed(neg), input.pressed(pos)) {
+        (true, true) | (false, false) => 0.0,
+        (true, false) => -1.0,
+        (false, true) => 1.0,
+    };
+    let pitch = calc_axis(KeyCode::Up, KeyCode::Down);
+    let roll = calc_axis(KeyCode::Left, KeyCode::Right);
+    for mut spaceship_transform in spaceship_query.iter_mut() {
+        let forward_direction = spaceship_transform.rotation.mul_vec3(-Vec3::Z);
+        let roll_quat =
+            Quat::from_scaled_axis(2.0 * forward_direction * time.delta_seconds() * roll);
+        let pitch_axis = spaceship_transform.rotation.mul_vec3(Vec3::X);
+        let pitch_quat = Quat::from_scaled_axis(2.0 * pitch_axis * time.delta_seconds() * pitch);
+        spaceship_transform.rotation = roll_quat * pitch_quat * spaceship_transform.rotation;
+        spaceship_transform.translation += 2.0 * forward_direction * time.delta_seconds();
+    }
 }
