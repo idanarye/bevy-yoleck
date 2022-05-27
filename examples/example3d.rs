@@ -44,16 +44,29 @@ fn main() {
                 }
             }))
     });
+    app.add_yoleck_handler({
+        YoleckTypeHandlerFor::<Planet>::new("Planet")
+            .populate_with(populate_planet)
+            .with(transform_edit_adapter(|data: &mut Planet| {
+                Transform3dProjection {
+                    translation: &mut data.position,
+                    rotation: None,
+                }
+            }))
+    });
     app.init_resource::<GameAssets>();
     app.add_startup_system(setup_camera);
     app.add_system_set({
-        SystemSet::on_update(YoleckEditorState::GameActive).with_system(control_spaceship)
+        SystemSet::on_update(YoleckEditorState::GameActive)
+            .with_system(control_spaceship)
+            .with_system(hit_planets)
     });
     app.run();
 }
 
 struct GameAssets {
     spaceship_model: Handle<Scene>,
+    planet_model: Handle<Scene>,
 }
 
 impl FromWorld for GameAssets {
@@ -61,6 +74,7 @@ impl FromWorld for GameAssets {
         let asset_server = world.resource::<AssetServer>();
         Self {
             spaceship_model: asset_server.load("models/spaceship.glb#Scene0"),
+            planet_model: asset_server.load("models/planet.glb#Scene0"),
         }
     }
 }
@@ -105,10 +119,9 @@ struct Spaceship {
 fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
-        cmd.insert_bundle(TransformBundle {
-            local: Transform::from_translation(data.position).with_rotation(data.rotation),
-            ..Default::default()
-        });
+        cmd.insert_bundle(TransformBundle::from_transform(
+            Transform::from_translation(data.position).with_rotation(data.rotation),
+        ));
         cmd.with_children(|commands| {
             commands.spawn_scene(assets.spaceship_model.clone());
         });
@@ -137,5 +150,45 @@ fn control_spaceship(
         let pitch_quat = Quat::from_scaled_axis(2.0 * pitch_axis * time.delta_seconds() * pitch);
         spaceship_transform.rotation = roll_quat * pitch_quat * spaceship_transform.rotation;
         spaceship_transform.translation += 2.0 * forward_direction * time.delta_seconds();
+    }
+}
+
+#[derive(Component)]
+struct IsPlanet;
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Planet {
+    #[serde(default)]
+    position: Vec3,
+}
+
+fn populate_planet(mut populate: YoleckPopulate<Planet>, assets: Res<GameAssets>) {
+    populate.populate(|_ctx, data, mut cmd| {
+        cmd.insert_bundle(TransformBundle::from_transform(
+            Transform::from_translation(data.position),
+        ));
+        cmd.with_children(|commands| {
+            commands.spawn_scene(assets.planet_model.clone());
+        });
+        cmd.insert(WillContainClickableChildren);
+        cmd.insert(IsPlanet);
+    });
+}
+
+fn hit_planets(
+    spaceship_query: Query<&Transform, With<IsSpaceship>>,
+    planets_query: Query<(Entity, &Transform), With<IsPlanet>>,
+    mut commands: Commands,
+) {
+    for spaceship_transform in spaceship_query.iter() {
+        for (planet_entity, planet_transform) in planets_query.iter() {
+            if spaceship_transform
+                .translation
+                .distance_squared(planet_transform.translation)
+                < 2.0f32.powi(2)
+            {
+                commands.entity(planet_entity).despawn_recursive();
+            }
+        }
     }
 }
