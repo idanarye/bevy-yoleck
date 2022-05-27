@@ -95,7 +95,7 @@ pub(crate) fn yoleck_process_loading_command(
     if let YoleckLoadingCommand::FromAsset(handle) = &*yoleck_loading_command {
         if let Some(asset) = raw_levels_assets.get(handle) {
             *yoleck_loading_command = YoleckLoadingCommand::NoCommand;
-            for entry in asset.entries.iter() {
+            for entry in asset.entries() {
                 commands.spawn().insert(entry.clone());
             }
         }
@@ -109,10 +109,31 @@ pub enum YoleckLoadingCommand {
 
 pub(crate) struct YoleckLevelAssetLoader;
 
-#[derive(TypeUuid)]
+#[derive(TypeUuid, Debug, Serialize, Deserialize)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
-pub struct YoleckRawLevel {
-    pub entries: Vec<YoleckRawEntry>,
+pub struct YoleckRawLevel(
+    YoleckRawLevelHeader,
+    serde_json::Value, // level data
+    Vec<YoleckRawEntry>,
+);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct YoleckRawLevelHeader {
+    format_version: usize,
+}
+
+impl YoleckRawLevel {
+    pub fn new(entries: impl IntoIterator<Item = YoleckRawEntry>) -> Self {
+        Self(
+            YoleckRawLevelHeader { format_version: 1 },
+            serde_json::Value::Object(Default::default()),
+            entries.into_iter().collect(),
+        )
+    }
+
+    pub fn entries(&self) -> &[YoleckRawEntry] {
+        &self.2
+    }
 }
 
 impl AssetLoader for YoleckLevelAssetLoader {
@@ -123,8 +144,8 @@ impl AssetLoader for YoleckLevelAssetLoader {
     ) -> bevy::asset::BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
             let json = std::str::from_utf8(bytes)?;
-            let entries: Vec<YoleckRawEntry> = serde_json::from_str(json)?;
-            load_context.set_default_asset(LoadedAsset::new(YoleckRawLevel { entries }));
+            let level: YoleckRawLevel = serde_json::from_str(json)?;
+            load_context.set_default_asset(LoadedAsset::new(level));
             Ok(())
         })
     }

@@ -8,8 +8,8 @@ use bevy_egui::egui;
 
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
-    YoleckEditorState, YoleckEntryHeader, YoleckManaged, YoleckRawEntry, YoleckState,
-    YoleckTypeHandlers,
+    YoleckEditorState, YoleckEntryHeader, YoleckLevelIndex, YoleckManaged, YoleckRawEntry,
+    YoleckRawLevel, YoleckState, YoleckTypeHandlers,
 };
 
 const EXTENSION: &str = ".yol";
@@ -38,7 +38,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
 
     let mut selected_level_file = SelectedLevelFile::Unsaved(String::new());
 
-    let mut level_being_playtested: Option<Vec<YoleckRawEntry>> = None;
+    let mut level_being_playtested: Option<YoleckRawLevel> = None;
 
     move |world, ui: &mut egui::Ui| {
         let (
@@ -50,23 +50,24 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut editor_state,
         ) = system_state.get_mut(world);
 
-        let gen_raw_entries = || {
-            yoleck_managed_query
-                .iter()
-                .map(|(_entity, yoleck_managed)| {
-                    let handler = yoleck_type_handlers
-                        .type_handlers
-                        .get(&yoleck_managed.type_name)
-                        .unwrap();
-                    YoleckRawEntry {
-                        header: YoleckEntryHeader {
-                            type_name: yoleck_managed.type_name.clone(),
-                            name: yoleck_managed.name.clone(),
-                        },
-                        data: handler.make_raw(&yoleck_managed.data),
-                    }
-                })
-                .collect::<Vec<_>>()
+        let gen_raw_level_file = || {
+            YoleckRawLevel::new({
+                yoleck_managed_query
+                    .iter()
+                    .map(|(_entity, yoleck_managed)| {
+                        let handler = yoleck_type_handlers
+                            .type_handlers
+                            .get(&yoleck_managed.type_name)
+                            .unwrap();
+                        YoleckRawEntry {
+                            header: YoleckEntryHeader {
+                                type_name: yoleck_managed.type_name.clone(),
+                                name: yoleck_managed.name.clone(),
+                            },
+                            data: handler.make_raw(&yoleck_managed.data),
+                        }
+                    })
+            })
         };
 
         let clear_level = |commands: &mut Commands| {
@@ -76,18 +77,18 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         };
 
         ui.horizontal(|ui| {
-            if let Some(entries) = &level_being_playtested {
+            if let Some(level) = &level_being_playtested {
                 let finish_playtest_response = ui.button("Finish Playtest");
                 if ui.button("Restart Playtest").clicked() {
                     clear_level(&mut commands);
-                    for entry in entries.iter() {
+                    for entry in level.entries() {
                         commands.spawn().insert(entry.clone());
                     }
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
                     editor_state.set(YoleckEditorState::EditorActive).unwrap();
-                    for entry in entries.iter() {
+                    for entry in level.entries() {
                         commands.spawn().insert(entry.clone());
                     }
                     level_being_playtested = None;
@@ -95,13 +96,13 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             } else {
                 #[allow(clippy::collapsible_else_if)]
                 if ui.button("Playtest").clicked() {
-                    let entries = gen_raw_entries();
+                    let level = gen_raw_level_file();
                     clear_level(&mut commands);
                     editor_state.set(YoleckEditorState::GameActive).unwrap();
-                    for entry in entries.iter() {
+                    for entry in level.entries() {
                         commands.spawn().insert(entry.clone());
                     }
-                    level_being_playtested = Some(entries);
+                    level_being_playtested = Some(level);
                 }
             }
         });
@@ -125,7 +126,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                         let index_file = mk_files_index();
                         match fs::File::create(&index_file) {
                             Ok(fd) => {
-                                serde_json::to_writer(fd, &loaded_files_index).unwrap();
+                                let index =
+                                    YoleckLevelIndex::new(loaded_files_index.iter().cloned());
+                                serde_json::to_writer(fd, &index).unwrap();
                             }
                             Err(err) => {
                                 warn!("Cannot open {:?} - {}", index_file, err);
@@ -141,7 +144,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                             .create(false)
                             .truncate(true)
                             .open(file_path)?;
-                        serde_json::to_writer(fd, &gen_raw_entries())?;
+                        serde_json::to_writer(fd, &gen_raw_level_file())?;
                         Ok(())
                     };
 
@@ -151,7 +154,10 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                             let index_file = mk_files_index();
                             let mut files_index: Vec<YoleckLevelIndexEntry> =
                                 match fs::File::open(&index_file) {
-                                    Ok(fd) => serde_json::from_reader(fd)?,
+                                    Ok(fd) => {
+                                        let index: YoleckLevelIndex = serde_json::from_reader(fd)?;
+                                        index.iter().cloned().collect()
+                                    }
                                     Err(err) => {
                                         warn!("Cannot open {:?} - {}", index_file, err);
                                         Vec::new()
@@ -224,9 +230,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                         levels_directory.0.join(&file.filename),
                                                     )
                                                     .unwrap();
-                                                    let data: Vec<YoleckRawEntry> =
+                                                    let level: YoleckRawLevel =
                                                         serde_json::from_reader(fd).unwrap();
-                                                    for entry in data.into_iter() {
+                                                    for entry in level.entries().iter().cloned() {
                                                         commands.spawn().insert(entry);
                                                     }
                                                 }
@@ -270,8 +276,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                         "Saving current new level to {:?}",
                                                         file_path
                                                     );
-                                                    serde_json::to_writer(fd, &gen_raw_entries())
-                                                        .unwrap();
+                                                    serde_json::to_writer(
+                                                        fd,
+                                                        &gen_raw_level_file(),
+                                                    )
+                                                    .unwrap();
                                                     selected_level_file =
                                                         SelectedLevelFile::Existing(
                                                             file_name.to_owned(),

@@ -11,15 +11,29 @@ pub struct YoleckLevelIndexEntry {
     pub filename: String,
 }
 
-#[derive(TypeUuid, Debug)]
+#[derive(TypeUuid, Debug, Serialize, Deserialize)]
 #[uuid = "ca0c185d-eb75-4a19-a188-3bc633a76cf7"]
-pub struct YoleckLevelIndex(Vec<YoleckLevelIndexEntry>);
+pub struct YoleckLevelIndex(YoleckLevelIndexHeader, Vec<YoleckLevelIndexEntry>);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct YoleckLevelIndexHeader {
+    format_version: usize,
+}
+
+impl YoleckLevelIndex {
+    pub fn new(entries: impl IntoIterator<Item = YoleckLevelIndexEntry>) -> Self {
+        Self(
+            YoleckLevelIndexHeader { format_version: 1 },
+            entries.into_iter().collect(),
+        )
+    }
+}
 
 impl Deref for YoleckLevelIndex {
     type Target = [YoleckLevelIndexEntry];
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.1
     }
 }
 
@@ -33,8 +47,8 @@ impl AssetLoader for YoleckLevelIndexLoader {
     ) -> bevy::asset::BoxedFuture<'a, anyhow::Result<(), anyhow::Error>> {
         Box::pin(async move {
             let json = std::str::from_utf8(bytes)?;
-            let entries: Vec<YoleckLevelIndexEntry> = serde_json::from_str(json)?;
-            load_context.set_default_asset(LoadedAsset::new(YoleckLevelIndex(entries)));
+            let level_index: YoleckLevelIndex = serde_json::from_str(json)?;
+            load_context.set_default_asset(LoadedAsset::new(level_index));
             Ok(())
         })
     }
