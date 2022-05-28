@@ -27,14 +27,18 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn run_populate_systems(&mut self, world: &mut World);
 }
 
+/// Descriptor for how Yoleck handles an entity type.
 pub struct YoleckTypeHandler<T> {
     name: String,
-    pub edit_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
-    pub populate_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
+    edit_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
+    populate_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
     pub(crate) _phantom_data: PhantomData<fn() -> T>,
 }
 
 impl<T> YoleckTypeHandler<T> {
+    /// Create a new type handler.
+    ///
+    /// The name will be used the level files, so changing it may break existing levels.
     pub fn new(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
@@ -44,16 +48,28 @@ impl<T> YoleckTypeHandler<T> {
         }
     }
 
-    pub fn with(self, source: impl FnOnce(Self) -> Self) -> Self {
-        source(self)
+    /// Call a function to modify the handler.
+    ///
+    /// These functions usually come from modules like [editools](crate::editools) or similar
+    /// library code, that can implement common edit and/or populate systems (like an entity's
+    /// position)
+    pub fn with(self, adapter: impl FnOnce(Self) -> Self) -> Self {
+        adapter(self)
     }
 
+    /// Add an edit system to the handler.
+    ///
+    /// Edit systems are the UI the level editor uses to edit the entity.
     pub fn edit_with<P>(mut self, system: impl IntoSystem<(), (), P>) -> Self {
         self.edit_systems
             .push(Box::new(IntoSystem::into_system(system)));
         self
     }
 
+    /// Add a populate system to the handler.
+    ///
+    /// Populate system are used to populate the entity with components, either in game or when the
+    /// entity is modified in the editor.
     pub fn populate_with<P>(mut self, system: impl IntoSystem<(), (), P>) -> Self {
         self.populate_systems
             .push(Box::new(IntoSystem::into_system(system)));
