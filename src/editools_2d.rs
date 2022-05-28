@@ -7,7 +7,7 @@ use bevy::sprite::Anchor;
 use bevy::text::Text2dSize;
 use bevy::utils::HashMap;
 
-use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandlerFor};
+use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler};
 
 pub struct YoleckEditools2dPlugin;
 
@@ -368,7 +368,7 @@ pub struct Transform2dProjection<'a> {
 
 pub fn position_edit_adapter<T: 'static>(
     projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform2dProjection<'a>,
-) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
+) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
     move |handler| {
         handler.edit_with(move |mut edit: YoleckEdit<T>| {
             edit.edit(|ctx, data, ui| {

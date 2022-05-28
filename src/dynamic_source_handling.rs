@@ -27,14 +27,14 @@ pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn run_populate_systems(&mut self, world: &mut World);
 }
 
-pub struct YoleckTypeHandlerFor<T> {
+pub struct YoleckTypeHandler<T> {
     name: String,
     pub edit_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
     pub populate_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
     pub(crate) _phantom_data: PhantomData<fn() -> T>,
 }
 
-impl<T> YoleckTypeHandlerFor<T> {
+impl<T> YoleckTypeHandler<T> {
     pub fn new(name: impl ToString) -> Self {
         Self {
             name: name.to_string(),
@@ -61,7 +61,7 @@ impl<T> YoleckTypeHandlerFor<T> {
     }
 }
 
-impl<T> YoleckTypeHandlerTrait for YoleckTypeHandlerFor<T>
+impl<T> YoleckTypeHandlerTrait for YoleckTypeHandler<T>
 where
     T: 'static,
     T: Send,

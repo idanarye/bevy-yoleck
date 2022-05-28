@@ -9,7 +9,7 @@ use bevy_yoleck::editools_3d::WillContainClickableChildren;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
-    YoleckTypeHandlerFor,
+    YoleckTypeHandler,
 };
 use serde::{Deserialize, Serialize};
 
@@ -43,7 +43,7 @@ fn main() {
     app.add_startup_system(setup_camera);
 
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<Player>::new("Player")
+        YoleckTypeHandler::<Player>::new("Player")
             .populate_with(populate_player)
             .with(position_edit_adapter(|data: &mut Player| {
                 Transform2dProjection {
@@ -53,7 +53,7 @@ fn main() {
     });
 
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<Fruit>::new("Fruit")
+        YoleckTypeHandler::<Fruit>::new("Fruit")
             .populate_with(populate_fruit)
             .with(position_edit_adapter(|data: &mut Fruit| {
                 Transform2dProjection {
@@ -64,7 +64,7 @@ fn main() {
     });
 
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<FloatingText>::new("FloatingText")
+        YoleckTypeHandler::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
             .with(position_edit_adapter(|floating_text: &mut FloatingText| {
                 bevy_yoleck::editools_2d::Transform2dProjection {

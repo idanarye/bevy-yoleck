@@ -8,7 +8,7 @@ use bevy_yoleck::editools_3d::{
 };
 use bevy_yoleck::{
     YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandlerFor,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandler,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +35,7 @@ fn main() {
         app.add_plugin(bevy_yoleck::editools_3d::YoleckEditools3dPlugin);
     }
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<Spaceship>::new("Spaceship")
+        YoleckTypeHandler::<Spaceship>::new("Spaceship")
             .populate_with(populate_spaceship)
             .with(transform_edit_adapter(|data: &mut Spaceship| {
                 Transform3dProjection {
@@ -45,7 +45,7 @@ fn main() {
             }))
     });
     app.add_yoleck_handler({
-        YoleckTypeHandlerFor::<Planet>::new("Planet")
+        YoleckTypeHandler::<Planet>::new("Planet")
             .populate_with(populate_planet)
             .with(transform_edit_adapter(|data: &mut Planet| {
                 Transform3dProjection {

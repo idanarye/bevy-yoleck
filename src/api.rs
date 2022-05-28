@@ -86,7 +86,7 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     /// Implement entity editing.
     ///
     /// A system that uses [`YoleckEdit`] needs to be added to an handler using
-    /// [`edit_with`](crate::YoleckTypeHandlerFor::edit_with). These systems usually only need to
+    /// [`edit_with`](crate::YoleckTypeHandler::edit_with). These systems usually only need to
     /// call this method with a closure that accepts three arguments:
     ///
     /// * A context
@@ -98,7 +98,7 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     ///
     /// ```no_run
     /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckTypeHandlerFor, YoleckExtForApp};
+    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckTypeHandler, YoleckExtForApp};
     /// # use serde::{Deserialize, Serialize};
     /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
     /// # struct Example {
@@ -106,7 +106,7 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     /// # }
     /// # let mut app = App::new();
     /// app.add_yoleck_handler({
-    ///     YoleckTypeHandlerFor::<Example>::new("Example")
+    ///     YoleckTypeHandler::<Example>::new("Example")
     ///         .edit_with(edit_example)
     /// });
     ///
@@ -153,7 +153,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     /// Implement entity populating.
     ///
     /// A system that uses [`YoleckPopulate`] needs to be added to an handler using
-    /// [`populate_with`](crate::YoleckTypeHandlerFor::populate_with). These systems usually only
+    /// [`populate_with`](crate::YoleckTypeHandler::populate_with). These systems usually only
     /// need to call this method with a closure that accepts three arguments:
     ///
     /// * A context
@@ -167,7 +167,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     ///
     /// ```no_run
     /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckPopulate, YoleckTypeHandlerFor, YoleckExtForApp};
+    /// # use bevy_yoleck::{YoleckPopulate, YoleckTypeHandler, YoleckExtForApp};
     /// # use serde::{Deserialize, Serialize};
     /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
     /// # struct Example {
@@ -178,7 +178,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     /// # }
     /// # let mut app = App::new();
     /// app.add_yoleck_handler({
-    ///     YoleckTypeHandlerFor::<Example>::new("Example")
+    ///     YoleckTypeHandler::<Example>::new("Example")
     ///         .populate_with(populate_example)
     /// });
     ///

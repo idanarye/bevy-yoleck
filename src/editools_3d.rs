@@ -3,7 +3,7 @@ pub use crate::editools::WillContainClickableChildren;
 use crate::editools::{handle_clickable_children_system, RouteClickTo};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
-    YoleckTypeHandlerFor,
+    YoleckTypeHandler,
 };
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
@@ -199,7 +199,7 @@ pub struct Transform3dProjection<'a> {
 
 pub fn transform_edit_adapter<T: 'static>(
     projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform3dProjection<'a>,
-) -> impl FnOnce(YoleckTypeHandlerFor<T>) -> YoleckTypeHandlerFor<T> {
+) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
     move |handler| {
         handler
             .populate_with(move |mut populate: YoleckPopulate<T>| {
