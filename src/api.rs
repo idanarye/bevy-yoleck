@@ -8,9 +8,12 @@ use bevy_egui::egui;
 
 use crate::{BoxedArc, YoleckManaged};
 
+/// Whether or not the Yoleck editor is active.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum YoleckEditorState {
+    /// Editor mode. The editor is active and can be used to edit entities.
     EditorActive,
+    /// Game mode. Either the actual game or playtest from the editor mode.
     GameActive,
 }
 
@@ -21,6 +24,7 @@ pub(crate) enum PopulateReason {
     RealGame,
 }
 
+/// A context for [`YoleckPopulate::populate`].
 pub struct YoleckPopulateContext<'a> {
     pub(crate) reason: PopulateReason,
     // I may add stuff that need 'a later, and I don't want to change the signature
@@ -28,6 +32,7 @@ pub struct YoleckPopulateContext<'a> {
 }
 
 impl<'a> YoleckPopulateContext<'a> {
+    /// `true` if the entity is created in editor mode, `false` if created in playtest or actual game.
     pub fn is_in_editor(&self) -> bool {
         match self.reason {
             PopulateReason::EditorInit => true,
@@ -36,6 +41,8 @@ impl<'a> YoleckPopulateContext<'a> {
         }
     }
 
+    /// `true` if this is this is the first time the entity is populated, `false` if the entity was
+    /// popultated before.
     pub fn is_first_time(&self) -> bool {
         match self.reason {
             PopulateReason::EditorInit => true,
@@ -45,6 +52,7 @@ impl<'a> YoleckPopulateContext<'a> {
     }
 }
 
+/// A context for [`YoleckEdit::edit`].
 pub struct YoleckEditContext<'a> {
     pub(crate) passed: &'a HashMap<TypeId, BoxedArc>,
 }
@@ -59,20 +67,55 @@ impl YoleckEditContext<'_> {
     }
 }
 
+#[doc(hidden)]
 pub struct YoleckUiForEditSystem(pub egui::Ui);
 
+/// Parameter for systems that edit entities. See [`YoleckEdit::edit`].
 #[derive(SystemParam)]
 pub struct YoleckEdit<'w, 's, T: 'static> {
     #[allow(dead_code)]
     query: Query<'w, 's, &'static mut YoleckManaged>,
     #[allow(dead_code)]
     context: Res<'w, YoleckUserSystemContext>,
-    pub ui: ResMut<'w, YoleckUiForEditSystem>,
+    ui: ResMut<'w, YoleckUiForEditSystem>,
     #[system_param(ignore)]
     _phantom_data: PhantomData<fn() -> T>,
 }
 
 impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
+    /// Implement entity editing.
+    ///
+    /// A system that uses [`YoleckEdit`] needs to be added to an handler using
+    /// [`edit_with`](crate::YoleckTypeHandlerFor::edit_with). These systems usually only need to
+    /// call this method with a closure that accepts three arguments:
+    ///
+    /// * A context
+    /// * The data to be edited.
+    /// * An egui UI handler.
+    ///
+    /// The closure is then responsible for allowing the user to edit the data using the UI and
+    /// using [data passed from other systems](YoleckEditContext::get_passed_data).
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckTypeHandlerFor, YoleckExtForApp};
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+    /// # struct Example {
+    /// #     number: u32,
+    /// # }
+    /// # let mut app = App::new();
+    /// app.add_yoleck_handler({
+    ///     YoleckTypeHandlerFor::<Example>::new("Example")
+    ///         .edit_with(edit_example)
+    /// });
+    ///
+    /// fn edit_example(mut edit: YoleckEdit<Example>) {
+    ///     edit.edit(|_ctx, data, ui| {
+    ///         ui.add(egui::Slider::new(&mut data.number, 0..=10));
+    ///     });
+    /// }
+    /// ```
     pub fn edit(&mut self, mut dlg: impl FnMut(&YoleckEditContext, &mut T, &mut egui::Ui)) {
         match &*self.context {
             YoleckUserSystemContext::Nope
@@ -96,6 +139,7 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     }
 }
 
+/// Parameter for systems that populate entities. See [`YoleckPopulate::populate`].
 #[derive(SystemParam)]
 pub struct YoleckPopulate<'w, 's, T: 'static> {
     query: Query<'w, 's, &'static mut YoleckManaged>,
@@ -106,6 +150,52 @@ pub struct YoleckPopulate<'w, 's, T: 'static> {
 }
 
 impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
+    /// Implement entity populating.
+    ///
+    /// A system that uses [`YoleckPopulate`] needs to be added to an handler using
+    /// [`populate_with`](crate::YoleckTypeHandlerFor::populate_with). These systems usually only
+    /// need to call this method with a closure that accepts three arguments:
+    ///
+    /// * A context
+    /// * The data to be used for populating.
+    /// * A Bevy command.
+    ///
+    /// The closure is then responsible for adding components to the command based on data from the
+    /// entity. The closure may also add children - but since this method may be called to
+    /// re-populate an already populated entity that already has children, if it does so it should
+    /// use `despawn_descendants` to remove existing children.
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckPopulate, YoleckTypeHandlerFor, YoleckExtForApp};
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+    /// # struct Example {
+    /// #     position: Vec2,
+    /// # }
+    /// # struct GameAssets {
+    /// #     example_sprite: Handle<Image>,
+    /// # }
+    /// # let mut app = App::new();
+    /// app.add_yoleck_handler({
+    ///     YoleckTypeHandlerFor::<Example>::new("Example")
+    ///         .populate_with(populate_example)
+    /// });
+    ///
+    /// fn populate_example(mut populate: YoleckPopulate<Example>, assets: Res<GameAssets>) {
+    ///     populate.populate(|_ctx, data, mut cmd| {
+    ///         cmd.insert_bundle(SpriteBundle {
+    ///             sprite: Sprite {
+    ///                 custom_size: Some(Vec2::new(100.0, 100.0)),
+    ///                 ..Default::default()
+    ///             },
+    ///             transform: Transform::from_translation(data.position.extend(0.0)),
+    ///             texture: assets.example_sprite.clone(),
+    ///             ..Default::default()
+    ///         });
+    ///     });
+    /// }
+    /// ```
     pub fn populate(
         &mut self,
         mut dlg: impl FnMut(&YoleckPopulateContext, &mut T, EntityCommands),
@@ -180,6 +270,10 @@ impl YoleckUserSystemContext {
     }
 }
 
+/// Events emitted by the Yoleck editor.
+///
+/// Modules that provide editing overlays over the viewport (like [editools](crate::editools)) can
+/// use these events to update their status to match with the editor.
 #[derive(Debug)]
 pub enum YoleckEditorEvent {
     EntitySelected(Entity),
