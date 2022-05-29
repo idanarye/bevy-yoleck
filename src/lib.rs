@@ -93,6 +93,7 @@ impl Plugin for YoleckPluginForEditor {
 }
 
 pub trait YoleckExtForApp {
+    /// Register a [`YoleckTypeHandler`] to describe a type of entity that can be edited with Yoleck.
     fn add_yoleck_handler(&mut self, handler: impl 'static + YoleckTypeHandlerTrait);
 }
 
@@ -109,15 +110,22 @@ impl YoleckExtForApp for App {
 type BoxedArc = Arc<dyn Send + Sync + Any>;
 type BoxedAny = Box<dyn Send + Sync + Any>;
 
+/// A component that describes how Yoleck manages an entity under its control.
 #[derive(Component)]
 pub struct YoleckManaged {
+    /// A name to display near the entity in the entities list.
+    ///
+    /// This is for level editors' convenience only - it will not be used in the games.
     pub name: String,
+    /// This is the name passed to [`YoleckTypeHandler`](YoleckTypeHandler::new).
     pub type_name: String,
+    /// This is the entity's data. The [`YoleckTypeHandler`] is responsible for manipulating
+    /// it, using the systems registered to it.
     pub data: BoxedAny,
 }
 
 #[derive(Default)]
-pub struct YoleckTypeHandlers {
+struct YoleckTypeHandlers {
     type_handler_names: Vec<String>,
     type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
 }
@@ -137,6 +145,7 @@ impl YoleckTypeHandlers {
     }
 }
 
+/// Fields of the Yoleck editor.
 pub struct YoleckState {
     entity_being_edited: Option<Entity>,
     level_needs_saving: bool,
@@ -148,6 +157,30 @@ impl YoleckState {
     }
 }
 
+/// Sections for the Yoleck editor window.
+///
+/// Already contains sections by default, but can be used to customize the editor by adding more
+/// sections. Each section is a function/closure that accepts a world and returns a closure that
+/// accepts as world and a UI. The outer closure is responsible for prepareing a `SystemState` for
+/// the inner closure to use.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// use bevy::ecs::system::SystemState;
+/// # use bevy_yoleck::{YoleckEditorSections, egui};
+/// # let mut app = App::new();
+/// app.world.resource_mut::<YoleckEditorSections>().0.push((|world: &mut World| {
+///     let mut system_state = SystemState::<(
+///         Res<Time>,
+///     )>::new(world);
+///     move |world: &mut World, ui: &mut egui::Ui| {
+///         let (
+///             time,
+///         ) = system_state.get_mut(world);
+///         ui.label(format!("Time since startup is {:?}", time.time_since_startup()));
+///     }
+/// }).into());
+/// ```
 pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
 
 impl Default for YoleckEditorSections {
