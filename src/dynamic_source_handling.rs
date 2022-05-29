@@ -12,6 +12,7 @@ pub enum YoleckEditingResult {
     Changed,
 }
 
+#[doc(hidden)]
 pub trait YoleckTypeHandlerTrait: Send + Sync {
     fn type_name(&self) -> &str;
     fn make_concrete(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;

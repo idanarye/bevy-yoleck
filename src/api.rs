@@ -58,6 +58,24 @@ pub struct YoleckEditContext<'a> {
 }
 
 impl YoleckEditContext<'_> {
+    /// Get data sent to the entity from external systems (usually from (usually a [ViewPort Editing OverLay](crate::vpeol))
+    ///
+    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckEdit, egui};
+    /// # struct Example {
+    /// #     position: Vec2,
+    /// # }
+    /// fn edit_example(mut edit: YoleckEdit<Example>) {
+    ///     edit.edit(|ctx, data, _ui| {
+    ///         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+    ///             data.position = *pos;
+    ///         }
+    ///     });
+    /// }
+    /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
             dynamic.downcast_ref()

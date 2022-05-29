@@ -56,6 +56,7 @@ impl YoleckEditorSectionInner {
     }
 }
 
+/// A single section of the UI. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub struct YoleckEditorSection(YoleckEditorSectionInner);
 
 impl<C, S> From<C> for YoleckEditorSection

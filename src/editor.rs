@@ -13,14 +13,20 @@ use crate::{
     YoleckRawEntry, YoleckState, YoleckTypeHandlers,
 };
 
-pub enum YoleckDirectiveInner {
+enum YoleckDirectiveInner {
     SetSelected(Option<Entity>),
     PassToEntity(Entity, TypeId, BoxedArc),
 }
 
+/// Event that can be sent to control Yoleck's editor.
 pub struct YoleckDirective(YoleckDirectiveInner);
 
 impl YoleckDirective {
+    /// Pass data from an external system (usually a [ViewPort Editing OverLay](crate::vpeol)) to an entity.
+    ///
+    /// If the entity is currently being edited, this data can be received using the
+    /// [`get_passed_data`](crate::YoleckEditContext::get_passed_data) method of
+    /// [`YoleckEdit`](crate::YoleckEdit::edit).
     pub fn pass_to_entity<T: 'static + Send + Sync>(entity: Entity, data: T) -> Self {
         Self(YoleckDirectiveInner::PassToEntity(
             entity,
@@ -29,6 +35,7 @@ impl YoleckDirective {
         ))
     }
 
+    /// Set the entity selected in the Yoleck editor.
     pub fn set_selected(entity: Option<Entity>) -> Self {
         Self(YoleckDirectiveInner::SetSelected(entity))
     }
@@ -45,6 +52,7 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
     }
 }
 
+/// The UI part for creating new entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         Commands,
@@ -91,6 +99,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
     }
 }
 
+/// The UI part for selecting entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut filter_custom_name = String::new();
     let mut filter_types = HashSet::<String>::new();
@@ -153,6 +162,7 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
     }
 }
 
+/// The UI part for editing entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
