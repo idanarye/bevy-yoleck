@@ -3,7 +3,6 @@
 //! This module does not do much, but provide common functionalities for more concrete modules like
 //! [`crate::vpeol_2d`] and [`crate::vpeol_3d`].
 
-
 use bevy::ecs::query::{FilterFetch, WorldQuery};
 use bevy::prelude::*;
 
@@ -16,9 +15,9 @@ pub struct YoleckWillContainClickableChildren;
 
 /// Marker for viewport editor overlay plugins to route child interaction to parent entites.
 #[derive(Component)]
-pub struct RouteClickTo(pub Entity);
+pub struct YoleckRouteClickTo(pub Entity);
 
-/// Add [`RouteClickTo`] of entities marked with [`YoleckWillContainClickableChildren`].
+/// Add [`YoleckRouteClickTo`] of entities marked with [`YoleckWillContainClickableChildren`].
 pub fn handle_clickable_children_system<F, B>(
     parents_query: Query<(Entity, &Children), With<YoleckWillContainClickableChildren>>,
     children_query: Query<&Children>,
@@ -41,7 +40,7 @@ pub fn handle_clickable_children_system<F, B>(
             }
             if should_add_query.get(child).is_ok() {
                 let mut cmd = commands.entity(child);
-                cmd.insert(RouteClickTo(parent));
+                cmd.insert(YoleckRouteClickTo(parent));
                 cmd.insert_bundle(B::default());
                 any_added = true;
             }

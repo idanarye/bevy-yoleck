@@ -3,8 +3,9 @@ use std::path::Path;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_yoleck::vpeol_3d::{
-    transform_edit_adapter, OrbitCameraBundle, OrbitCameraController, Tools3DCameraBundle,
-    Transform3dProjection, YoleckWillContainClickableChildren,
+    yoleck_vpeol_transform_edit_adapter, OrbitCameraBundle, OrbitCameraController,
+    YoleckVpeol3dCameraBundle, YoleckVpeolTransform3dProjection,
+    YoleckWillContainClickableChildren,
 };
 use bevy_yoleck::{
     YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
@@ -37,18 +38,18 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Spaceship>::new("Spaceship")
             .populate_with(populate_spaceship)
-            .with(transform_edit_adapter(|data: &mut Spaceship| {
-                Transform3dProjection {
+            .with(yoleck_vpeol_transform_edit_adapter(
+                |data: &mut Spaceship| YoleckVpeolTransform3dProjection {
                     translation: &mut data.position,
                     rotation: Some(&mut data.rotation),
-                }
-            }))
+                },
+            ))
     });
     app.add_yoleck_handler({
         YoleckTypeHandler::<Planet>::new("Planet")
             .populate_with(populate_planet)
-            .with(transform_edit_adapter(|data: &mut Planet| {
-                Transform3dProjection {
+            .with(yoleck_vpeol_transform_edit_adapter(|data: &mut Planet| {
+                YoleckVpeolTransform3dProjection {
                     translation: &mut data.position,
                     rotation: None,
                 }
@@ -80,7 +81,7 @@ impl FromWorld for GameAssets {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let camera = Tools3DCameraBundle::new(OrbitCameraBundle::new(
+    let camera = YoleckVpeol3dCameraBundle::new(OrbitCameraBundle::new(
         {
             let mut controller = OrbitCameraController::default();
             controller.mouse_translate_sensitivity *= 10.0;

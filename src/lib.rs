@@ -1,16 +1,16 @@
 mod api;
 mod dynamic_source_handling;
+mod editor;
+mod editor_window;
+mod entity_management;
+mod level_files_manager;
+mod level_index;
 #[cfg(feature = "vpeol")]
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
 #[cfg(feature = "vpeol_3d")]
 pub mod vpeol_3d;
-mod editor;
-mod editor_window;
-mod entity_management;
-mod level_files_manager;
-mod level_index;
 
 use std::any::Any;
 use std::path::Path;

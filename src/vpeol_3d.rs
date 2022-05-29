@@ -1,6 +1,6 @@
 use crate::bevy_egui::egui;
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, RouteClickTo};
+use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
     YoleckTypeHandler,
@@ -67,7 +67,7 @@ fn process_picking_events(
     mut picking_reader: EventReader<PickingEvent>,
     mut directives_writer: EventWriter<YoleckDirective>,
     mut selection_query: Query<&mut bevy_mod_picking::Selection>,
-    root_resolver: Query<&RouteClickTo>,
+    root_resolver: Query<&YoleckRouteClickTo>,
 ) {
     let mut select = None;
     let mut deselect = false;
@@ -87,7 +87,7 @@ fn process_picking_events(
         }
     }
     if let Some(entity) = select {
-        let entity = if let Ok(RouteClickTo(root_entity)) = root_resolver.get(*entity) {
+        let entity = if let Ok(YoleckRouteClickTo(root_entity)) = root_resolver.get(*entity) {
             if let Ok(mut selection) = selection_query.get_mut(*entity) {
                 selection.set_selected(false);
             }
@@ -174,7 +174,7 @@ fn process_gizmo_events(
 }
 
 #[derive(Bundle)]
-pub struct Tools3DCameraBundle {
+pub struct YoleckVpeol3dCameraBundle {
     #[bundle]
     pub orbit_camera_bundle: OrbitCameraBundle,
     #[bundle]
@@ -182,7 +182,7 @@ pub struct Tools3DCameraBundle {
     pub gizmo_pick_source: GizmoPickSource,
 }
 
-impl Tools3DCameraBundle {
+impl YoleckVpeol3dCameraBundle {
     pub fn new(orbit_camera_bundle: OrbitCameraBundle) -> Self {
         Self {
             orbit_camera_bundle,
@@ -192,13 +192,17 @@ impl Tools3DCameraBundle {
     }
 }
 
-pub struct Transform3dProjection<'a> {
+pub struct YoleckVpeolTransform3dProjection<'a> {
     pub translation: &'a mut Vec3,
     pub rotation: Option<&'a mut Quat>,
 }
 
-pub fn transform_edit_adapter<T: 'static>(
-    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform3dProjection<'a>,
+pub fn yoleck_vpeol_transform_edit_adapter<T: 'static>(
+    projection: impl 'static
+        + Clone
+        + Send
+        + Sync
+        + for<'a> Fn(&'a mut T) -> YoleckVpeolTransform3dProjection<'a>,
 ) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
     move |handler| {
         handler
@@ -210,7 +214,7 @@ pub fn transform_edit_adapter<T: 'static>(
             })
             .edit_with(move |mut edit: YoleckEdit<T>| {
                 edit.edit(|ctx, data, ui| {
-                    let Transform3dProjection {
+                    let YoleckVpeolTransform3dProjection {
                         translation,
                         rotation,
                     } = projection(data);

@@ -4,7 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::vpeol_2d::{position_edit_adapter, Transform2dProjection};
+use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
 use bevy_yoleck::vpeol_3d::YoleckWillContainClickableChildren;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
@@ -45,8 +45,8 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Player>::new("Player")
             .populate_with(populate_player)
-            .with(position_edit_adapter(|data: &mut Player| {
-                Transform2dProjection {
+            .with(yoleck_vpeol_position_edit_adapter(|data: &mut Player| {
+                YoleckVpeolTransform2dProjection {
                     translation: &mut data.position,
                 }
             }))
@@ -55,8 +55,8 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Fruit>::new("Fruit")
             .populate_with(populate_fruit)
-            .with(position_edit_adapter(|data: &mut Fruit| {
-                Transform2dProjection {
+            .with(yoleck_vpeol_position_edit_adapter(|data: &mut Fruit| {
+                YoleckVpeolTransform2dProjection {
                     translation: &mut data.position,
                 }
             }))
@@ -66,11 +66,13 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
-            .with(position_edit_adapter(|floating_text: &mut FloatingText| {
-                bevy_yoleck::vpeol_2d::Transform2dProjection {
-                    translation: &mut floating_text.position,
-                }
-            }))
+            .with(yoleck_vpeol_position_edit_adapter(
+                |floating_text: &mut FloatingText| {
+                    bevy_yoleck::vpeol_2d::YoleckVpeolTransform2dProjection {
+                        translation: &mut floating_text.position,
+                    }
+                },
+            ))
             .edit_with(edit_text)
     });
 

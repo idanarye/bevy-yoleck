@@ -1,5 +1,5 @@
 use crate::bevy_egui::{egui, EguiContext};
-use crate::vpeol::{handle_clickable_children_system, RouteClickTo};
+use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -33,7 +33,7 @@ impl Plugin for YoleckVpeol2dPlugin {
 }
 
 #[doc(hidden)]
-pub enum YoleckClicksOnObjectsState {
+enum YoleckClicksOnObjectsState {
     Empty,
     BeingDragged {
         entity: Entity,
@@ -43,7 +43,7 @@ pub enum YoleckClicksOnObjectsState {
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub fn yoleck_clicks_on_objects(
+fn yoleck_clicks_on_objects(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
@@ -57,7 +57,7 @@ pub fn yoleck_clicks_on_objects(
             &Text2dSize,
         )>,
     )>,
-    root_resolver: Query<&RouteClickTo>,
+    root_resolver: Query<&YoleckRouteClickTo>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     yoleck: ResMut<YoleckState>,
@@ -192,12 +192,13 @@ pub fn yoleck_clicks_on_objects(
                             result.map(|(result, _)| result)
                         });
                     *state = if let Some((entity, entity_transform)) = entity_under_cursor {
-                        let entity =
-                            if let Ok(RouteClickTo(root_entity)) = root_resolver.get(entity) {
-                                *root_entity
-                            } else {
-                                entity
-                            };
+                        let entity = if let Ok(YoleckRouteClickTo(root_entity)) =
+                            root_resolver.get(entity)
+                        {
+                            *root_entity
+                        } else {
+                            entity
+                        };
                         directives_writer.send(YoleckDirective::set_selected(Some(entity)));
                         YoleckClicksOnObjectsState::BeingDragged {
                             entity,
@@ -235,7 +236,7 @@ pub fn yoleck_clicks_on_objects(
     }
 }
 
-pub fn camera_2d_pan(
+fn camera_2d_pan(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
@@ -290,7 +291,7 @@ pub fn camera_2d_pan(
     }
 }
 
-pub fn camera_2d_zoom(
+fn camera_2d_zoom(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     mut cameras_query: Query<
@@ -362,17 +363,21 @@ fn screen_pos_to_world_pos(
     world_pos.truncate()
 }
 
-pub struct Transform2dProjection<'a> {
+pub struct YoleckVpeolTransform2dProjection<'a> {
     pub translation: &'a mut Vec2,
 }
 
-pub fn position_edit_adapter<T: 'static>(
-    projection: impl 'static + Clone + Send + Sync + for<'a> Fn(&'a mut T) -> Transform2dProjection<'a>,
+pub fn yoleck_vpeol_position_edit_adapter<T: 'static>(
+    projection: impl 'static
+        + Clone
+        + Send
+        + Sync
+        + for<'a> Fn(&'a mut T) -> YoleckVpeolTransform2dProjection<'a>,
 ) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
     move |handler| {
         handler.edit_with(move |mut edit: YoleckEdit<T>| {
             edit.edit(|ctx, data, ui| {
-                let Transform2dProjection { translation } = projection(data);
+                let YoleckVpeolTransform2dProjection { translation } = projection(data);
                 if let Some(pos) = ctx.get_passed_data::<Vec2>() {
                     *translation = *pos;
                 }
