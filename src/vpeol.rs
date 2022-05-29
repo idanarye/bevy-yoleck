@@ -1,7 +1,7 @@
 //! Utilities for editing entities from a viewport.
 //!
 //! This module does not do much, but provide common functionalities for more concrete modules like
-//! [`crate::editools_2d`] and [`crate::editools_3d`].
+//! [`crate::vpeol_2d`] and [`crate::vpeol_3d`].
 
 
 use bevy::ecs::query::{FilterFetch, WorldQuery};

@@ -50,7 +50,7 @@ impl<T> YoleckTypeHandler<T> {
 
     /// Call a function to modify the handler.
     ///
-    /// These functions usually come from modules like [editools](crate::editools) or similar
+    /// These functions usually come from modules like [vpeol](crate::vpeol) or similar
     /// library code, that can implement common edit and/or populate systems (like an entity's
     /// position)
     pub fn with(self, adapter: impl FnOnce(Self) -> Self) -> Self {

@@ -272,7 +272,7 @@ impl YoleckUserSystemContext {
 
 /// Events emitted by the Yoleck editor.
 ///
-/// Modules that provide editing overlays over the viewport (like [editools](crate::editools)) can
+/// Modules that provide editing overlays over the viewport (like [vpeol](crate::vpeol)) can
 /// use these events to update their status to match with the editor.
 #[derive(Debug)]
 pub enum YoleckEditorEvent {

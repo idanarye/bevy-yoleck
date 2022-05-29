@@ -2,7 +2,7 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use bevy_yoleck::editools_3d::{
+use bevy_yoleck::vpeol_3d::{
     transform_edit_adapter, OrbitCameraBundle, OrbitCameraController, Tools3DCameraBundle,
     Transform3dProjection, YoleckWillContainClickableChildren,
 };
@@ -32,7 +32,7 @@ fn main() {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels3d"),
         ));
-        app.add_plugin(bevy_yoleck::editools_3d::YoleckEditools3dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol_3d::YoleckVpeol3dPlugin);
     }
     app.add_yoleck_handler({
         YoleckTypeHandler::<Spaceship>::new("Spaceship")

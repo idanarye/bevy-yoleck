@@ -4,8 +4,8 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::editools_2d::{position_edit_adapter, Transform2dProjection};
-use bevy_yoleck::editools_3d::YoleckWillContainClickableChildren;
+use bevy_yoleck::vpeol_2d::{position_edit_adapter, Transform2dProjection};
+use bevy_yoleck::vpeol_3d::YoleckWillContainClickableChildren;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
@@ -36,7 +36,7 @@ fn main() {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(bevy_yoleck::editools_2d::YoleckEditools2dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin);
     }
     app.init_resource::<GameAssets>();
 
@@ -67,7 +67,7 @@ fn main() {
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
             .with(position_edit_adapter(|floating_text: &mut FloatingText| {
-                bevy_yoleck::editools_2d::Transform2dProjection {
+                bevy_yoleck::vpeol_2d::Transform2dProjection {
                     translation: &mut floating_text.position,
                 }
             }))

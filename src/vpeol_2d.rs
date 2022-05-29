@@ -1,5 +1,5 @@
 use crate::bevy_egui::{egui, EguiContext};
-use crate::editools::{handle_clickable_children_system, RouteClickTo};
+use crate::vpeol::{handle_clickable_children_system, RouteClickTo};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -9,9 +9,9 @@ use bevy::utils::HashMap;
 
 use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler};
 
-pub struct YoleckEditools2dPlugin;
+pub struct YoleckVpeol2dPlugin;
 
-impl Plugin for YoleckEditools2dPlugin {
+impl Plugin for YoleckVpeol2dPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)

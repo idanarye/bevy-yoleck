@@ -1,11 +1,11 @@
 mod api;
 mod dynamic_source_handling;
-#[cfg(feature = "editools")]
-pub mod editools;
-#[cfg(feature = "editools_2d")]
-pub mod editools_2d;
-#[cfg(feature = "editools_3d")]
-pub mod editools_3d;
+#[cfg(feature = "vpeol")]
+pub mod vpeol;
+#[cfg(feature = "vpeol_2d")]
+pub mod vpeol_2d;
+#[cfg(feature = "vpeol_3d")]
+pub mod vpeol_3d;
 mod editor;
 mod editor_window;
 mod entity_management;

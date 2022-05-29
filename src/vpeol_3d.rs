@@ -1,6 +1,6 @@
 use crate::bevy_egui::egui;
-pub use crate::editools::YoleckWillContainClickableChildren;
-use crate::editools::{handle_clickable_children_system, RouteClickTo};
+pub use crate::vpeol::YoleckWillContainClickableChildren;
+use crate::vpeol::{handle_clickable_children_system, RouteClickTo};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
     YoleckTypeHandler,
@@ -17,9 +17,9 @@ use smooth_bevy_cameras::controllers::orbit::OrbitCameraPlugin;
 pub use smooth_bevy_cameras::controllers::orbit::{OrbitCameraBundle, OrbitCameraController};
 use smooth_bevy_cameras::LookTransformPlugin;
 
-pub struct YoleckEditools3dPlugin;
+pub struct YoleckVpeol3dPlugin;
 
-impl Plugin for YoleckEditools3dPlugin {
+impl Plugin for YoleckVpeol3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(DefaultPickingPlugins);
         app.add_plugin(TransformGizmoPlugin::default());
