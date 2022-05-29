@@ -15,8 +15,22 @@ use crate::{
 const EXTENSION: &str = ".yol";
 const EXTENSION_WITHOUT_DOT: &str = "yol";
 
+/// The path for the levels directory.
+///
+/// [The plugin](crate::YoleckPluginForEditor) sets it to `./assets/levels/`, but it can be set to
+/// other values:
+/// ```no_run
+/// # use std::path::Path;
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::YoleckEditorLevelsDirectoryPath;
+/// # let mut app = App::new();
+/// app.insert_resource(YoleckEditorLevelsDirectoryPath(
+///     Path::new(".").join("some").join("other").join("path"),
+/// ));
+/// ```
 pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 
+/// The UI part for managing level files. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         Commands,
