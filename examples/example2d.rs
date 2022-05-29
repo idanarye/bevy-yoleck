@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 use bevy_yoleck::editools_2d::{position_edit_adapter, Transform2dProjection};
-use bevy_yoleck::editools_3d::WillContainClickableChildren;
+use bevy_yoleck::editools_3d::YoleckWillContainClickableChildren;
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
@@ -223,7 +223,7 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
                 ..Default::default()
             });
         });
-        cmd.insert(WillContainClickableChildren);
+        cmd.insert(YoleckWillContainClickableChildren);
         cmd.insert(IsFruit);
     });
 }

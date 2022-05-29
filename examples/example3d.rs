@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_yoleck::editools_3d::{
     transform_edit_adapter, OrbitCameraBundle, OrbitCameraController, Tools3DCameraBundle,
-    Transform3dProjection, WillContainClickableChildren,
+    Transform3dProjection, YoleckWillContainClickableChildren,
 };
 use bevy_yoleck::{
     YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp, YoleckLoadingCommand,
@@ -125,7 +125,7 @@ fn populate_spaceship(mut populate: YoleckPopulate<Spaceship>, assets: Res<GameA
         cmd.with_children(|commands| {
             commands.spawn_scene(assets.spaceship_model.clone());
         });
-        cmd.insert(WillContainClickableChildren);
+        cmd.insert(YoleckWillContainClickableChildren);
         cmd.insert(IsSpaceship);
     });
 }
@@ -170,7 +170,7 @@ fn populate_planet(mut populate: YoleckPopulate<Planet>, assets: Res<GameAssets>
         cmd.with_children(|commands| {
             commands.spawn_scene(assets.planet_model.clone());
         });
-        cmd.insert(WillContainClickableChildren);
+        cmd.insert(YoleckWillContainClickableChildren);
         cmd.insert(IsPlanet);
     });
 }

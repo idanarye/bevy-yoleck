@@ -1,5 +1,5 @@
 use crate::bevy_egui::egui;
-pub use crate::editools::WillContainClickableChildren;
+pub use crate::editools::YoleckWillContainClickableChildren;
 use crate::editools::{handle_clickable_children_system, RouteClickTo};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
