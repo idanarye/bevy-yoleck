@@ -8,14 +8,20 @@ use serde::{Deserialize, Serialize};
 use crate::api::YoleckUserSystemContext;
 use crate::{YoleckEditorState, YoleckManaged, YoleckTypeHandlers};
 
+/// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct YoleckEntryHeader {
+    /// This is the name passed to [`YoleckTypeHandler`](crate::YoleckTypeHandler::new).
     #[serde(rename = "type")]
     pub type_name: String,
+    /// A name to display near the entity in the entities list.
+    ///
+    /// This is for level editors' convenience only - it will not be used in the games.
     #[serde(default)]
     pub name: String,
 }
 
+/// An entry for a Yoleck entity, as it appears in level files.
 #[derive(Component, Debug, Clone)]
 pub struct YoleckRawEntry {
     pub header: YoleckEntryHeader,
@@ -102,6 +108,17 @@ pub(crate) fn yoleck_process_loading_command(
     }
 }
 
+/// Command Yoleck to load a level, represented as an asset to an handle.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::{YoleckLoadingCommand};
+/// fn level_loading_system(
+///     asset_server: Res<AssetServer>,
+///     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+/// ) {
+///     *yoleck_loading_command = YoleckLoadingCommand::FromAsset(asset_server.load("levels/level1.yol"));
+/// }
 pub enum YoleckLoadingCommand {
     NoCommand,
     FromAsset(Handle<YoleckRawLevel>),
@@ -109,6 +126,7 @@ pub enum YoleckLoadingCommand {
 
 pub(crate) struct YoleckLevelAssetLoader;
 
+/// Represents a level file.
 #[derive(TypeUuid, Debug, Serialize, Deserialize)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
 pub struct YoleckRawLevel(
@@ -117,6 +135,7 @@ pub struct YoleckRawLevel(
     Vec<YoleckRawEntry>,
 );
 
+/// Internal Yoleck metadata for a level file.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct YoleckRawLevelHeader {
     format_version: usize,
