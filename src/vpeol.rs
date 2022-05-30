@@ -1,4 +1,4 @@
-//! Utilities for editing entities from a viewport.
+//! **V**iew**p**ort **E**diting **O**ver**l**ay - utilities for editing entities from a viewport.
 //!
 //! This module does not do much, but provide common functionalities for more concrete modules like
 //! [`vpeol_2d`](crate::vpeol_2d) and [`vpeol_3d`](crate::vpeol_3d).

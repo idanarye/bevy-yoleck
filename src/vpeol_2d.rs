@@ -1,3 +1,59 @@
+//! **V**iew**p**ort **E**diting **O**ver**l**ay for 2D games.
+//!
+//! Use this module to implement simple 2D editing for 2D games.
+//!
+//! To use add the egui and Yoleck plugins to the Bevy app, as well as the plugin of this module:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::bevy_egui::EguiPlugin;
+//! # use bevy_yoleck::YoleckPluginForEditor;
+//! # use bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin;
+//! # let mut app = App::new();
+//! app.add_plugin(EguiPlugin);
+//! app.add_plugin(YoleckPluginForEditor);
+//! app.add_plugin(YoleckVpeol2dPlugin);
+//! ```
+//!
+//! Entity selection by clicking on it is supported by just adding the plugin. To implement
+//! dragging, there are two options. Either use the passed data:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+//! # use serde::{Deserialize, Serialize};
+//! # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! # struct Example {
+//! #     position: Vec2,
+//! # }
+//! # let mut app = App::new();
+//! app.add_yoleck_handler({
+//!     YoleckTypeHandler::<Example>::new("Example")
+//!         .edit_with(edit_example)
+//!         .populate_with(populate_example)
+//! });
+//!
+//! fn edit_example(mut edit: YoleckEdit<Example>) {
+//!     edit.edit(|ctx, data, _ui| {
+//!         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
+//!             data.position = *pos;
+//!         }
+//!     });
+//! }
+//!
+//! fn populate_example(mut populate: YoleckPopulate<Example>) {
+//!     populate.populate(|_ctx, data, mut cmd| {
+//!         cmd.insert_bundle(SpriteBundle {
+//!             transform: Transform::from_translation(data.position.extend(0.0)),
+//!             // Actual sprite components
+//!             ..Default::default()
+//!         });
+//!     });
+//! }
+//! ```
+//!
+//! Alternatively, use [`yoleck_vpeol_position_edit_adapter`].
+
 use crate::bevy_egui::{egui, EguiContext};
 use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
 use bevy::input::mouse::MouseWheel;
@@ -9,6 +65,12 @@ use bevy::utils::HashMap;
 
 use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler};
 
+/// Add the systems required for 2D editing.
+///
+/// * 2D camera zoom/pan
+/// * Entity selection.
+/// * Entity dragging.
+/// * Connecting nested entities.
 pub struct YoleckVpeol2dPlugin;
 
 impl Plugin for YoleckVpeol2dPlugin {
@@ -363,10 +425,48 @@ fn screen_pos_to_world_pos(
     world_pos.truncate()
 }
 
+/// See [`yoleck_vpeol_position_edit_adapter`].
 pub struct YoleckVpeolTransform2dProjection<'a> {
     pub translation: &'a mut Vec2,
 }
 
+/// Edit a `Vec2` position field of an entity with drag&drop.
+///
+/// Note that this does not change populate the `Transform` component - this needs be done with a
+/// manually written populate system.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+/// # use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
+/// # use serde::{Deserialize, Serialize};
+/// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+/// # struct Example {
+/// #     position: Vec2,
+/// # }
+/// # let mut app = App::new();
+/// app.add_yoleck_handler({
+///     YoleckTypeHandler::<Example>::new("Example")
+///         .with(yoleck_vpeol_position_edit_adapter(
+///             |data: &mut Example| {
+///                 YoleckVpeolTransform2dProjection {
+///                     translation: &mut data.position,
+///                 }
+///             }
+///         ))
+///         .populate_with(populate_example)
+/// });
+///
+/// fn populate_example(mut populate: YoleckPopulate<Example>) {
+///     populate.populate(|_ctx, data, mut cmd| {
+///         cmd.insert_bundle(SpriteBundle {
+///             transform: Transform::from_translation(data.position.extend(0.0)),
+///             // Actual sprite components
+///             ..Default::default()
+///         });
+///     });
+/// }
+/// ```
 pub fn yoleck_vpeol_position_edit_adapter<T: 'static>(
     projection: impl 'static
         + Clone
