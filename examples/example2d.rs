@@ -208,10 +208,9 @@ struct Fruit {
 fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
-        cmd.insert_bundle(TransformBundle {
-            local: Transform::from_translation(data.position.extend(0.0)),
-            ..Default::default()
-        });
+        cmd.insert_bundle(TransformBundle::from_transform(
+            Transform::from_translation(data.position.extend(0.0)),
+        ));
         // Could have placed them on the main entity, but with this the children picking feature
         // can be tested and demonstrated.
         cmd.with_children(|commands| {

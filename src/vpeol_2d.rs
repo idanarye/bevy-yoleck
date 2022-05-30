@@ -432,12 +432,12 @@ pub struct YoleckVpeolTransform2dProjection<'a> {
 
 /// Edit a `Vec2` position field of an entity with drag&drop.
 ///
-/// Note that this does not change populate the `Transform` component - this needs be done with a
-/// manually written populate system.
+/// Note that this does not populate the `Transform` component - this needs be done with a manually
+/// written populate system.
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+/// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckPopulate};
 /// # use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
 /// # use serde::{Deserialize, Serialize};
 /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]

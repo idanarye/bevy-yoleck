@@ -1,3 +1,108 @@
+//! **V**iew**p**ort **E**diting **O**ver**l**ay for 3D games.
+//!
+//! Use this module to implement simple 3D editing for 3D games.
+//!
+//! To use add the egui and Yoleck plugins to the Bevy app, as well as the plugin of this module:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::bevy_egui::EguiPlugin;
+//! # use bevy_yoleck::YoleckPluginForEditor;
+//! # use bevy_yoleck::vpeol_3d::YoleckVpeol3dPlugin;
+//! # let mut app = App::new();
+//! app.add_plugin(EguiPlugin);
+//! app.add_plugin(YoleckPluginForEditor);
+//! app.add_plugin(YoleckVpeol3dPlugin);
+//! ```
+//!
+//! [`YoleckVpeol3dPlugin`] adds the orbit camera plugin from
+//! [`bevy-orbit-controls`](https://github.com/iMplode-nZ/bevy-orbit-controls), but camera still
+//! needs to be confiugred for it.
+//!
+//! Entity selection by clicking on it is supported by
+//! [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking). It's plugin is added by
+//! [`YoleckVpeol3dPlugin`], but the camera and entities still need to be configured.
+//!
+//! [`YoleckVpeol3dCameraBundle`] can be used to configure the camera for both plugins.
+//!
+//! To use `vpeol_3d` for an entity type, it's edit system can get `Vec3` (and possibly `Quat`)
+//! from the context with [`get_passed_data`](crate::YoleckEditContext::get_passed_data). It also
+//! needs to add `PickableBundle` and
+//! [`bevy_transform_gizmo`](https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo)'s
+//! `GizmoTransformable` (both are conveniently re-exported from this module):
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+//! # use bevy_yoleck::vpeol_3d::{PickableBundle, GizmoTransformable};
+//! # use serde::{Deserialize, Serialize};
+//! # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! # struct Example {
+//! #     position: Vec3,
+//! #     rotation: Quat,
+//! # }
+//! # let mut app = App::new();
+//! app.add_yoleck_handler({
+//!     YoleckTypeHandler::<Example>::new("Example")
+//!         .edit_with(edit_example)
+//!         .populate_with(populate_example)
+//! });
+//!
+//! fn edit_example(mut edit: YoleckEdit<Example>) {
+//!     edit.edit(|ctx, data, _ui| {
+//!         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
+//!             data.position = *pos;
+//!         }
+//!         if let Some(rot) = ctx.get_passed_data::<Quat>() {
+//!             data.rotation = *rot;
+//!         }
+//!     });
+//! }
+//!
+//! fn populate_example(mut populate: YoleckPopulate<Example>) {
+//!     populate.populate(|_ctx, data, mut cmd| {
+//!         cmd.insert_bundle(PbrBundle {
+//!             transform: Transform::from_translation(data.position),
+//!             // Actual PBR components
+//!             ..Default::default()
+//!         });
+//!         cmd.insert_bundle(PickableBundle::default());
+//!         cmd.insert(GizmoTransformable);
+//!     });
+//! }
+//! ```
+//!
+//! 3D entities are often hierarchical (e.g. when created by `spawn_scene`), so `PickableBundle`
+//! needs to be added to the relevant children - together with [`YoleckRouteClickTo`]. Since these
+//! entities are usually added later, [`YoleckWillContainClickableChildren`] can be used:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+//! # use bevy_yoleck::vpeol_3d::{PickableBundle, GizmoTransformable, YoleckWillContainClickableChildren};
+//! # use serde::{Deserialize, Serialize};
+//! # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! # struct Example {
+//! #     position: Vec3,
+//! #     rotation: Quat,
+//! # }
+//!
+//! fn populate_example(mut populate: YoleckPopulate<Example>, asset_server: Res<AssetServer>) {
+//!     populate.populate(|_ctx, data, mut cmd| {
+//!         cmd.insert_bundle(TransformBundle::from_transform(Transform::from_translation(data.position)));
+//!         cmd.with_children(|commands| {
+//!             commands.spawn_scene(asset_server.load("models/my-model.glb#Scene0"));
+//!         });
+//!         cmd.insert(YoleckWillContainClickableChildren);
+//!         cmd.insert(GizmoTransformable); // added on the parent entity, not the children
+//!     });
+//! }
+//! ```
+//!
+//! Alternatively, use [`yoleck_vpeol_transform_edit_adapter`]. It'll apply the transform and add
+//! [`PickableBundle`] and [`GizmoTransformable`], but not [`YoleckWillContainClickableChildren`] -
+//! that one still needs to be added separately.
+
 use crate::bevy_egui::egui;
 pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
@@ -7,16 +112,30 @@ use crate::{
 };
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
+/// Reexported from [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking).
+pub use bevy_mod_picking::PickableBundle;
 use bevy_mod_picking::{
-    DefaultPickingPlugins, PickableBundle, PickingCameraBundle, PickingEvent, PickingPluginsState,
+    DefaultPickingPlugins, PickingCameraBundle, PickingEvent, PickingPluginsState,
 };
-use bevy_transform_gizmo::{
-    GizmoPickSource, GizmoTransformable, TransformGizmoEvent, TransformGizmoPlugin,
-};
+/// Reexported from [`bevy_transform_gizmo`](https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo).
+pub use bevy_transform_gizmo::GizmoTransformable;
+use bevy_transform_gizmo::{GizmoPickSource, TransformGizmoEvent, TransformGizmoPlugin};
 use smooth_bevy_cameras::controllers::orbit::OrbitCameraPlugin;
+/// Reexported from [`bevy-orbit-controls`](https://github.com/iMplode-nZ/bevy-orbit-controls).
 pub use smooth_bevy_cameras::controllers::orbit::{OrbitCameraBundle, OrbitCameraController};
 use smooth_bevy_cameras::LookTransformPlugin;
 
+/// Add the systems required for 2D editing.
+///
+/// * Camera control using [`bevy-orbit-controls`](https://github.com/iMplode-nZ/bevy-orbit-controls)
+///   * Needs to be installed in the camera entity separately.
+/// * Entity selection using [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking)
+///   * Needs to be installed in the camera entity separately.
+///   * Needs to be installed in the pickable entities separately.
+/// * Entity dragging and rotating using
+///   [`bevy_transform_gizmo`](https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo).
+///   * Needs to be installed in the pickable entities separately.
+/// * Connecting nested entities.
 pub struct YoleckVpeol3dPlugin;
 
 impl Plugin for YoleckVpeol3dPlugin {
@@ -173,6 +292,9 @@ fn process_gizmo_events(
     }
 }
 
+/// Helper for installing
+/// [`bevy-orbit-controls`](https://github.com/iMplode-nZ/bevy-orbit-controls) and
+/// [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking) in a camera entity.
 #[derive(Bundle)]
 pub struct YoleckVpeol3dCameraBundle {
     #[bundle]
@@ -192,11 +314,58 @@ impl YoleckVpeol3dCameraBundle {
     }
 }
 
+/// See [`yoleck_vpeol_transform_edit_adapter`].
 pub struct YoleckVpeolTransform3dProjection<'a> {
     pub translation: &'a mut Vec3,
     pub rotation: Option<&'a mut Quat>,
 }
 
+/// Implement parts of the 3D editing for the entity:
+///
+/// * Add [`PickableBundle`] and [`GizmoTransformable`] to install entity selection and transform gizmo.
+/// * Edit a `Vec3` position field of an entity with the gizmo.
+/// * Edit a `Quat` rotation field of an entity with the gizmo.
+///
+/// Note that this does not populate the `Transform` component - this needs be done with a manually
+/// written populate system. Also, if the children of the entity entity are the ones using for
+/// picking [`YoleckWillContainClickableChildren`] needs to be added to it - this adapter will not
+/// add it.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckPopulate};
+/// # use bevy_yoleck::vpeol_3d::{yoleck_vpeol_transform_edit_adapter, YoleckVpeolTransform3dProjection};
+/// # use serde::{Deserialize, Serialize};
+/// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+/// # struct Example {
+/// #     position: Vec3,
+/// #     rotation: Quat,
+/// # }
+/// # let mut app = App::new();
+/// app.add_yoleck_handler({
+///     YoleckTypeHandler::<Example>::new("Example")
+///         .with(yoleck_vpeol_transform_edit_adapter(
+///             |data: &mut Example| {
+///                 YoleckVpeolTransform3dProjection {
+///                     translation: &mut data.position,
+///                     rotation: Some(&mut data.rotation),
+///                 }
+///             }
+///         ))
+///         .populate_with(populate_example)
+/// });
+///
+/// fn populate_example(mut populate: YoleckPopulate<Example>) {
+///     populate.populate(|_ctx, data, mut cmd| {
+///         cmd.insert_bundle(PbrBundle {
+///             transform: Transform::from_translation(data.position),
+///             // Actual PBR components
+///             ..Default::default()
+///         });
+///         // No need to add PickableBundle and GizmoTransformable - the adapter already did so.
+///     });
+/// }
+/// ```
 pub fn yoleck_vpeol_transform_edit_adapter<T: 'static>(
     projection: impl 'static
         + Clone
