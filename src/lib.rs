@@ -48,6 +48,116 @@
 //!   * Add the [`YoleckPluginForGame`] plugin.
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
 //!   * Use [`YoleckLoadingCommand`] to load the level.
+//!
+//! To support picking and moving entities in the viewport with the mouse, check out the
+//! [`vpeol_2d`](crate::vpeol_2d) or [`vpeol_3d`](crate::vpeol_3d) modules.
+//!
+//! # Minimal Working Example
+//!
+//! ```no_run
+//! use bevy::prelude::*;
+//! use bevy_yoleck::bevy_egui::EguiPlugin;
+//! use bevy_yoleck::{
+//!     egui, YoleckEdit, YoleckExtForApp, YoleckLevelIndex, YoleckLoadingCommand,
+//!     YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckRawLevel,
+//!     YoleckSyncWithEditorState, YoleckTypeHandler,
+//! };
+//! use serde::{Deserialize, Serialize};
+//!
+//! fn main() {
+//!     let is_editor = std::env::args().any(|arg| arg == "--editor");
+//!
+//!     let mut app = App::new();
+//!     app.add_plugins(DefaultPlugins);
+//!     if is_editor {
+//!         app.add_plugin(EguiPlugin);
+//!         app.add_plugin(YoleckPluginForEditor);
+//!         // Doesn't matter in this example, but a proper game would have systems that can work
+//!         // on the entity in `GameState::Game`, so while the level is edited we want to be in
+//!         // `GameState::Editor` - which can be treated as a pause state. When the editor wants
+//!         // to playtest the level we want to move to `GameState::Game` so that they can play it.
+//!         app.add_plugin(YoleckSyncWithEditorState {
+//!             when_editor: GameState::Editor,
+//!             when_game: GameState::Game,
+//!         });
+//!     } else {
+//!         app.add_plugin(YoleckPluginForGame);
+//!         app.add_state(GameState::Loading);
+//!         // In editor mode Yoleck takes care of level loading. In game mode the game needs to
+//!         // tell yoleck which levels to load and when.
+//!         app.add_system_set(SystemSet::on_update(GameState::Loading).with_system(load_first_level));
+//!     }
+//!     app.add_startup_system(setup_camera);
+//!
+//!     app.add_yoleck_handler({
+//!         YoleckTypeHandler::<Rectangle>::new("Rectangle")
+//!             .populate_with(populate_rectangle)
+//!             .edit_with(edit_rectangle)
+//!     });
+//!
+//!     app.run();
+//! }
+//!
+//! #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+//! enum GameState {
+//!     Loading,
+//!     Game,
+//!     Editor,
+//! }
+//!
+//! fn setup_camera(mut commands: Commands) {
+//!     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+//! }
+//!
+//! #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! struct Rectangle {
+//!     #[serde(default = "default_rectangle_side")]
+//!     width: f32,
+//!     #[serde(default = "default_rectangle_side")]
+//!     height: f32,
+//! }
+//!
+//! fn default_rectangle_side() -> f32 {
+//!     50.0
+//! }
+//!
+//! fn populate_rectangle(mut populate: YoleckPopulate<Rectangle>) {
+//!     populate.populate(|_ctx, data, mut cmd| {
+//!         cmd.insert_bundle(SpriteBundle {
+//!             sprite: Sprite {
+//!                 color: Color::RED,
+//!                 custom_size: Some(Vec2::new(data.width, data.height)),
+//!                 ..Default::default()
+//!             },
+//!             ..Default::default()
+//!         });
+//!     });
+//! }
+//!
+//! fn edit_rectangle(mut edit: YoleckEdit<Rectangle>) {
+//!     edit.edit(|_ctx, data, ui| {
+//!         ui.add(egui::Slider::new(&mut data.width, 50.0..=500.0).prefix("Width: "));
+//!         ui.add(egui::Slider::new(&mut data.height, 50.0..=500.0).prefix("Height: "));
+//!     });
+//! }
+//!
+//! fn load_first_level(
+//!     asset_server: Res<AssetServer>,
+//!     level_index_assets: Res<Assets<YoleckLevelIndex>>,
+//!     mut loading_command: ResMut<YoleckLoadingCommand>,
+//!     mut game_state: ResMut<State<GameState>>,
+//! ) {
+//!     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
+//!     if let Some(level_index) = level_index_assets.get(level_index_handle) {
+//!         // A proper game would have a proper level progression system, but here we are just
+//!         // taking the first level and loading it.
+//!         let level_handle: Handle<YoleckRawLevel> =
+//!             asset_server.load(&format!("levels/{}", level_index[0].filename));
+//!         *loading_command = YoleckLoadingCommand::FromAsset(level_handle);
+//!         game_state.set(GameState::Game).unwrap();
+//!     }
+//! }
+//! ```
 
 mod api;
 mod dynamic_source_handling;
