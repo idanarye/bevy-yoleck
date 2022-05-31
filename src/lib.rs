@@ -42,7 +42,8 @@
 //! * If the application starts in editor mode:
 //!   * Add the `EguiPlugin` plugin.
 //!   * Add the [`YoleckPluginForEditor`] plugin.
-//!   * Synchronize the game's state with the [`YoleckEditorState`] (optional)
+//!   * Use [`YoleckSyncWithEditorState`] to synchronize the game's state with the
+//!     [`YoleckEditorState`] (optional but highly recommended)
 //! * If the application starts in game mode:
 //!   * Add the [`YoleckPluginForGame`] plugin.
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
@@ -72,7 +73,7 @@ use bevy::utils::HashMap;
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
-    YoleckPopulateContext,
+    YoleckPopulateContext, YoleckSyncWithEditorState,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;

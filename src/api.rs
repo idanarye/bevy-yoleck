@@ -17,6 +17,66 @@ pub enum YoleckEditorState {
     GameActive,
 }
 
+/// Sync the game's state back and forth when the level editor enters and exits playtest mode.
+///
+/// Add this as a plugin. When using it, there is no need to initialize the state with `add_state`
+/// - `YoleckSyncWithEditorState` will initialize it to the value in `when_editor`.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::{YoleckSyncWithEditorState, YoleckPluginForEditor, YoleckPluginForGame};
+/// # use bevy_yoleck::bevy_egui::EguiPlugin;
+/// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// enum GameState {
+///     Loading,
+///     Game,
+///     Editor,
+/// }
+///
+/// # let mut app = App::new();
+/// # let executable_started_in_editor_mode = true;
+/// if executable_started_in_editor_mode {
+///     // These two plugins are needed for editor mode:
+///     app.add_plugin(EguiPlugin);
+///     app.add_plugin(YoleckPluginForEditor);
+///
+///     app.add_plugin(YoleckSyncWithEditorState {
+///         when_editor: GameState::Editor,
+///         when_game: GameState::Game,
+///     });
+/// } else {
+///     // This plugin is needed for game mode:
+///     app.add_plugin(YoleckPluginForGame);
+///
+///     app.add_state(GameState::Loading);
+/// }
+pub struct YoleckSyncWithEditorState<T>
+where
+    T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+{
+    pub when_editor: T,
+    pub when_game: T,
+}
+
+impl<T> Plugin for YoleckSyncWithEditorState<T>
+where
+    T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+{
+    fn build(&self, app: &mut App) {
+        let when_editor = self.when_editor.clone();
+        app.add_state(when_editor.clone());
+        let when_game = self.when_game.clone();
+        app.add_system(
+            move |editor_state: Res<State<YoleckEditorState>>, mut game_state: ResMut<State<T>>| {
+                let _ = game_state.set(match editor_state.current() {
+                    YoleckEditorState::EditorActive => when_editor.clone(),
+                    YoleckEditorState::GameActive => when_game.clone(),
+                });
+            },
+        );
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum PopulateReason {
     EditorInit,
