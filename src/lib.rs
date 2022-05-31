@@ -1,3 +1,53 @@
+//! **Y**our **O**wn **L**evel **E**ditor **C**reation **K**it
+//!
+//! Yoleck is a crate for having a game built with the Bevy game engine act as its own level
+//! editor.
+//!
+//! Yoleck uses Plain Old Rust Structs to store the data, and uses Serde to store them in files.
+//! The user code defines _populate systems_ for creating Bevy entities (populating their
+//! components) from these structs and _edit systems_ to edit these structs with egui.
+//!
+//! The synchronization between the structs and the files is bidirectional, and so is the
+//! synchronization between the structs and the egui widgets, but the synchronization from the
+//! structs to the entities is unidirectional - changes in the entities are not reflected in the
+//! structs:
+//!
+//! ```none
+//! ┌────────┐  Populate   ┏━━━━━━┓   Edit      ┌───────┐
+//! │Bevy    │  Systems    ┃Yoleck┃   Systems   │egui   │
+//! │Entities│◄────────────┃Struct┃◄═══════════►│Widgets│
+//! └────────┘             ┗━━━━━━┛             └───────┘
+//!                          ▲
+//!                          ║
+//!                          ║ Serde
+//!                          ║
+//!                          ▼
+//!                        ┌─────┐
+//!                        │.yol │
+//!                        │Files│
+//!                        └─────┘
+//! ```
+//!
+//! To support integrate Yoleck, a game needs to:
+//!
+//! * Define the entity structs, and make sure they implement:
+//!   ```ignore
+//!   #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//!   ```
+//! * For each struct, use [`add_yoleck_handler`](YoleckExtForApp::add_yoleck_handler) to add a
+//!   [`YoleckTypeHandler`] to the Bevy app.
+//!   * Register edit systems on the type handler with [`edit_with`](crate::YoleckTypeHandler::edit_with).
+//!   * Register populate systems on the type handler with
+//!     [`populate_with`](crate::YoleckTypeHandler::populate_with).
+//! * If the application starts in editor mode:
+//!   * Add the `EguiPlugin` plugin.
+//!   * Add the [`YoleckPluginForEditor`] plugin.
+//!   * Synchronize the game's state with the [`YoleckEditorState`] (optional)
+//! * If the application starts in game mode:
+//!   * Add the [`YoleckPluginForGame`] plugin.
+//!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
+//!   * Use [`YoleckLoadingCommand`] to load the level.
+
 mod api;
 mod dynamic_source_handling;
 mod editor;
