@@ -4,8 +4,10 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
-use bevy_yoleck::vpeol_3d::YoleckWillContainClickableChildren;
+use bevy_yoleck::vpeol_2d::{
+    yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection,
+    YoleckWillContainClickableChildren,
+};
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
