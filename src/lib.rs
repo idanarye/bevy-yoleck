@@ -31,9 +31,12 @@
 //! To support integrate Yoleck, a game needs to:
 //!
 //! * Define the entity structs, and make sure they implement:
-//!   ```ignore
+//!   ```text
 //!   #[derive(Clone, PartialEq, Serialize, Deserialize)]
 //!   ```
+//!   The structs need to be deserializable form the empty object `{}`, because that's how they'll
+//!   be initially created when the editor clicks on _Add New Entity_. Just slap
+//!   `#[serde(default)]` on all the fields.
 //! * For each struct, use [`add_yoleck_handler`](YoleckExtForApp::add_yoleck_handler) to add a
 //!   [`YoleckTypeHandler`] to the Bevy app.
 //!   * Register edit systems on the type handler with [`edit_with`](crate::YoleckTypeHandler::edit_with).
