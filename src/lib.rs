@@ -1,4 +1,4 @@
-//! **Y**our **O**wn **L**evel **E**ditor **C**reation **K**it
+//! # Your Own Level Editor Creation Kit
 //!
 //! Yoleck is a crate for having a game built with the Bevy game engine act as its own level
 //! editor.

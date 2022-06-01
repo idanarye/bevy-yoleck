@@ -1,4 +1,4 @@
-//! **V**iew**p**ort **E**diting **O**ver**l**ay for 2D games.
+//! # Viewport Editing Overlay for 2D games.
 //!
 //! Use this module to implement simple 2D editing for 2D games.
 //!

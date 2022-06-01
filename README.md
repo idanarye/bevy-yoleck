@@ -2,7 +2,7 @@
 [![Latest Version](https://img.shields.io/crates/v/bevy-yoleck.svg)](https://crates.io/crates/bevy-yoleck)
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://idanarye.github.io/bevy-yoleck/)
 
-# Bevy YOLECK - **Y**our **O**wn **L**evel **E**ditor **C**reation **K**it
+# Bevy YOLECK - Your Own Level Editor Creation Kit
 
 Yoleck is a crate for having a game built with the Bevy game engine act as its
 own level editor.
