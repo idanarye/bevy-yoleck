@@ -1,5 +1,6 @@
 [package]
 name = "bevy-yoleck"
+description = "Your Own Level Editor Creation Kit"
 version = "0.1.0"
 edition = "2021"
 authors = ["IdanArye <idanarye@gmail.com>"]
@@ -8,7 +9,7 @@ repository = "https://github.com/idanarye/bevy-yoleck"
 documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
 categories = ["game-development"]
-keywords = ["bevy", "gamedev", "editor"]
+keywords = ["bevy", "gamedev", "level-editor"]
 exclude = [
     "assets",
 ]
