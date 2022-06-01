@@ -18,10 +18,11 @@ own level editor.
   * Two simple such plugins included behind feature flags - `vpeol_2d` and `vpeol_3d`.
 * Playtest the levels inside the editor.
 
-## Planned features
+## Planned Features
 
 * Better file management UI: support drag&drop reordering, renaming, deletion.
 * Editable level data.
+* Entity relations - allow Yoleck managed entities refer other Yoleck managed entities.
 * Support non-linear level structure (e.g. graphs of which levels lead to where)
 * Multiple entity selection and editing.
 * Helpers for overlay editing (e.g. - handles the editor can interact with)
