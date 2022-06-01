@@ -18,19 +18,6 @@ own level editor.
   * Two simple such plugins included behind feature flags - `vpeol_2d` and `vpeol_3d`.
 * Playtest the levels inside the editor.
 
-## Planned Features
-
-* Better file management UI: support drag&drop reordering, renaming, deletion.
-* Editable level data.
-* Entity relations - allow Yoleck managed entities refer other Yoleck managed entities.
-* Support non-linear level structure (e.g. graphs of which levels lead to where)
-* Multiple entity selection and editing.
-* Helpers for overlay editing (e.g. - handles the editor can interact with)
-* Better 3D editing (the current
-  [`bevy_mod_picking`](https://github.com/aevyrie/bevy_mod_picking) and
-  [`bevy_transform_gizmo`](https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo)
-  integration feels clunky and cumbersome)
-
 ## Examples:
 
 * WASM examples - you can't save the levels because it's WASM, but you can edit the levels run playtests:
