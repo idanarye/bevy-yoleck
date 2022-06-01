@@ -32,7 +32,7 @@ own level editor.
 
 | bevy | bevy-yoleck |
 |------|-------------|
-| 0.7  |             |
+| 0.7  | 0.1         |
 
 ## License
 
