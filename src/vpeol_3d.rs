@@ -107,7 +107,7 @@ use crate::bevy_egui::egui;
 pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
 use crate::{
-    YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
+    YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate, YoleckState,
     YoleckTypeHandler,
 };
 use bevy::prelude::*;
@@ -187,6 +187,7 @@ fn process_picking_events(
     mut directives_writer: EventWriter<YoleckDirective>,
     mut selection_query: Query<&mut bevy_mod_picking::Selection>,
     root_resolver: Query<&YoleckRouteClickTo>,
+    yoleck: Res<YoleckState>,
 ) {
     let mut select = None;
     let mut deselect = false;
@@ -200,8 +201,10 @@ fn process_picking_events(
             bevy_mod_picking::SelectionEvent::JustSelected(entity) => {
                 select = Some(entity);
             }
-            bevy_mod_picking::SelectionEvent::JustDeselected(_) => {
-                deselect = true;
+            bevy_mod_picking::SelectionEvent::JustDeselected(entity) => {
+                if yoleck.entity_being_edited() == Some(*entity) {
+                    deselect = true;
+                }
             }
         }
     }
@@ -227,24 +230,36 @@ fn process_picking_events(
 fn process_events_from_yoleck(
     mut yoleck_reader: EventReader<YoleckEditorEvent>,
     mut selection_query: Query<(Entity, &mut bevy_mod_picking::Selection)>,
+    mut select_when_available: Local<Option<Entity>>,
 ) {
     for event in yoleck_reader.iter() {
         match event {
             YoleckEditorEvent::EntitySelected(selected_entity) => {
-                for (entity, mut selection) in selection_query.iter_mut() {
-                    selection.set_selected(entity == *selected_entity);
-                }
+                *select_when_available = Some(*selected_entity);
             }
             YoleckEditorEvent::EntityDeselected(deselected_entity) => {
+                *select_when_available = None;
                 if let Ok((_, mut selection)) = selection_query.get_mut(*deselected_entity) {
                     selection.set_selected(false);
                 }
             }
             YoleckEditorEvent::EditedEntityPopulated(repopulated_entity) => {
                 if let Ok((_, mut selection)) = selection_query.get_mut(*repopulated_entity) {
+                    *select_when_available = None;
                     selection.set_selected(true);
+                } else {
+                    *select_when_available = Some(*repopulated_entity);
                 }
             }
+        }
+    }
+    if let Some(selected_entity) = *select_when_available {
+        for (entity, mut selection) in selection_query.iter_mut() {
+            let should_select = entity == selected_entity;
+            if should_select {
+                *select_when_available = None;
+            }
+            selection.set_selected(should_select);
         }
     }
 }
