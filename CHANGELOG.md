@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.1.1 - 2022-06-02
 ### Fixed
 - `vpeol_3d`: Entities sometimes getting deselected when cursor leaves egui area.
 - `vpeol_3d`: Freshly created entities getting selected in Yoleck but Gizmo is not shown.
