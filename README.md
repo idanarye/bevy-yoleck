@@ -28,6 +28,33 @@ own level editor.
   * See the code at https://github.com/idanarye/sidekick-jam-entry-danger-doofus
   * Run the exeutable with `--editor` to edit the game levels with Yoleck.
 
+## File Format
+
+Yoleck saves the levels in JSON files that have the `.yol` extension. A `.yol`
+file's top level is a tuple (actually JSON array) of three values:
+
+* File metadata - e.g. Yoleck version.
+* Level data (placeholder - currently an empty object)
+* List of entities.
+
+Each entity is a tuple of two values:
+
+* Entity metadata - e.g. its type.
+* Entity data - that's the user defined struct
+
+The reason tuples are used instead of objects is to ensure ordering - to
+guarantee the metadata can be read before the data. This is important because
+the metadata is needed to parse the data.
+
+Yoleck generates another JSON file in the same directory as the `.yol` files
+called `index.yoli`. The purpose of this file is to let the game know what
+level are available to it (in WASM, for example, the asset server cannot look
+at a directory's contents). The index file containes a tuple of two values:
+
+* Index metadata - e.g. Yoleck version.
+* List of objects, each contain a path to a level file relative to the index
+  file.
+
 ## Versions
 
 | bevy | bevy-yoleck |
