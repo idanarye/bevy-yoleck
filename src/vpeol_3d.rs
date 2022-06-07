@@ -105,7 +105,9 @@
 
 use crate::bevy_egui::egui;
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
+use crate::vpeol::{
+    handle_clickable_children_system, YoleckRouteClickTo, YoleckVpeolSelectionCuePlugin,
+};
 use crate::{
     YoleckDirective, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckPopulate, YoleckState,
     YoleckTypeHandler,
@@ -140,6 +142,7 @@ pub struct YoleckVpeol3dPlugin;
 
 impl Plugin for YoleckVpeol3dPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(YoleckVpeolSelectionCuePlugin);
         app.add_plugins(DefaultPickingPlugins);
         app.add_plugin(TransformGizmoPlugin::default());
         app.add_plugin(LookTransformPlugin);

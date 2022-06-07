@@ -56,7 +56,9 @@
 
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
+use crate::vpeol::{
+    handle_clickable_children_system, YoleckRouteClickTo, YoleckVpeolSelectionCuePlugin,
+};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -76,6 +78,7 @@ pub struct YoleckVpeol2dPlugin;
 
 impl Plugin for YoleckVpeol2dPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(YoleckVpeolSelectionCuePlugin);
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(yoleck_clicks_on_objects)
