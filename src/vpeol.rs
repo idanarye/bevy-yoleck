@@ -77,6 +77,7 @@ impl Plugin for YoleckVpeolSelectionCuePlugin {
 #[derive(Component)]
 struct SelectionCueAnimation {
     cached_transform: Transform,
+    progress: f32,
 }
 
 fn manage_selection_transform_components(
@@ -89,7 +90,8 @@ fn manage_selection_transform_components(
     if let Some(entity) = entitiy_being_edited {
         if matches!(existance_query.get(entity), Ok(None)) {
             commands.entity(entity).insert(SelectionCueAnimation {
-                cached_transform: Default::default(), // doesn't matter - will be overriden anyway
+                cached_transform: Default::default(),
+                progress: 0.0,
             });
         }
     }
@@ -103,18 +105,18 @@ fn manage_selection_transform_components(
 fn add_selection_cue_before_transform_propagate(
     mut query: Query<(&mut SelectionCueAnimation, &mut Transform)>,
     time: Res<Time>,
-    mut place_in_loop: Local<f32>,
 ) {
-    *place_in_loop = (*place_in_loop + time.delta_seconds()) % 1.0;
-    let extra = 0.3
-        * if *place_in_loop < 0.5 {
-            *place_in_loop
-        } else {
-            1.0 - *place_in_loop
-        };
     for (mut animation, mut transform) in query.iter_mut() {
         animation.cached_transform = *transform;
-        transform.scale *= 1.0 + extra;
+        if animation.progress < 1.0 {
+            animation.progress += 3.0 * time.delta_seconds();
+            let extra = if animation.progress < 0.5 {
+                animation.progress
+            } else {
+                1.0 - animation.progress
+            };
+            transform.scale *= 1.0 + extra;
+        }
     }
 }
 
