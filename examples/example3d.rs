@@ -34,6 +34,14 @@ fn main() {
             Path::new(".").join("assets").join("levels3d"),
         ));
         app.add_plugin(bevy_yoleck::vpeol_3d::YoleckVpeol3dPlugin);
+        #[cfg(target_arch = "wasm32")]
+        app.add_startup_system(
+            |asset_server: Res<AssetServer>,
+             mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
+                *yoleck_loading_command =
+                    YoleckLoadingCommand::FromAsset(asset_server.load("levels3d/example.yol"));
+            },
+        );
     }
     app.add_yoleck_handler({
         YoleckTypeHandler::<Spaceship>::new("Spaceship")
