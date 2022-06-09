@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- `YoleckVpeolSelectionCuePlugin` for adding a pulse effect to show the
+  selected entity in the viewport.
+
 ## 0.1.1 - 2022-06-02
 ### Fixed
 - `vpeol_3d`: Entities sometimes getting deselected when cursor leaves egui area.

@@ -56,8 +56,11 @@ pub fn handle_clickable_children_system<F, B>(
     }
 }
 
+/// Add a pulse effect when an entity is being selected.
 pub struct YoleckVpeolSelectionCuePlugin {
+    /// How long, in seconds, the entire pulse effect will take. Defaults to 0.3.
     pub effect_duration: f32,
+    /// By how much (relative to original size) the entity will grow during the pulse. Defaults to 0.3.
     pub effect_magnitude: f32,
 }
 
