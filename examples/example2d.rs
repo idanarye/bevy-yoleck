@@ -39,6 +39,7 @@ fn main() {
             Path::new(".").join("assets").join("levels2d"),
         ));
         app.add_plugin(bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol::YoleckVpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,

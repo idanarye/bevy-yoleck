@@ -56,15 +56,30 @@ pub fn handle_clickable_children_system<F, B>(
     }
 }
 
-pub struct YoleckVpeolSelectionCuePlugin;
+pub struct YoleckVpeolSelectionCuePlugin {
+    pub effect_duration: f32,
+    pub effect_magnitude: f32,
+}
+
+impl Default for YoleckVpeolSelectionCuePlugin {
+    fn default() -> Self {
+        Self {
+            effect_duration: 0.3,
+            effect_magnitude: 0.3,
+        }
+    }
+}
 
 impl Plugin for YoleckVpeolSelectionCuePlugin {
     fn build(&self, app: &mut App) {
         app.add_system(manage_selection_transform_components);
         app.add_system_to_stage(
             CoreStage::PostUpdate,
-            add_selection_cue_before_transform_propagate
-                .before(TransformSystem::TransformPropagate),
+            add_selection_cue_before_transform_propagate(
+                1.0 / self.effect_duration,
+                2.0 * self.effect_magnitude,
+            )
+            .before(TransformSystem::TransformPropagate),
         );
         app.add_system_to_stage(
             CoreStage::PostUpdate,
@@ -103,19 +118,21 @@ fn manage_selection_transform_components(
 }
 
 fn add_selection_cue_before_transform_propagate(
-    mut query: Query<(&mut SelectionCueAnimation, &mut Transform)>,
-    time: Res<Time>,
-) {
-    for (mut animation, mut transform) in query.iter_mut() {
-        animation.cached_transform = *transform;
-        if animation.progress < 1.0 {
-            animation.progress += 3.0 * time.delta_seconds();
-            let extra = if animation.progress < 0.5 {
-                animation.progress
-            } else {
-                1.0 - animation.progress
-            };
-            transform.scale *= 1.0 + extra;
+    time_speedup: f32,
+    magnitude_scale: f32,
+) -> impl FnMut(Query<(&mut SelectionCueAnimation, &mut Transform)>, Res<Time>) {
+    move |mut query, time| {
+        for (mut animation, mut transform) in query.iter_mut() {
+            animation.cached_transform = *transform;
+            if animation.progress < 1.0 {
+                animation.progress += time_speedup * time.delta_seconds();
+                let extra = if animation.progress < 0.5 {
+                    animation.progress
+                } else {
+                    1.0 - animation.progress
+                };
+                transform.scale *= 1.0 + magnitude_scale * extra;
+            }
         }
     }
 }

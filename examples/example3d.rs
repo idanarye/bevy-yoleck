@@ -34,6 +34,7 @@ fn main() {
             Path::new(".").join("assets").join("levels3d"),
         ));
         app.add_plugin(bevy_yoleck::vpeol_3d::YoleckVpeol3dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol::YoleckVpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,
