@@ -121,6 +121,7 @@ fn yoleck_clicks_on_objects(
         )>,
     )>,
     root_resolver: Query<&YoleckRouteClickTo>,
+    global_transform_query: Query<&GlobalTransform>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     yoleck: ResMut<YoleckState>,
@@ -255,12 +256,15 @@ fn yoleck_clicks_on_objects(
                             result.map(|(result, _)| result)
                         });
                     *state = if let Some((entity, entity_transform)) = entity_under_cursor {
-                        let entity = if let Ok(YoleckRouteClickTo(root_entity)) =
-                            root_resolver.get(entity)
+                        let (entity, entity_transform) = if let Ok(YoleckRouteClickTo(
+                            root_entity,
+                        )) = root_resolver.get(entity)
                         {
-                            *root_entity
+                            let root_entity_transform = global_transform_query.get(*root_entity)
+                                .expect("when routing to root entity, the root entity should have its own GlobalTransform");
+                            (*root_entity, root_entity_transform)
                         } else {
-                            entity
+                            (entity, entity_transform)
                         };
                         directives_writer.send(YoleckDirective::set_selected(Some(entity)));
                         YoleckClicksOnObjectsState::BeingDragged {
