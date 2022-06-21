@@ -176,6 +176,7 @@ pub mod vpeol;
 pub mod vpeol_2d;
 #[cfg(feature = "vpeol_3d")]
 pub mod vpeol_3d;
+mod knobs;
 
 use std::any::Any;
 use std::path::Path;

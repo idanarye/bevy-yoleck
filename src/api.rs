@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 
+use crate::knobs::KnobsCache;
 use crate::{BoxedArc, YoleckManaged};
 
 /// Whether or not the Yoleck editor is active.
