@@ -250,7 +250,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     handler_to_run = Some(yoleck_managed.type_name.clone());
                     *yoleck_user_system_context = YoleckUserSystemContext::Edit {
                         entity,
-                        passed: data_passed_to_entities.remove(&entity).unwrap_or_default(),
+                        passed: data_passed_to_entities,
                     };
                 }
             }

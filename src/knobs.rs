@@ -5,19 +5,22 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+#[derive(Component)]
+pub struct YoleckKnob;
+
 #[derive(Default)]
-pub struct KnobsCache {
+pub struct YoleckKnobsCache {
     by_key_hash: HashMap<u64, Vec<CachedKnob>>,
 }
 
 struct CachedKnob {
-    key: Box<dyn Any>,
+    key: Box<dyn Send + Sync + Any>,
     entity: Entity,
     keep_alive: bool,
 }
 
-impl KnobsCache {
-    pub fn access<'w, 's, 'a, K: 'static + Hash + Eq>(&mut self, key: K, commands: &'a mut Commands<'w, 's>) -> KnobFromCache<'w, 's, 'a> {
+impl YoleckKnobsCache {
+    pub fn access<'w, 's, 'a, K>(&mut self, key: K, commands: &'a mut Commands<'w, 's>) -> KnobFromCache<'w, 's, 'a> where K: 'static + Send + Sync + Hash + Eq {
         let mut hasher = self.by_key_hash.hasher().build_hasher();
         key.hash(&mut hasher);
         let entries = self.by_key_hash.entry(hasher.finish()).or_default();
@@ -32,7 +35,8 @@ impl KnobsCache {
                 }
             }
         }
-        let cmd = commands.spawn();
+        let mut cmd = commands.spawn();
+        cmd.insert(YoleckKnob);
         entries.push(CachedKnob {
             key: Box::new(key),
             entity: cmd.id(),

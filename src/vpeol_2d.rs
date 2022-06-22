@@ -56,7 +56,7 @@
 
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo};
+use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo, YoleckKnobClick};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -64,7 +64,7 @@ use bevy::sprite::Anchor;
 use bevy::text::Text2dSize;
 use bevy::utils::HashMap;
 
-use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler};
+use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler, YoleckKnob};
 
 /// Add the systems required for 2D editing.
 ///
@@ -122,6 +122,7 @@ fn yoleck_clicks_on_objects(
     )>,
     root_resolver: Query<&YoleckRouteClickTo>,
     global_transform_query: Query<&GlobalTransform>,
+    knob_query: Query<Entity, With<YoleckKnob>>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     yoleck: ResMut<YoleckState>,
@@ -235,46 +236,57 @@ fn yoleck_clicks_on_objects(
 
             match (&mouse_button_op, &state) {
                 (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
-                    let entity_under_cursor = yoleck
-                        .entity_being_edited()
-                        .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
-                        .or_else(|| {
-                            let mut result = None;
-                            for (entity, entity_transform, sprite) in yolek_targets_query.iter() {
-                                if is_world_pos_in(entity_transform, sprite, world_pos) {
-                                    if let Some((_, current_result_z)) = result {
-                                        if entity_transform.translation.z < current_result_z {
-                                            continue;
-                                        }
-                                    }
-                                    result = Some((
-                                        (entity, entity_transform),
-                                        entity_transform.translation.z,
-                                    ));
-                                }
-                            }
-                            result.map(|(result, _)| result)
-                        });
-                    *state = if let Some((entity, entity_transform)) = entity_under_cursor {
-                        let (entity, entity_transform) = if let Ok(YoleckRouteClickTo(
-                            root_entity,
-                        )) = root_resolver.get(entity)
-                        {
-                            let root_entity_transform = global_transform_query.get(*root_entity)
-                                .expect("when routing to root entity, the root entity should have its own GlobalTransform");
-                            (*root_entity, root_entity_transform)
-                        } else {
-                            (entity, entity_transform)
-                        };
-                        directives_writer.send(YoleckDirective::set_selected(Some(entity)));
-                        YoleckClicksOnObjectsState::BeingDragged {
-                            entity,
+                    if let Some((knob_entity, knob_transform)) = knob_query.iter().find_map(|entity| {
+                        Some((entity, is_entity_still_pointed_at(entity)?))
+                    }) {
+                        directives_writer.send(YoleckDirective::pass_to_entity(knob_entity, YoleckKnobClick));
+                        *state = YoleckClicksOnObjectsState::BeingDragged {
+                            entity: knob_entity,
                             prev_screen_pos: screen_pos,
-                            offset: world_pos - entity_transform.translation.truncate(),
+                            offset: world_pos - knob_transform.translation.truncate(),
                         }
                     } else {
-                        directives_writer.send(YoleckDirective::set_selected(None));
-                        YoleckClicksOnObjectsState::Empty
+                        let entity_under_cursor = yoleck
+                            .entity_being_edited()
+                            .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
+                            .or_else(|| {
+                                let mut result = None;
+                                for (entity, entity_transform, sprite) in yolek_targets_query.iter() {
+                                    if is_world_pos_in(entity_transform, sprite, world_pos) {
+                                        if let Some((_, current_result_z)) = result {
+                                            if entity_transform.translation.z < current_result_z {
+                                                continue;
+                                            }
+                                        }
+                                        result = Some((
+                                            (entity, entity_transform),
+                                            entity_transform.translation.z,
+                                        ));
+                                    }
+                                }
+                                result.map(|(result, _)| result)
+                            });
+                        *state = if let Some((entity, entity_transform)) = entity_under_cursor {
+                            let (entity, entity_transform) = if let Ok(YoleckRouteClickTo(
+                                root_entity,
+                            )) = root_resolver.get(entity)
+                            {
+                                let root_entity_transform = global_transform_query.get(*root_entity)
+                                    .expect("when routing to root entity, the root entity should have its own GlobalTransform");
+                                (*root_entity, root_entity_transform)
+                            } else {
+                                (entity, entity_transform)
+                            };
+                            directives_writer.send(YoleckDirective::set_selected(Some(entity)));
+                            YoleckClicksOnObjectsState::BeingDragged {
+                                entity,
+                                prev_screen_pos: screen_pos,
+                                offset: world_pos - entity_transform.translation.truncate(),
+                            }
+                        } else {
+                            directives_writer.send(YoleckDirective::set_selected(None));
+                            YoleckClicksOnObjectsState::Empty
+                        }
                     }
                 }
                 (

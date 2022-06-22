@@ -148,6 +148,7 @@ where
         world.insert_resource(YoleckUiForEditSystem(content_ui));
         for system in self.edit_systems.iter_mut() {
             system.run((), world);
+            system.apply_buffers(world);
         }
         prepared.content_ui = world.remove_resource::<YoleckUiForEditSystem>().unwrap().0;
         prepared.end(ui);

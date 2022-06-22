@@ -1,12 +1,13 @@
 use std::any::TypeId;
 use std::marker::PhantomData;
+use std::hash::Hash;
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 
-use crate::knobs::KnobsCache;
+use crate::knobs::{YoleckKnobsCache, KnobFromCache};
 use crate::{BoxedArc, YoleckManaged};
 
 /// Whether or not the Yoleck editor is active.
@@ -115,10 +116,12 @@ impl<'a> YoleckPopulateContext<'a> {
 
 /// A context for [`YoleckEdit::edit`].
 pub struct YoleckEditContext<'a> {
-    pub(crate) passed: &'a HashMap<TypeId, BoxedArc>,
+    pub entity: Entity,
+    pub(crate) passed: &'a mut HashMap<Entity, HashMap<TypeId, BoxedArc>>,
+    knobs_cache: &'a mut YoleckKnobsCache,
 }
 
-impl YoleckEditContext<'_> {
+impl<'a> YoleckEditContext<'a> {
     /// Get data sent to the entity from external systems (usually from (usually a [ViewPort Editing OverLay](crate::vpeol))
     ///
     /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
@@ -138,10 +141,26 @@ impl YoleckEditContext<'_> {
     /// }
     /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
-        if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
+        if let Some(dynamic) = self.passed.get(&self.entity).and_then(|m| m.get(&TypeId::of::<T>())) {
             dynamic.downcast_ref()
         } else {
             None
+        }
+    }
+
+    pub fn knob<'b, 'w, 's, K>(&mut self, commands: &'b mut Commands<'w, 's>, key: K) -> YoleckKnobHandle<'w, 's, 'b>
+    where
+        K: 'static + Send + Sync + Hash + Eq,
+    {
+        let KnobFromCache {
+            cmd,
+            is_new,
+        } = self.knobs_cache.access(key, commands);
+        let passed = self.passed.remove(&cmd.id()).unwrap_or_default();
+        YoleckKnobHandle {
+            cmd,
+            is_new,
+            passed,
         }
     }
 }
@@ -155,8 +174,9 @@ pub struct YoleckEdit<'w, 's, T: 'static> {
     #[allow(dead_code)]
     query: Query<'w, 's, &'static mut YoleckManaged>,
     #[allow(dead_code)]
-    context: Res<'w, YoleckUserSystemContext>,
+    context: ResMut<'w, YoleckUserSystemContext>,
     ui: ResMut<'w, YoleckUiForEditSystem>,
+    knobs_cache: ResMut<'w, YoleckKnobsCache>,
     #[system_param(ignore)]
     _phantom_data: PhantomData<fn() -> T>,
 }
@@ -195,15 +215,19 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     ///     });
     /// }
     /// ```
-    pub fn edit(&mut self, mut dlg: impl FnMut(&YoleckEditContext, &mut T, &mut egui::Ui)) {
-        match &*self.context {
+    pub fn edit(&mut self, mut dlg: impl FnMut(&mut YoleckEditContext, &mut T, &mut egui::Ui)) {
+        match &mut *self.context {
             YoleckUserSystemContext::Nope
             | YoleckUserSystemContext::PopulateEdited(_)
             | YoleckUserSystemContext::PopulateInitiated { .. } => {
                 panic!("Wrong state");
             }
             YoleckUserSystemContext::Edit { entity, passed } => {
-                let edit_context = YoleckEditContext { passed };
+                let mut edit_context = YoleckEditContext {
+                    entity: *entity,
+                    passed,
+                    knobs_cache: &mut self.knobs_cache,
+                };
                 let mut yoleck_managed = self
                     .query
                     .get_mut(*entity)
@@ -212,8 +236,24 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
                     .data
                     .downcast_mut::<T>()
                     .expect("Edited data is of wrong type");
-                dlg(&edit_context, data, &mut self.ui.0);
+                dlg(&mut edit_context, data, &mut self.ui.0);
             }
+        }
+    }
+}
+
+pub struct YoleckKnobHandle<'w, 's, 'a> {
+    pub cmd: EntityCommands<'w, 's, 'a>,
+    pub is_new: bool,
+    passed: HashMap<TypeId, BoxedArc>,
+}
+
+impl YoleckKnobHandle<'_, '_, '_> {
+    pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
+        if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
+            dynamic.downcast_ref()
+        } else {
+            None
         }
     }
 }
@@ -330,7 +370,7 @@ pub enum YoleckUserSystemContext {
     Nope,
     Edit {
         entity: Entity,
-        passed: HashMap<TypeId, BoxedArc>,
+        passed: HashMap<Entity, HashMap<TypeId, BoxedArc>>,
     },
     PopulateEdited(Entity),
     PopulateInitiated {

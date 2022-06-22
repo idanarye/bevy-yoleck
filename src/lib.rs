@@ -188,7 +188,7 @@ use bevy::utils::HashMap;
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
-    YoleckPopulateContext, YoleckSyncWithEditorState,
+    YoleckPopulateContext, YoleckSyncWithEditorState, YoleckKnobHandle,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -197,6 +197,7 @@ pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
+pub use self::knobs::{YoleckKnobsCache, YoleckKnob};
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
 pub use bevy_egui;
@@ -241,6 +242,7 @@ impl Plugin for YoleckPluginForEditor {
         app.add_state(YoleckEditorState::EditorActive);
         app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
+        app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
             entity_being_edited: None,
             level_needs_saving: false,

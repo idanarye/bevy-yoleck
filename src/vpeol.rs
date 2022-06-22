@@ -9,6 +9,8 @@ use bevy::transform::TransformSystem;
 
 use crate::YoleckState;
 
+pub struct YoleckKnobClick;
+
 /// Marker for entities that will be interacted in the viewport using their children.
 ///
 /// Populate systems should mark the entity with this component when applicable. The viewport

@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
+use bevy_yoleck::vpeol::YoleckKnobClick;
 use bevy_yoleck::vpeol_2d::{
     yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection,
     YoleckWillContainClickableChildren,
@@ -61,6 +62,7 @@ fn main() {
                     translation: &mut data.position,
                 }
             }))
+            .edit_with(edit_player)
     });
 
     app.add_yoleck_handler({
@@ -164,6 +166,8 @@ struct IsPlayer;
 struct Player {
     #[serde(default)]
     position: Vec2,
+    #[serde(default)]
+    rotation: f32,
 }
 
 fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>) {
@@ -173,11 +177,34 @@ fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            transform: Transform::from_translation(data.position.extend(0.0)),
+            transform: Transform::from_translation(data.position.extend(0.0)).with_rotation(Quat::from_rotation_z(data.rotation)),
             texture: assets.player_sprite.clone(),
             ..Default::default()
         });
         cmd.insert(IsPlayer);
+    });
+}
+
+fn edit_player(mut edit: YoleckEdit<Player>, mut commands: Commands) {
+    edit.edit(|ctx, data, ui| {
+        use std::f32::consts::PI;
+        ui.add(egui::Slider::new(&mut data.rotation, PI..=-PI).prefix("Angle: "));
+
+        let mut rotate_knob = ctx.knob(&mut commands, "rotate");
+        let knob_position = data.position.extend(1.0) + Quat::from_rotation_z(data.rotation) * (50.0 * Vec3::Y);
+        rotate_knob.cmd.insert_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::PURPLE,
+                custom_size: Some(Vec2::new(30.0, 30.0)),
+                ..Default::default()
+            },
+            transform: Transform::from_translation(knob_position),
+            global_transform: Transform::from_translation(knob_position).into(),
+            ..Default::default()
+        });
+        if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec2>() {
+            data.rotation = Vec2::Y.angle_between(*rotate_to - data.position);
+        }
     });
 }
 
@@ -240,8 +267,8 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
     });
 }
 
-fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>) {
-    edit.edit(|_ctx, data, ui| {
+fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands: Commands) {
+    edit.edit(|ctx, data, ui| {
         ui.horizontal(|ui| {
             let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
             for (index, rect) in rects.iter().enumerate() {
@@ -253,6 +280,25 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>) {
                     .clicked()
                 {
                     data.fruit_index = index;
+                }
+
+                if index != data.fruit_index {
+                    let mut knob = ctx.knob(&mut commands, ("select", index));
+                    let knob_position = (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
+                    knob.cmd.insert_bundle(SpriteSheetBundle {
+                        sprite: TextureAtlasSprite {
+                            index,
+                            custom_size: Some(Vec2::new(20.0, 20.0)),
+                            ..Default::default()
+                        },
+                        texture_atlas: assets.fruits_sprite_sheet.clone(),
+                        transform: Transform::from_translation(knob_position),
+                        global_transform: Transform::from_translation(knob_position).into(),
+                        ..Default::default()
+                    });
+                    if knob.get_passed_data::<YoleckKnobClick>().is_some() {
+                        data.fruit_index = index;
+                    }
                 }
             }
         });
