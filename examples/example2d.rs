@@ -177,7 +177,8 @@ fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            transform: Transform::from_translation(data.position.extend(0.0)).with_rotation(Quat::from_rotation_z(data.rotation)),
+            transform: Transform::from_translation(data.position.extend(0.0))
+                .with_rotation(Quat::from_rotation_z(data.rotation)),
             texture: assets.player_sprite.clone(),
             ..Default::default()
         });
@@ -191,7 +192,8 @@ fn edit_player(mut edit: YoleckEdit<Player>, mut commands: Commands) {
         ui.add(egui::Slider::new(&mut data.rotation, PI..=-PI).prefix("Angle: "));
 
         let mut rotate_knob = ctx.knob(&mut commands, "rotate");
-        let knob_position = data.position.extend(1.0) + Quat::from_rotation_z(data.rotation) * (50.0 * Vec3::Y);
+        let knob_position =
+            data.position.extend(1.0) + Quat::from_rotation_z(data.rotation) * (50.0 * Vec3::Y);
         rotate_knob.cmd.insert_bundle(SpriteBundle {
             sprite: Sprite {
                 color: Color::PURPLE,
@@ -284,7 +286,8 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
 
                 if index != data.fruit_index {
                     let mut knob = ctx.knob(&mut commands, ("select", index));
-                    let knob_position = (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
+                    let knob_position =
+                        (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
                     knob.cmd.insert_bundle(SpriteSheetBundle {
                         sprite: TextureAtlasSprite {
                             index,

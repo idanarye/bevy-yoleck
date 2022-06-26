@@ -9,8 +9,8 @@ use bevy_egui::egui;
 use crate::api::YoleckUserSystemContext;
 use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
-    BoxedArc, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckManaged,
-    YoleckRawEntry, YoleckState, YoleckTypeHandlers,
+    BoxedArc, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckKnobsCache,
+    YoleckManaged, YoleckRawEntry, YoleckState, YoleckTypeHandlers,
 };
 
 enum YoleckDirectiveInner {
@@ -172,11 +172,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
+        ResMut<YoleckKnobsCache>,
     )>::new(world);
 
     let mut writer_state = SystemState::<EventWriter<YoleckEditorEvent>>::new(world);
 
     let mut comparison_cache = None;
+    let mut previously_edited_entity: Option<Entity> = None;
 
     move |world, ui| {
         let mut handler_to_run = None;
@@ -189,6 +191,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut commands,
                 editor_state,
                 mut writer,
+                mut knobs_cache,
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
@@ -253,6 +256,17 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         passed: data_passed_to_entities,
                     };
                 }
+            }
+
+            if previously_edited_entity != yoleck.entity_being_edited() {
+                previously_edited_entity = yoleck.entity_being_edited();
+                for knob_entity in knobs_cache.drain() {
+                    commands.entity(knob_entity).despawn_recursive();
+                }
+            } else {
+                knobs_cache.clean_untouched(|knob_entity| {
+                    commands.entity(knob_entity).despawn_recursive();
+                });
             }
         }
         system_state.apply(world);

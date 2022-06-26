@@ -168,6 +168,7 @@ mod dynamic_source_handling;
 mod editor;
 mod editor_window;
 mod entity_management;
+mod knobs;
 mod level_files_manager;
 mod level_index;
 #[cfg(feature = "vpeol")]
@@ -176,7 +177,6 @@ pub mod vpeol;
 pub mod vpeol_2d;
 #[cfg(feature = "vpeol_3d")]
 pub mod vpeol_3d;
-mod knobs;
 
 use std::any::Any;
 use std::path::Path;
@@ -187,8 +187,8 @@ use bevy::utils::HashMap;
 
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckPopulate,
-    YoleckPopulateContext, YoleckSyncWithEditorState, YoleckKnobHandle,
+    YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckKnobHandle,
+    YoleckPopulate, YoleckPopulateContext, YoleckSyncWithEditorState,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -197,7 +197,7 @@ pub use self::editor_window::YoleckEditorSection;
 pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
-pub use self::knobs::{YoleckKnobsCache, YoleckKnob};
+pub use self::knobs::{YoleckKnob, YoleckKnobsCache};
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
 pub use bevy_egui;

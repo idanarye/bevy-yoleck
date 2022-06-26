@@ -56,7 +56,7 @@
 
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, YoleckRouteClickTo, YoleckKnobClick};
+use crate::vpeol::{handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -64,7 +64,9 @@ use bevy::sprite::Anchor;
 use bevy::text::Text2dSize;
 use bevy::utils::HashMap;
 
-use crate::{YoleckDirective, YoleckEdit, YoleckEditorState, YoleckState, YoleckTypeHandler, YoleckKnob};
+use crate::{
+    YoleckDirective, YoleckEdit, YoleckEditorState, YoleckKnob, YoleckState, YoleckTypeHandler,
+};
 
 /// Add the systems required for 2D editing.
 ///
@@ -236,10 +238,14 @@ fn yoleck_clicks_on_objects(
 
             match (&mouse_button_op, &state) {
                 (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
-                    if let Some((knob_entity, knob_transform)) = knob_query.iter().find_map(|entity| {
-                        Some((entity, is_entity_still_pointed_at(entity)?))
-                    }) {
-                        directives_writer.send(YoleckDirective::pass_to_entity(knob_entity, YoleckKnobClick));
+                    if let Some((knob_entity, knob_transform)) = knob_query
+                        .iter()
+                        .find_map(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
+                    {
+                        directives_writer.send(YoleckDirective::pass_to_entity(
+                            knob_entity,
+                            YoleckKnobClick,
+                        ));
                         *state = YoleckClicksOnObjectsState::BeingDragged {
                             entity: knob_entity,
                             prev_screen_pos: screen_pos,
@@ -251,7 +257,8 @@ fn yoleck_clicks_on_objects(
                             .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
                             .or_else(|| {
                                 let mut result = None;
-                                for (entity, entity_transform, sprite) in yolek_targets_query.iter() {
+                                for (entity, entity_transform, sprite) in yolek_targets_query.iter()
+                                {
                                     if is_world_pos_in(entity_transform, sprite, world_pos) {
                                         if let Some((_, current_result_z)) = result {
                                             if entity_transform.translation.z < current_result_z {

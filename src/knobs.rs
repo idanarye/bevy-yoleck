@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::hash::{Hash, BuildHasher, Hasher};
+use std::hash::{BuildHasher, Hash, Hasher};
 
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
@@ -20,7 +20,14 @@ struct CachedKnob {
 }
 
 impl YoleckKnobsCache {
-    pub fn access<'w, 's, 'a, K>(&mut self, key: K, commands: &'a mut Commands<'w, 's>) -> KnobFromCache<'w, 's, 'a> where K: 'static + Send + Sync + Hash + Eq {
+    pub fn access<'w, 's, 'a, K>(
+        &mut self,
+        key: K,
+        commands: &'a mut Commands<'w, 's>,
+    ) -> KnobFromCache<'w, 's, 'a>
+    where
+        K: 'static + Send + Sync + Hash + Eq,
+    {
         let mut hasher = self.by_key_hash.hasher().build_hasher();
         key.hash(&mut hasher);
         let entries = self.by_key_hash.entry(hasher.finish()).or_default();
@@ -31,7 +38,7 @@ impl YoleckKnobsCache {
                     return KnobFromCache {
                         cmd: commands.entity(entry.entity),
                         is_new: false,
-                    }
+                    };
                 }
             }
         }
@@ -60,8 +67,10 @@ impl YoleckKnobsCache {
         });
     }
 
-    pub fn drain(self) -> impl Iterator<Item = Entity> {
-        self.by_key_hash.into_iter().flat_map(|(_, entries)| entries.into_iter().map(|entry| entry.entity))
+    pub fn drain(&mut self) -> impl '_ + Iterator<Item = Entity> {
+        self.by_key_hash
+            .drain()
+            .flat_map(|(_, entries)| entries.into_iter().map(|entry| entry.entity))
     }
 }
 

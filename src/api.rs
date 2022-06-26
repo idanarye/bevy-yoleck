@@ -1,13 +1,13 @@
 use std::any::TypeId;
-use std::marker::PhantomData;
 use std::hash::Hash;
+use std::marker::PhantomData;
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 
-use crate::knobs::{YoleckKnobsCache, KnobFromCache};
+use crate::knobs::{KnobFromCache, YoleckKnobsCache};
 use crate::{BoxedArc, YoleckManaged};
 
 /// Whether or not the Yoleck editor is active.
@@ -141,21 +141,26 @@ impl<'a> YoleckEditContext<'a> {
     /// }
     /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
-        if let Some(dynamic) = self.passed.get(&self.entity).and_then(|m| m.get(&TypeId::of::<T>())) {
+        if let Some(dynamic) = self
+            .passed
+            .get(&self.entity)
+            .and_then(|m| m.get(&TypeId::of::<T>()))
+        {
             dynamic.downcast_ref()
         } else {
             None
         }
     }
 
-    pub fn knob<'b, 'w, 's, K>(&mut self, commands: &'b mut Commands<'w, 's>, key: K) -> YoleckKnobHandle<'w, 's, 'b>
+    pub fn knob<'b, 'w, 's, K>(
+        &mut self,
+        commands: &'b mut Commands<'w, 's>,
+        key: K,
+    ) -> YoleckKnobHandle<'w, 's, 'b>
     where
         K: 'static + Send + Sync + Hash + Eq,
     {
-        let KnobFromCache {
-            cmd,
-            is_new,
-        } = self.knobs_cache.access(key, commands);
+        let KnobFromCache { cmd, is_new } = self.knobs_cache.access(key, commands);
         let passed = self.passed.remove(&cmd.id()).unwrap_or_default();
         YoleckKnobHandle {
             cmd,
