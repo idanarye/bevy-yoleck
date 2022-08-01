@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["bevy_mod_picking"] = [{"text":"impl <a class=\"trait\" href=\"bevy_app/plugin_group/trait.PluginGroup.html\" title=\"trait bevy_app::plugin_group::PluginGroup\">PluginGroup</a> for <a class=\"struct\" href=\"bevy_mod_picking/struct.DefaultPickingPlugins.html\" title=\"struct bevy_mod_picking::DefaultPickingPlugins\">DefaultPickingPlugins</a>","synthetic":false,"types":["bevy_mod_picking::DefaultPickingPlugins"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

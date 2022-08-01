@@ -1,0 +1,1 @@
+initSidebarItems({"derive":[["Bundle",""]],"struct":[["BundleId",""],["BundleInfo",""],["Bundles",""]],"trait":[["Bundle","An ordered collection of [`Component`]s."]]});

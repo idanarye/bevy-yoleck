@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["iter","Iterators."],["util","Utility functions."]],"struct":[["Reader","Skin reader."],["Skin","Joints and matrices defining a skin."]]});

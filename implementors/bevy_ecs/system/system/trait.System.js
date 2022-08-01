@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["bevy_core"] = [{"text":"impl <a class=\"trait\" href=\"bevy_ecs/system/system/trait.System.html\" title=\"trait bevy_ecs::system::system::System\">System</a> for <a class=\"struct\" href=\"bevy_core/struct.FixedTimestep.html\" title=\"struct bevy_core::FixedTimestep\">FixedTimestep</a>","synthetic":false,"types":["bevy_core::time::fixed_timestep::FixedTimestep"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

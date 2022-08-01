@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["intel",""],["nvidia",""],["qualcomm",""]]});

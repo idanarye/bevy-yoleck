@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Iter","General iterator for an accessor."],["SparseIndicesIter","Iterator over indices of sparse accessor."]],"struct":[["ItemIter","Visits the items in an `Accessor`."],["SparseIter","Iterates over a sparse accessor."]],"trait":[["Item","Represents items that can be read by an `Accessor`."]]});

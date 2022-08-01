@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Table","A Color Bitmap Data Table."]]});

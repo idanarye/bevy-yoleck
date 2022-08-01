@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Table","A Compact Font Format 2 Table."]]});

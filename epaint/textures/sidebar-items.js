@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["TextureManager","Low-level manager for allocating textures."],["TextureMeta","Meta-data about an allocated texture."],["TexturesDelta","What has been allocated and freed during the last period."]]});

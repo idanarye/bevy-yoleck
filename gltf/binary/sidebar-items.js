@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ChunkType","GLB chunk type."],["Error","Represents a Glb loader error."]],"struct":[["Glb","Binary glTF contents."],["Header","The header section of a .glb file."]]});

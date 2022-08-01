@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Asset","Metadata about the glTF asset."]]});

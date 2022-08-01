@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Ray3d","A 3D ray, with an origin and direction. The direction is guaranteed to be normalized."]]});

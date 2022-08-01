@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["VALID_TYPES","All valid light types."]],"enum":[["Type","Specifies the light type."]],"struct":[["KhrLightsPunctual",""],["Light",""],["Spot","Spot light parameters."]]});

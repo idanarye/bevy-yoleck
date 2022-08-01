@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["bevy_core_pipeline"] = [{"text":"impl <a class=\"trait\" href=\"bevy_render/render_phase/draw/trait.BatchedPhaseItem.html\" title=\"trait bevy_render::render_phase::draw::BatchedPhaseItem\">BatchedPhaseItem</a> for <a class=\"struct\" href=\"bevy_core_pipeline/struct.Transparent2d.html\" title=\"struct bevy_core_pipeline::Transparent2d\">Transparent2d</a>","synthetic":false,"types":["bevy_core_pipeline::Transparent2d"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

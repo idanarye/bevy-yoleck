@@ -1,0 +1,194 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Your Own Level Editor Creation Kit"><meta name="keywords" content="rust, rustlang, rust-lang, bevy_yoleck"><title>bevy_yoleck - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../bevy_yoleck/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../bevy_yoleck/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate bevy_yoleck</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.2.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="bevy_yoleck" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../bevy_yoleck/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">bevy_yoleck</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/bevy_yoleck/lib.rs.html#1-363">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="your-own-level-editor-creation-kit"><a href="#your-own-level-editor-creation-kit">Your Own Level Editor Creation Kit</a></h2>
+<p>Yoleck is a crate for having a game built with the Bevy game engine act as its own level
+editor.</p>
+<p>Yoleck uses Plain Old Rust Structs to store the data, and uses Serde to store them in files.
+The user code defines <em>populate systems</em> for creating Bevy entities (populating their
+components) from these structs and <em>edit systems</em> to edit these structs with egui.</p>
+<p>The synchronization between the structs and the files is bidirectional, and so is the
+synchronization between the structs and the egui widgets, but the synchronization from the
+structs to the entities is unidirectional - changes in the entities are not reflected in the
+structs:</p>
+<div class="example-wrap"><pre class="language-none"><code>┌────────┐  Populate   ┏━━━━━━┓   Edit      ┌───────┐
+│Bevy    │  Systems    ┃Yoleck┃   Systems   │egui   │
+│Entities│◄────────────┃Struct┃◄═══════════►│Widgets│
+└────────┘             ┗━━━━━━┛             └───────┘
+                         ▲
+                         ║
+                         ║ Serde
+                         ║
+                         ▼
+                       ┌─────┐
+                       │.yol │
+                       │Files│
+                       └─────┘</code></pre></div>
+<p>To support integrate Yoleck, a game needs to:</p>
+<ul>
+<li>Define the entity structs, and make sure they implement:<div class="example-wrap"><pre class="language-text"><code>#[derive(Clone, PartialEq, Serialize, Deserialize)]</code></pre></div>The structs need to be deserializable form the empty object <code>{}</code>, because that’s how they’ll
+be initially created when the editor clicks on <em>Add New Entity</em>. Just slap
+<code>#[serde(default)]</code> on all the fields.</li>
+<li>For each struct, use <a href="trait.YoleckExtForApp.html#tymethod.add_yoleck_handler"><code>add_yoleck_handler</code></a> to add a
+<a href="struct.YoleckTypeHandler.html" title="YoleckTypeHandler"><code>YoleckTypeHandler</code></a> to the Bevy app.
+<ul>
+<li>Register edit systems on the type handler with <a href="struct.YoleckTypeHandler.html#method.edit_with"><code>edit_with</code></a>.</li>
+<li>Register populate systems on the type handler with
+<a href="struct.YoleckTypeHandler.html#method.populate_with"><code>populate_with</code></a>.</li>
+</ul>
+</li>
+<li>If the application starts in editor mode:
+<ul>
+<li>Add the <code>EguiPlugin</code> plugin.</li>
+<li>Add the <a href="struct.YoleckPluginForEditor.html" title="YoleckPluginForEditor"><code>YoleckPluginForEditor</code></a> plugin.</li>
+<li>Use <a href="struct.YoleckSyncWithEditorState.html" title="YoleckSyncWithEditorState"><code>YoleckSyncWithEditorState</code></a> to synchronize the game’s state with the
+<a href="enum.YoleckEditorState.html" title="YoleckEditorState"><code>YoleckEditorState</code></a> (optional but highly recommended)</li>
+</ul>
+</li>
+<li>If the application starts in game mode:
+<ul>
+<li>Add the <a href="struct.YoleckPluginForGame.html" title="YoleckPluginForGame"><code>YoleckPluginForGame</code></a> plugin.</li>
+<li>Use the <a href="struct.YoleckLevelIndex.html" title="YoleckLevelIndex"><code>YoleckLevelIndex</code></a> asset to determine the list of available levels (optional)</li>
+<li>Use <a href="enum.YoleckLoadingCommand.html" title="YoleckLoadingCommand"><code>YoleckLoadingCommand</code></a> to load the level.</li>
+</ul>
+</li>
+</ul>
+<p>To support picking and moving entities in the viewport with the mouse, check out the
+<a href="vpeol_2d/index.html"><code>vpeol_2d</code></a> or <a href="vpeol_3d/index.html"><code>vpeol_3d</code></a> modules. Helpers that can be
+used in both <code>vpeol_2d</code> and <code>vpeol_3d</code> can be found in <a href="vpeol/index.html"><code>vpeol</code></a>.</p>
+<h2 id="minimal-working-example"><a href="#minimal-working-example">Minimal Working Example</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">bevy_yoleck::bevy_egui::EguiPlugin</span>;
+<span class="kw">use</span> <span class="ident">bevy_yoleck</span>::{
+    <span class="ident">egui</span>, <span class="ident">YoleckEdit</span>, <span class="ident">YoleckExtForApp</span>, <span class="ident">YoleckLevelIndex</span>, <span class="ident">YoleckLoadingCommand</span>,
+    <span class="ident">YoleckPluginForEditor</span>, <span class="ident">YoleckPluginForGame</span>, <span class="ident">YoleckPopulate</span>, <span class="ident">YoleckRawLevel</span>,
+    <span class="ident">YoleckSyncWithEditorState</span>, <span class="ident">YoleckTypeHandler</span>,
+};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">is_editor</span> <span class="op">=</span> <span class="ident">std::env::args</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">arg</span> <span class="op">==</span> <span class="string">&quot;--editor&quot;</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">App::new</span>();
+    <span class="ident">app</span>.<span class="ident">add_plugins</span>(<span class="ident">DefaultPlugins</span>);
+    <span class="kw">if</span> <span class="ident">is_editor</span> {
+        <span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">EguiPlugin</span>);
+        <span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">YoleckPluginForEditor</span>);
+        <span class="comment">// Doesn&#39;t matter in this example, but a proper game would have systems that can work</span>
+        <span class="comment">// on the entity in `GameState::Game`, so while the level is edited we want to be in</span>
+        <span class="comment">// `GameState::Editor` - which can be treated as a pause state. When the editor wants</span>
+        <span class="comment">// to playtest the level we want to move to `GameState::Game` so that they can play it.</span>
+        <span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">YoleckSyncWithEditorState</span> {
+            <span class="ident">when_editor</span>: <span class="ident">GameState::Editor</span>,
+            <span class="ident">when_game</span>: <span class="ident">GameState::Game</span>,
+        });
+    } <span class="kw">else</span> {
+        <span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">YoleckPluginForGame</span>);
+        <span class="ident">app</span>.<span class="ident">add_state</span>(<span class="ident">GameState::Loading</span>);
+        <span class="comment">// In editor mode Yoleck takes care of level loading. In game mode the game needs to</span>
+        <span class="comment">// tell yoleck which levels to load and when.</span>
+        <span class="ident">app</span>.<span class="ident">add_system_set</span>(<span class="ident">SystemSet::on_update</span>(<span class="ident">GameState::Loading</span>).<span class="ident">with_system</span>(<span class="ident">load_first_level</span>));
+    }
+    <span class="ident">app</span>.<span class="ident">add_startup_system</span>(<span class="ident">setup_camera</span>);
+
+    <span class="ident">app</span>.<span class="ident">add_yoleck_handler</span>({
+        <span class="ident">YoleckTypeHandler</span>::<span class="op">&lt;</span><span class="ident">Rectangle</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="string">&quot;Rectangle&quot;</span>)
+            .<span class="ident">populate_with</span>(<span class="ident">populate_rectangle</span>)
+            .<span class="ident">edit_with</span>(<span class="ident">edit_rectangle</span>)
+    });
+
+    <span class="ident">app</span>.<span class="ident">run</span>();
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>)]</span>
+<span class="kw">enum</span> <span class="ident">GameState</span> {
+    <span class="ident">Loading</span>,
+    <span class="ident">Game</span>,
+    <span class="ident">Editor</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">setup_camera</span>(<span class="kw-2">mut</span> <span class="ident">commands</span>: <span class="ident">Commands</span>) {
+    <span class="ident">commands</span>.<span class="ident">spawn_bundle</span>(<span class="ident">OrthographicCameraBundle::new_2d</span>());
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">struct</span> <span class="ident">Rectangle</span> {
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;default_rectangle_side&quot;</span>)]</span>
+    <span class="ident">width</span>: <span class="ident">f32</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;default_rectangle_side&quot;</span>)]</span>
+    <span class="ident">height</span>: <span class="ident">f32</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">default_rectangle_side</span>() -&gt; <span class="ident">f32</span> {
+    <span class="number">50.0</span>
+}
+
+<span class="kw">fn</span> <span class="ident">populate_rectangle</span>(<span class="kw-2">mut</span> <span class="ident">populate</span>: <span class="ident">YoleckPopulate</span><span class="op">&lt;</span><span class="ident">Rectangle</span><span class="op">&gt;</span>) {
+    <span class="ident">populate</span>.<span class="ident">populate</span>(<span class="op">|</span><span class="ident">_ctx</span>, <span class="ident">data</span>, <span class="kw-2">mut</span> <span class="ident">cmd</span><span class="op">|</span> {
+        <span class="ident">cmd</span>.<span class="ident">insert_bundle</span>(<span class="ident">SpriteBundle</span> {
+            <span class="ident">sprite</span>: <span class="ident">Sprite</span> {
+                <span class="ident">color</span>: <span class="ident">Color::RED</span>,
+                <span class="ident">custom_size</span>: <span class="prelude-val">Some</span>(<span class="ident">Vec2::new</span>(<span class="ident">data</span>.<span class="ident">width</span>, <span class="ident">data</span>.<span class="ident">height</span>)),
+                ..<span class="ident">Default::default</span>()
+            },
+            ..<span class="ident">Default::default</span>()
+        });
+    });
+}
+
+<span class="kw">fn</span> <span class="ident">edit_rectangle</span>(<span class="kw-2">mut</span> <span class="ident">edit</span>: <span class="ident">YoleckEdit</span><span class="op">&lt;</span><span class="ident">Rectangle</span><span class="op">&gt;</span>) {
+    <span class="ident">edit</span>.<span class="ident">edit</span>(<span class="op">|</span><span class="ident">_ctx</span>, <span class="ident">data</span>, <span class="ident">ui</span><span class="op">|</span> {
+        <span class="ident">ui</span>.<span class="ident">add</span>(<span class="ident">egui::Slider::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">data</span>.<span class="ident">width</span>, <span class="number">50.0</span>..<span class="op">=</span><span class="number">500.0</span>).<span class="ident">prefix</span>(<span class="string">&quot;Width: &quot;</span>));
+        <span class="ident">ui</span>.<span class="ident">add</span>(<span class="ident">egui::Slider::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">data</span>.<span class="ident">height</span>, <span class="number">50.0</span>..<span class="op">=</span><span class="number">500.0</span>).<span class="ident">prefix</span>(<span class="string">&quot;Height: &quot;</span>));
+    });
+}
+
+<span class="kw">fn</span> <span class="ident">load_first_level</span>(
+    <span class="ident">asset_server</span>: <span class="ident">Res</span><span class="op">&lt;</span><span class="ident">AssetServer</span><span class="op">&gt;</span>,
+    <span class="ident">level_index_assets</span>: <span class="ident">Res</span><span class="op">&lt;</span><span class="ident">Assets</span><span class="op">&lt;</span><span class="ident">YoleckLevelIndex</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">loading_command</span>: <span class="ident">ResMut</span><span class="op">&lt;</span><span class="ident">YoleckLoadingCommand</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">game_state</span>: <span class="ident">ResMut</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&lt;</span><span class="ident">GameState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+) {
+    <span class="kw">let</span> <span class="ident">level_index_handle</span>: <span class="ident">Handle</span><span class="op">&lt;</span><span class="ident">YoleckLevelIndex</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">asset_server</span>.<span class="ident">load</span>(<span class="string">&quot;levels/index.yoli&quot;</span>);
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">level_index</span>) <span class="op">=</span> <span class="ident">level_index_assets</span>.<span class="ident">get</span>(<span class="ident">level_index_handle</span>) {
+        <span class="comment">// A proper game would have a proper level progression system, but here we are just</span>
+        <span class="comment">// taking the first level and loading it.</span>
+        <span class="kw">let</span> <span class="ident">level_handle</span>: <span class="ident">Handle</span><span class="op">&lt;</span><span class="ident">YoleckRawLevel</span><span class="op">&gt;</span> <span class="op">=</span>
+            <span class="ident">asset_server</span>.<span class="ident">load</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;levels/{}&quot;</span>, <span class="ident">level_index</span>[<span class="number">0</span>].<span class="ident">filename</span>));
+        <span class="kw-2">*</span><span class="ident">loading_command</span> <span class="op">=</span> <span class="ident">YoleckLoadingCommand::FromAsset</span>(<span class="ident">level_handle</span>);
+        <span class="ident">game_state</span>.<span class="ident">set</span>(<span class="ident">GameState::Game</span>).<span class="ident">unwrap</span>();
+    }
+}</code></pre></div>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left import-item"><code>pub use <a class="mod" href="../bevy_egui/index.html" title="mod bevy_egui">bevy_egui</a>;</code></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left import-item"><code>pub use bevy_egui::<a class="mod" href="../egui/index.html" title="mod egui">egui</a>;</code></div><div class="item-right docblock-short"></div></div></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="vpeol/index.html" title="bevy_yoleck::vpeol mod">vpeol</a></div><div class="item-right docblock-short"><p>Viewport Editing Overlay - utilities for editing entities from a viewport.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="vpeol_2d/index.html" title="bevy_yoleck::vpeol_2d mod">vpeol_2d</a></div><div class="item-right docblock-short"><p>Viewport Editing Overlay for 2D games.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="vpeol_3d/index.html" title="bevy_yoleck::vpeol_3d mod">vpeol_3d</a></div><div class="item-right docblock-short"><p>Viewport Editing Overlay for 3D games.</p>
+</div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckDirective.html" title="bevy_yoleck::YoleckDirective struct">YoleckDirective</a></div><div class="item-right docblock-short"><p>Event that can be sent to control Yoleck’s editor.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEdit.html" title="bevy_yoleck::YoleckEdit struct">YoleckEdit</a></div><div class="item-right docblock-short"><p>Parameter for systems that edit entities. See <a href="struct.YoleckEdit.html#method.edit" title="YoleckEdit::edit"><code>YoleckEdit::edit</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEditContext.html" title="bevy_yoleck::YoleckEditContext struct">YoleckEditContext</a></div><div class="item-right docblock-short"><p>A context for <a href="struct.YoleckEdit.html#method.edit" title="YoleckEdit::edit"><code>YoleckEdit::edit</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEditorLevelsDirectoryPath.html" title="bevy_yoleck::YoleckEditorLevelsDirectoryPath struct">YoleckEditorLevelsDirectoryPath</a></div><div class="item-right docblock-short"><p>The path for the levels directory.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEditorSection.html" title="bevy_yoleck::YoleckEditorSection struct">YoleckEditorSection</a></div><div class="item-right docblock-short"><p>A single section of the UI. See <a href="struct.YoleckEditorSections.html"><code>YoleckEditorSections</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEditorSections.html" title="bevy_yoleck::YoleckEditorSections struct">YoleckEditorSections</a></div><div class="item-right docblock-short"><p>Sections for the Yoleck editor window.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckEntryHeader.html" title="bevy_yoleck::YoleckEntryHeader struct">YoleckEntryHeader</a></div><div class="item-right docblock-short"><p>Used by Yoleck to determine how to handle the entity.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckKnob.html" title="bevy_yoleck::YoleckKnob struct">YoleckKnob</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckKnobHandle.html" title="bevy_yoleck::YoleckKnobHandle struct">YoleckKnobHandle</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckKnobsCache.html" title="bevy_yoleck::YoleckKnobsCache struct">YoleckKnobsCache</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckLevelIndex.html" title="bevy_yoleck::YoleckLevelIndex struct">YoleckLevelIndex</a></div><div class="item-right docblock-short"><p>An asset loaded from a <code>.yoli</code> file (usually <code>index.yoli</code>) representing the game’s levels.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckLevelIndexEntry.html" title="bevy_yoleck::YoleckLevelIndexEntry struct">YoleckLevelIndexEntry</a></div><div class="item-right docblock-short"><p>Describes a level in the index.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckManaged.html" title="bevy_yoleck::YoleckManaged struct">YoleckManaged</a></div><div class="item-right docblock-short"><p>A component that describes how Yoleck manages an entity under its control.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckPluginForEditor.html" title="bevy_yoleck::YoleckPluginForEditor struct">YoleckPluginForEditor</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckPluginForGame.html" title="bevy_yoleck::YoleckPluginForGame struct">YoleckPluginForGame</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckPopulate.html" title="bevy_yoleck::YoleckPopulate struct">YoleckPopulate</a></div><div class="item-right docblock-short"><p>Parameter for systems that populate entities. See <a href="struct.YoleckPopulate.html#method.populate" title="YoleckPopulate::populate"><code>YoleckPopulate::populate</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckPopulateContext.html" title="bevy_yoleck::YoleckPopulateContext struct">YoleckPopulateContext</a></div><div class="item-right docblock-short"><p>A context for <a href="struct.YoleckPopulate.html#method.populate" title="YoleckPopulate::populate"><code>YoleckPopulate::populate</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckRawEntry.html" title="bevy_yoleck::YoleckRawEntry struct">YoleckRawEntry</a></div><div class="item-right docblock-short"><p>An entry for a Yoleck entity, as it appears in level files.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckRawLevel.html" title="bevy_yoleck::YoleckRawLevel struct">YoleckRawLevel</a></div><div class="item-right docblock-short"><p>Represents a level file.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckState.html" title="bevy_yoleck::YoleckState struct">YoleckState</a></div><div class="item-right docblock-short"><p>Fields of the Yoleck editor.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckSyncWithEditorState.html" title="bevy_yoleck::YoleckSyncWithEditorState struct">YoleckSyncWithEditorState</a></div><div class="item-right docblock-short"><p>Sync the game’s state back and forth when the level editor enters and exits playtest mode.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckTypeHandler.html" title="bevy_yoleck::YoleckTypeHandler struct">YoleckTypeHandler</a></div><div class="item-right docblock-short"><p>Descriptor for how Yoleck handles an entity type.</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.YoleckEditorEvent.html" title="bevy_yoleck::YoleckEditorEvent enum">YoleckEditorEvent</a></div><div class="item-right docblock-short"><p>Events emitted by the Yoleck editor.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.YoleckEditorState.html" title="bevy_yoleck::YoleckEditorState enum">YoleckEditorState</a></div><div class="item-right docblock-short"><p>Whether or not the Yoleck editor is active.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.YoleckLoadingCommand.html" title="bevy_yoleck::YoleckLoadingCommand enum">YoleckLoadingCommand</a></div><div class="item-right docblock-short"><p>Command Yoleck to load a level, represented as an asset to an handle.</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.YoleckExtForApp.html" title="bevy_yoleck::YoleckExtForApp trait">YoleckExtForApp</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="bevy_yoleck" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

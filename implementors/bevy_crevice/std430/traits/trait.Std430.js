@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["bevy_pbr"] = [{"text":"impl <a class=\"trait\" href=\"bevy_crevice/std430/traits/trait.Std430.html\" title=\"trait bevy_crevice::std430::traits::Std430\">Std430</a> for <a class=\"struct\" href=\"bevy_pbr/struct.Std430GpuPointLight.html\" title=\"struct bevy_pbr::Std430GpuPointLight\">Std430GpuPointLight</a>","synthetic":false,"types":["bevy_pbr::render::light::Std430GpuPointLight"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

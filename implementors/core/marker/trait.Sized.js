@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["serde_json"] = [{"text":"impl !<a class=\"trait\" href=\"https://doc.rust-lang.org/1.61.0/core/marker/trait.Sized.html\" title=\"trait core::marker::Sized\">Sized</a> for <a class=\"struct\" href=\"serde_json/value/struct.RawValue.html\" title=\"struct serde_json::value::RawValue\">RawValue</a>","synthetic":true,"types":["serde_json::raw::RawValue"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

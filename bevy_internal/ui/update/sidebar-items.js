@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["UI_Z_STEP","The resolution of Z values for UI"]],"fn":[["ui_z_system","Updates transforms of nodes to fit with the z system"],["update_clipping_system","Updates clipping for all nodes"]]});

@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="crates.io docs.rs"><meta name="keywords" content="rust, rustlang, rust-lang, smooth_bevy_cameras"><title>smooth_bevy_cameras - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../smooth_bevy_cameras/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../smooth_bevy_cameras/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate smooth_bevy_cameras</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.4.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div></section><div id="sidebar-vars" data-name="smooth_bevy_cameras" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../smooth_bevy_cameras/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">smooth_bevy_cameras</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/smooth_bevy_cameras/lib.rs.html#1-100">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><a href="https://crates.io/crates/smooth_bevy_cameras"><img src="https://img.shields.io/crates/v/smooth_bevy_cameras" alt="crates.io" /></a>
+<a href="https://docs.rs/smooth-bevy-cameras"><img src="https://docs.rs/smooth-bevy-cameras/badge.svg" alt="docs.rs" /></a></p>
+<p>A collection of exponentially-smoothed camera controllers for the Bevy Engine.</p>
+<h2 id="look-transform"><a href="#look-transform">Look Transform</a></h2>
+<p>All controllers are based on a <code>LookTransform</code> component, which is just an <code>eye</code> point that looks at a <code>target</code> point. By
+modifying this component, the scene graph <code>Transform</code> will automatically be synchronized.</p>
+<p>Any entities with <code>{Transform, LookTransform, Smoother}</code> components will automatically have their <code>Transform</code> smoothed.
+Smoothing will have no effect on the <code>LookTransform</code>, only the final <code>Transform</code> in the scene graph.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">smooth_bevy_cameras</span>::{<span class="ident">LookTransform</span>, <span class="ident">LookTransformBundle</span>, <span class="ident">LookTransformPlugin</span>, <span class="ident">Smoother</span>};
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="ident">App::new</span>()
+        .<span class="ident">add_plugins</span>(<span class="ident">DefaultPlugins</span>)
+        <span class="comment">// Enables the system that synchronizes your `Transform`s and `LookTransform`s.</span>
+        .<span class="ident">add_plugin</span>(<span class="ident">LookTransformPlugin</span>)
+        .<span class="ident">add_startup_system</span>(<span class="ident">setup</span>.<span class="ident">system</span>())
+        .<span class="ident">add_system</span>(<span class="ident">move_camera_system</span>.<span class="ident">system</span>());
+}
+
+<span class="kw">fn</span> <span class="ident">setup</span>(<span class="kw-2">mut</span> <span class="ident">commands</span>: <span class="ident">Commands</span>) {
+    <span class="kw">let</span> <span class="ident">eye</span> <span class="op">=</span> <span class="ident">Vec3::default</span>();
+    <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">Vec3::default</span>();
+
+    <span class="ident">commands</span>
+        .<span class="ident">spawn_bundle</span>(<span class="ident">LookTransformBundle</span> {
+            <span class="ident">transform</span>: <span class="ident">LookTransform</span> { <span class="ident">eye</span>, <span class="ident">target</span> },
+            <span class="ident">smoother</span>: <span class="ident">Smoother::new</span>(<span class="number">0.9</span>), <span class="comment">// Value between 0.0 and 1.0, higher is smoother.</span>
+        })
+        .<span class="ident">insert_bundle</span>(<span class="ident">PerspectiveCameraBundle::default</span>());
+
+}
+
+<span class="kw">fn</span> <span class="ident">move_camera_system</span>(<span class="kw-2">mut</span> <span class="ident">cameras</span>: <span class="ident">Query</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">LookTransform</span><span class="op">&gt;</span>) {
+    <span class="comment">// Later, another system will update the `Transform` and apply smoothing automatically.</span>
+    <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">cameras</span>.<span class="ident">iter_mut</span>() { <span class="ident">c</span>.<span class="ident">target</span> <span class="op">+</span><span class="op">=</span> <span class="ident">Vec3::new</span>(<span class="number">1.0</span>, <span class="number">1.0</span>, <span class="number">1.0</span>); }
+}</code></pre></div>
+<h2 id="look-angles"><a href="#look-angles">Look Angles</a></h2>
+<p>When implementing a camera controller, it’s often useful to work directly with the angles (pitch and yaw) of your look
+direction. You can do this with the <code>LookAngles</code> type:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">smooth_bevy_cameras</span>::{
+    <span class="ident">LookAngles</span>,
+    <span class="ident">LookTransform</span>
+};
+
+<span class="kw">fn</span> <span class="ident">look_angles</span>(<span class="kw-2">mut</span> <span class="ident">transform</span>: <span class="ident">LookTransform</span>, <span class="ident">delta</span>: <span class="ident">Vec2</span>) {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">angles</span> <span class="op">=</span> <span class="ident">LookAngles::from_vector</span>(<span class="ident">transform</span>.<span class="ident">look_direction</span>().<span class="ident">unwrap</span>());
+    <span class="ident">angles</span>.<span class="ident">add_pitch</span>(<span class="ident">delta</span>.<span class="ident">y</span>);
+    <span class="ident">angles</span>.<span class="ident">add_yaw</span>(<span class="ident">delta</span>.<span class="ident">x</span>);
+    <span class="comment">// Third-person.</span>
+    <span class="ident">transform</span>.<span class="ident">eye</span> <span class="op">=</span> <span class="ident">transform</span>.<span class="ident">target</span> <span class="op">+</span> <span class="number">1.0</span> <span class="op">*</span> <span class="ident">transform</span>.<span class="ident">radius</span>() <span class="op">*</span> <span class="ident">angles</span>.<span class="ident">unit_vector</span>();
+    <span class="comment">// First-person.</span>
+    <span class="comment">// transform.target = transform.eye + 1.0 * transform.radius() * angles.unit_vector();</span>
+}</code></pre></div>
+<p>This is how the built-in controllers implement rotation controls.</p>
+<h2 id="built-in-controllers"><a href="#built-in-controllers">Built-In Controllers</a></h2>
+<p>These plugins depend on the <code>LookTransformPlugin</code>:</p>
+<ul>
+<li><code>FpsCameraPlugin</code> + <code>FpsCameraBundle</code>
+<ul>
+<li>WASD: Translate on the XZ plane</li>
+<li>Shift/Space: Translate along the Y axis</li>
+<li>Mouse: Rotate camera</li>
+</ul>
+</li>
+<li><code>OrbitCameraPlugin</code> + <code>OrbitCameraBundle</code>
+<ul>
+<li>CTRL + mouse drag: Rotate camera</li>
+<li>Right mouse drag: Pan camera</li>
+<li>Mouse wheel: Zoom</li>
+</ul>
+</li>
+<li><code>UnrealCameraPlugin</code> + <code>UnrealCameraBundle</code>
+Best use: hold Right mouse button to orbit the view while using WASD to navigate in the scene,
+using scroll wheel to accelerate/decelerate.
+<ul>
+<li>Left mouse drag: Locomotion</li>
+<li>Right mouse drag: Rotate camera</li>
+<li>Left and Right or Middle mouse drag: Pan camera</li>
+<li>While holding any mouse button, use A/D for panning left/right, Q/E for panning up/down</li>
+<li>While holding any mouse button, use W/S for locomotion forward/backward</li>
+<li>While holding any mouse button, use scroll wheel to increase/decrease locomotion and panning speeds</li>
+<li>While holding no mouse button, use scroll wheel for locomotion forward/backward</li>
+</ul>
+</li>
+</ul>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="controllers/index.html" title="smooth_bevy_cameras::controllers mod">controllers</a></div><div class="item-right docblock-short"></div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LookAngles.html" title="smooth_bevy_cameras::LookAngles struct">LookAngles</a></div><div class="item-right docblock-short"><p>A (yaw, pitch) pair representing a direction.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LookTransform.html" title="smooth_bevy_cameras::LookTransform struct">LookTransform</a></div><div class="item-right docblock-short"><p>An eye and the target it’s looking at. As a component, this can be modified in place of bevy’s <code>Transform</code>, and the two will
+stay in sync.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LookTransformBundle.html" title="smooth_bevy_cameras::LookTransformBundle struct">LookTransformBundle</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LookTransformPlugin.html" title="smooth_bevy_cameras::LookTransformPlugin struct">LookTransformPlugin</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Smoother.html" title="smooth_bevy_cameras::Smoother struct">Smoother</a></div><div class="item-right docblock-short"><p>Preforms exponential smoothing on a <code>LookTransform</code>. Set the <code>lag_weight</code> between <code>0.0</code> and <code>1.0</code>, where higher is smoother.</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="smooth_bevy_cameras" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

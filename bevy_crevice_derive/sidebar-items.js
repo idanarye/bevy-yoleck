@@ -1,0 +1,1 @@
+initSidebarItems({"derive":[["AsStd140",""],["AsStd430",""],["GlslStruct",""]]});

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["bevy_render"] = [{"text":"impl <a class=\"trait\" href=\"bevy_utils/enum_variant_meta/trait.EnumVariantMeta.html\" title=\"trait bevy_utils::enum_variant_meta::EnumVariantMeta\">EnumVariantMeta</a> for <a class=\"enum\" href=\"bevy_render/mesh/enum.VertexAttributeValues.html\" title=\"enum bevy_render::mesh::VertexAttributeValues\">VertexAttributeValues</a>","synthetic":false,"types":["bevy_render::mesh::mesh::VertexAttributeValues"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

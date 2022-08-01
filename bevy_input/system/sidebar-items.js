@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["exit_on_esc_system","Sends the `AppExit` event whenever the “esc” key is pressed."]]});

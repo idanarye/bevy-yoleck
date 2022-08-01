@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["derive_label","Derive a label trait"],["get_attr_meta_items",""],["get_lit_str",""],["get_named_struct_fields","Get the fields of a data structure if that structure is a struct with named fields; otherwise, return a compile error that points to the site of the macro invocation."],["parse_attrs",""]],"struct":[["BevyManifest",""],["Symbol",""]]});

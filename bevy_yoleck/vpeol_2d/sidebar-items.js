@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["yoleck_vpeol_position_edit_adapter","Edit a `Vec2` position field of an entity with drag&drop."]],"struct":[["YoleckVpeol2dPlugin","Add the systems required for 2D editing."],["YoleckVpeolTransform2dProjection","See [`yoleck_vpeol_position_edit_adapter`]."]]});

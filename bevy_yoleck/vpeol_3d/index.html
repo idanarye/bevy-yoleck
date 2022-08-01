@@ -1,0 +1,88 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Viewport Editing Overlay for 3D games."><meta name="keywords" content="rust, rustlang, rust-lang, vpeol_3d"><title>bevy_yoleck::vpeol_3d - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../bevy_yoleck/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../bevy_yoleck/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Module vpeol_3d</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#functions">Functions</a></li></ul></div></section><div id="sidebar-vars" data-name="vpeol_3d" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../bevy_yoleck/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Module <a href="../index.html">bevy_yoleck</a>::<wbr><a class="mod" href="#">vpeol_3d</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/bevy_yoleck/vpeol_3d.rs.html#1-421">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="viewport-editing-overlay-for-3d-games"><a href="#viewport-editing-overlay-for-3d-games">Viewport Editing Overlay for 3D games.</a></h2>
+<p>Use this module to implement simple 3D editing for 3D games.</p>
+<p>To use add the egui and Yoleck plugins to the Bevy app, as well as the plugin of this module:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">EguiPlugin</span>);
+<span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">YoleckPluginForEditor</span>);
+<span class="ident">app</span>.<span class="ident">add_plugin</span>(<span class="ident">YoleckVpeol3dPlugin</span>);</code></pre></div>
+<p><a href="struct.YoleckVpeol3dPlugin.html" title="YoleckVpeol3dPlugin"><code>YoleckVpeol3dPlugin</code></a> adds the orbit camera plugin from
+<a href="https://github.com/iMplode-nZ/bevy-orbit-controls"><code>bevy-orbit-controls</code></a>, but camera still
+needs to be confiugred for it.</p>
+<p>Entity selection by clicking on it is supported by
+<a href="https://github.com/aevyrie/bevy_mod_picking"><code>bevy_mod_picking</code></a>. It’s plugin is added by
+<a href="struct.YoleckVpeol3dPlugin.html" title="YoleckVpeol3dPlugin"><code>YoleckVpeol3dPlugin</code></a>, but the camera and entities still need to be configured.</p>
+<p><a href="struct.YoleckVpeol3dCameraBundle.html" title="YoleckVpeol3dCameraBundle"><code>YoleckVpeol3dCameraBundle</code></a> can be used to configure the camera for both plugins.</p>
+<p>To use <code>vpeol_3d</code> for an entity type, it’s edit system can get <code>Vec3</code> (and possibly <code>Quat</code>)
+from the context with <a href="../struct.YoleckEditContext.html#method.get_passed_data"><code>get_passed_data</code></a>. It also
+needs to add <code>PickableBundle</code> and
+<a href="https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo"><code>bevy_transform_gizmo</code></a>’s
+<code>GizmoTransformable</code> (both are conveniently re-exported from this module):</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="ident">app</span>.<span class="ident">add_yoleck_handler</span>({
+    <span class="ident">YoleckTypeHandler</span>::<span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="string">&quot;Example&quot;</span>)
+        .<span class="ident">edit_with</span>(<span class="ident">edit_example</span>)
+        .<span class="ident">populate_with</span>(<span class="ident">populate_example</span>)
+});
+
+<span class="kw">fn</span> <span class="ident">edit_example</span>(<span class="kw-2">mut</span> <span class="ident">edit</span>: <span class="ident">YoleckEdit</span><span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>) {
+    <span class="ident">edit</span>.<span class="ident">edit</span>(<span class="op">|</span><span class="ident">ctx</span>, <span class="ident">data</span>, <span class="ident">_ui</span><span class="op">|</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span>) <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">get_passed_data</span>::<span class="op">&lt;</span><span class="ident">Vec3</span><span class="op">&gt;</span>() {
+            <span class="ident">data</span>.<span class="ident">position</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">pos</span>;
+        }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">rot</span>) <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">get_passed_data</span>::<span class="op">&lt;</span><span class="ident">Quat</span><span class="op">&gt;</span>() {
+            <span class="ident">data</span>.<span class="ident">rotation</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">rot</span>;
+        }
+    });
+}
+
+<span class="kw">fn</span> <span class="ident">populate_example</span>(<span class="kw-2">mut</span> <span class="ident">populate</span>: <span class="ident">YoleckPopulate</span><span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>) {
+    <span class="ident">populate</span>.<span class="ident">populate</span>(<span class="op">|</span><span class="ident">_ctx</span>, <span class="ident">data</span>, <span class="kw-2">mut</span> <span class="ident">cmd</span><span class="op">|</span> {
+        <span class="ident">cmd</span>.<span class="ident">insert_bundle</span>(<span class="ident">PbrBundle</span> {
+            <span class="ident">transform</span>: <span class="ident">Transform::from_translation</span>(<span class="ident">data</span>.<span class="ident">position</span>),
+            <span class="comment">// Actual PBR components</span>
+            ..<span class="ident">Default::default</span>()
+        });
+        <span class="ident">cmd</span>.<span class="ident">insert_bundle</span>(<span class="ident">PickableBundle::default</span>());
+        <span class="ident">cmd</span>.<span class="ident">insert</span>(<span class="ident">GizmoTransformable</span>);
+    });
+}</code></pre></div>
+<p>3D entities are often hierarchical (e.g. when created by <code>spawn_scene</code>), so <code>PickableBundle</code>
+needs to be added to the relevant children - together with <a href="../vpeol/struct.YoleckRouteClickTo.html" title="YoleckRouteClickTo"><code>YoleckRouteClickTo</code></a>. Since these
+entities are usually added later, <a href="../vpeol/struct.YoleckWillContainClickableChildren.html" title="YoleckWillContainClickableChildren"><code>YoleckWillContainClickableChildren</code></a> can be used:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">fn</span> <span class="ident">populate_example</span>(<span class="kw-2">mut</span> <span class="ident">populate</span>: <span class="ident">YoleckPopulate</span><span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>, <span class="ident">asset_server</span>: <span class="ident">Res</span><span class="op">&lt;</span><span class="ident">AssetServer</span><span class="op">&gt;</span>) {
+    <span class="ident">populate</span>.<span class="ident">populate</span>(<span class="op">|</span><span class="ident">_ctx</span>, <span class="ident">data</span>, <span class="kw-2">mut</span> <span class="ident">cmd</span><span class="op">|</span> {
+        <span class="ident">cmd</span>.<span class="ident">insert_bundle</span>(<span class="ident">TransformBundle::from_transform</span>(<span class="ident">Transform::from_translation</span>(<span class="ident">data</span>.<span class="ident">position</span>)));
+        <span class="ident">cmd</span>.<span class="ident">with_children</span>(<span class="op">|</span><span class="ident">commands</span><span class="op">|</span> {
+            <span class="ident">commands</span>.<span class="ident">spawn_scene</span>(<span class="ident">asset_server</span>.<span class="ident">load</span>(<span class="string">&quot;models/my-model.glb#Scene0&quot;</span>));
+        });
+        <span class="ident">cmd</span>.<span class="ident">insert</span>(<span class="ident">YoleckWillContainClickableChildren</span>);
+        <span class="ident">cmd</span>.<span class="ident">insert</span>(<span class="ident">GizmoTransformable</span>); <span class="comment">// added on the parent entity, not the children</span>
+    });
+}</code></pre></div>
+<p>Alternatively, use <a href="fn.yoleck_vpeol_transform_edit_adapter.html" title="yoleck_vpeol_transform_edit_adapter"><code>yoleck_vpeol_transform_edit_adapter</code></a>. It’ll apply the transform and add
+<a href="struct.PickableBundle.html" title="PickableBundle"><code>PickableBundle</code></a> and <a href="struct.GizmoTransformable.html" title="GizmoTransformable"><code>GizmoTransformable</code></a>, but not <a href="../vpeol/struct.YoleckWillContainClickableChildren.html" title="YoleckWillContainClickableChildren"><code>YoleckWillContainClickableChildren</code></a> -
+that one still needs to be added separately.</p>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left import-item"><code>pub use crate::vpeol::<a class="struct" href="../vpeol/struct.YoleckWillContainClickableChildren.html" title="struct bevy_yoleck::vpeol::YoleckWillContainClickableChildren">YoleckWillContainClickableChildren</a>;</code></div><div class="item-right docblock-short"></div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.GizmoTransformable.html" title="bevy_yoleck::vpeol_3d::GizmoTransformable struct">GizmoTransformable</a></div><div class="item-right docblock-short"><p>Reexported from <a href="https://github.com/ForesightMiningSoftwareCorporation/bevy_transform_gizmo"><code>bevy_transform_gizmo</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.OrbitCameraBundle.html" title="bevy_yoleck::vpeol_3d::OrbitCameraBundle struct">OrbitCameraBundle</a></div><div class="item-right docblock-short"><p>Reexported from <a href="https://github.com/iMplode-nZ/bevy-orbit-controls"><code>bevy-orbit-controls</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.OrbitCameraController.html" title="bevy_yoleck::vpeol_3d::OrbitCameraController struct">OrbitCameraController</a></div><div class="item-right docblock-short"><p>Reexported from <a href="https://github.com/iMplode-nZ/bevy-orbit-controls"><code>bevy-orbit-controls</code></a>.
+A 3rd person camera that orbits around the target.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.PickableBundle.html" title="bevy_yoleck::vpeol_3d::PickableBundle struct">PickableBundle</a></div><div class="item-right docblock-short"><p>Reexported from <a href="https://github.com/aevyrie/bevy_mod_picking"><code>bevy_mod_picking</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckVpeol3dCameraBundle.html" title="bevy_yoleck::vpeol_3d::YoleckVpeol3dCameraBundle struct">YoleckVpeol3dCameraBundle</a></div><div class="item-right docblock-short"><p>Helper for installing
+<a href="https://github.com/iMplode-nZ/bevy-orbit-controls"><code>bevy-orbit-controls</code></a> and
+<a href="https://github.com/aevyrie/bevy_mod_picking"><code>bevy_mod_picking</code></a> in a camera entity.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckVpeol3dPlugin.html" title="bevy_yoleck::vpeol_3d::YoleckVpeol3dPlugin struct">YoleckVpeol3dPlugin</a></div><div class="item-right docblock-short"><p>Add the systems required for 2D editing.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.YoleckVpeolTransform3dProjection.html" title="bevy_yoleck::vpeol_3d::YoleckVpeolTransform3dProjection struct">YoleckVpeolTransform3dProjection</a></div><div class="item-right docblock-short"><p>See <a href="fn.yoleck_vpeol_transform_edit_adapter.html" title="yoleck_vpeol_transform_edit_adapter"><code>yoleck_vpeol_transform_edit_adapter</code></a>.</p>
+</div></div></div><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.yoleck_vpeol_transform_edit_adapter.html" title="bevy_yoleck::vpeol_3d::yoleck_vpeol_transform_edit_adapter fn">yoleck_vpeol_transform_edit_adapter</a></div><div class="item-right docblock-short"><p>Implement parts of the 3D editing for the entity:</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="bevy_yoleck" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

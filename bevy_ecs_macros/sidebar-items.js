@@ -1,0 +1,1 @@
+initSidebarItems({"derive":[["AmbiguitySetLabel",""],["Bundle",""],["Component",""],["RunCriteriaLabel",""],["StageLabel",""],["SystemLabel",""],["SystemParam","Implement `SystemParam` to use a struct as a parameter in a system"],["WorldQuery","Implement `WorldQuery` to use a struct as a parameter in a query"]],"macro":[["all_tuples",""],["impl_param_set",""]]});

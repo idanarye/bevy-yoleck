@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["sparse","Contains data structures for sparse storage."]],"struct":[["Accessor","A typed view into a buffer view."]]});

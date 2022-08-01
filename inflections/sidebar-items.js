@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["case","Utilities to change the case of a string to another case. Supports “lower case,” “UPPER CASE,” “sentence case,” “Title Case,” “camelCase,” “PascalCase,” “kebab-case,” “Train-Case,” “snake_case,” and “CONSTANT_CASE.”"]],"trait":[["Inflect","An extension trait to make the functions in the `case` module available as methods on the `str` type."]]});

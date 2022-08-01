@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Info","Reference to a `Texture`."],["Sampler","Texture sampler properties for filtering and wrapping modes."],["Texture","A texture and its sampler."]]});

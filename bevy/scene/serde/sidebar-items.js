@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["ENTITY_FIELD_COMPONENTS",""],["ENTITY_FIELD_ENTITY",""],["ENTITY_STRUCT",""]],"struct":[["ComponentVecDeserializer",""],["ComponentsSerializer",""],["EntitySerializer",""],["SceneDeserializer",""],["SceneEntityDeserializer",""],["SceneSerializer",""]]});

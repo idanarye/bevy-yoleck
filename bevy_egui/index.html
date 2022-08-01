@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This crate provides a Egui integration for the Bevy game engine."><meta name="keywords" content="rust, rustlang, rust-lang, bevy_egui"><title>bevy_egui - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../bevy_egui/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../bevy_egui/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate bevy_egui</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.14.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div></section><div id="sidebar-vars" data-name="bevy_egui" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../bevy_egui/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">bevy_egui</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/bevy_egui/lib.rs.html#1-684">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This crate provides a <a href="https://github.com/emilk/egui">Egui</a> integration for the <a href="https://github.com/bevyengine/bevy">Bevy</a> game engine.</p>
+<p><strong>Trying out:</strong></p>
+<p>An example WASM project is live at <a href="https://mvlabat.github.io/bevy_egui_web_showcase/index.html">mvlabat.github.io/bevy_egui_web_showcase</a> [<a href="https://github.com/mvlabat/bevy_egui_web_showcase">source</a>].</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li>Desktop and web platforms support</li>
+<li>Clipboard (web support is limited to the same window, see <a href="https://github.com/rust-windowing/winit/issues/1829">rust-windowing/winit#1829</a>)</li>
+<li>Opening URLs</li>
+<li>Multiple windows support (see <a href="./examples/two_windows.rs">./examples/two_windows.rs</a>)</li>
+</ul>
+<p><code>bevy_egui</code> can be compiled with using only <code>bevy</code> and <code>egui</code> as dependencies: <code>manage_clipboard</code> and <code>open_url</code> features,
+that require additional crates, can be disabled.</p>
+<h3 id="usage"><a href="#usage">Usage</a></h3>
+<p>Here’s a minimal usage example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">bevy_egui</span>::{<span class="ident">egui</span>, <span class="ident">EguiContext</span>, <span class="ident">EguiPlugin</span>};
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="ident">App::new</span>()
+        .<span class="ident">add_plugins</span>(<span class="ident">DefaultPlugins</span>)
+        .<span class="ident">add_plugin</span>(<span class="ident">EguiPlugin</span>)
+        <span class="comment">// Systems that create Egui widgets should be run during the `CoreStage::Update` stage,</span>
+        <span class="comment">// or after the `EguiSystem::BeginFrame` system (which belongs to the `CoreStage::PreUpdate` stage).</span>
+        .<span class="ident">add_system</span>(<span class="ident">ui_example</span>)
+        .<span class="ident">run</span>();
+}
+
+<span class="kw">fn</span> <span class="ident">ui_example</span>(<span class="kw-2">mut</span> <span class="ident">egui_context</span>: <span class="ident">ResMut</span><span class="op">&lt;</span><span class="ident">EguiContext</span><span class="op">&gt;</span>) {
+    <span class="ident">egui::Window::new</span>(<span class="string">&quot;Hello&quot;</span>).<span class="ident">show</span>(<span class="ident">egui_context</span>.<span class="ident">ctx_mut</span>(), <span class="op">|</span><span class="ident">ui</span><span class="op">|</span> {
+        <span class="ident">ui</span>.<span class="ident">label</span>(<span class="string">&quot;world&quot;</span>);
+    });
+}</code></pre></div>
+<p>For a more advanced example, see <a href="examples/ui.rs">examples/ui.rs</a>.</p>
+<div class="example-wrap"><pre class="language-bash"><code>cargo run --example ui</code></pre></div><h3 id="see-also"><a href="#see-also">See also</a></h3>
+<ul>
+<li><a href="https://github.com/jakobhellermann/bevy-inspector-egui"><code>bevy-inspector-egui</code></a></li>
+</ul>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left import-item"><code>pub use <a class="mod" href="../egui/index.html" title="mod egui">egui</a>;</code></div><div class="item-right docblock-short"></div></div></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="node/index.html" title="bevy_egui::node mod">node</a></div><div class="item-right docblock-short"><p>The names of <code>bevy_egui</code> nodes.</p>
+</div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiContext.html" title="bevy_egui::EguiContext struct">EguiContext</a></div><div class="item-right docblock-short"><p>A resource for storing <code>bevy_egui</code> context.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiInput.html" title="bevy_egui::EguiInput struct">EguiInput</a></div><div class="item-right docblock-short"><p>Is used for storing the input passed to Egui. The actual resource is <code>HashMap&lt;WindowId, EguiInput&gt;</code>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiOutput.html" title="bevy_egui::EguiOutput struct">EguiOutput</a></div><div class="item-right docblock-short"><p>Is used for storing Egui output. The actual resource is <code>HashMap&lt;WindowId, EguiOutput&gt;</code>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiPlugin.html" title="bevy_egui::EguiPlugin struct">EguiPlugin</a></div><div class="item-right docblock-short"><p>Adds all Egui resources and render graph nodes.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiRenderOutput.html" title="bevy_egui::EguiRenderOutput struct">EguiRenderOutput</a></div><div class="item-right docblock-short"><p>Is used for storing Egui shapes. The actual resource is <code>HashMap&lt;WindowId, EguiShapes&gt;</code>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EguiSettings.html" title="bevy_egui::EguiSettings struct">EguiSettings</a></div><div class="item-right docblock-short"><p>A resource for storing global UI settings.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.RenderGraphConfig.html" title="bevy_egui::RenderGraphConfig struct">RenderGraphConfig</a></div><div class="item-right docblock-short"><p>Egui’s render graph config.</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.EguiStartupSystem.html" title="bevy_egui::EguiStartupSystem enum">EguiStartupSystem</a></div><div class="item-right docblock-short"><p>The names of <code>bevy_egui</code> startup systems.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.EguiSystem.html" title="bevy_egui::EguiSystem enum">EguiSystem</a></div><div class="item-right docblock-short"><p>The names of egui systems.</p>
+</div></div></div><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.setup_pipeline.html" title="bevy_egui::setup_pipeline fn">setup_pipeline</a></div><div class="item-right docblock-short"><p>Set up egui render pipeline.</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="bevy_egui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ButtonBundle","A UI node that is a button"],["CameraUi",""],["ImageBundle","A UI node that is an image"],["NodeBundle","The basic UI node"],["TextBundle","A UI node that is text"],["UiCameraBundle","The camera that is needed to see UI elements"]]});

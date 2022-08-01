@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Table","A Vertical Origin Table."],["VerticalOriginMetrics","Vertical origin metrics for the Vertical Origin Table."]]});

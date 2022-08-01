@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Table","A Horizontal/Vertical Metrics Variations Table."]]});

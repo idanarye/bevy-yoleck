@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Projection","A camera’s projection."]],"struct":[["Camera","A camera’s projection.  A node can reference a camera to apply a transform to place the camera in the scene."],["Orthographic","Values for an orthographic camera projection."],["Perspective","Values for a perspective camera projection."]]});

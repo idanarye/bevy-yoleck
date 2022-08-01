@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["KeyCode","The key code of a keyboard input."]],"fn":[["keyboard_input_system","Updates the `Input<KeyCode>` resource with the latest `KeyboardInput` events"]],"struct":[["KeyboardInput","A key input event from a keyboard device"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ForceTouch","Describes the force of a touch event"],["TouchPhase","Describes touch-screen input state."]],"fn":[["touch_screen_input_system","Updates the `Touches` resource with the latest `TouchInput` events"]],"struct":[["Touch",""],["TouchInput","Represents a touch event"],["Touches",""]]});

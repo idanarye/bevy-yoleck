@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AxisValueMap","An axis value map."],["SegmentMaps","A list of segment maps."],["SegmentMapsIter","An iterator over maps."],["Table","An Axis Variations Table."]]});

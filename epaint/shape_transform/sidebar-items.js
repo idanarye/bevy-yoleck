@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["adjust_colors",""]]});

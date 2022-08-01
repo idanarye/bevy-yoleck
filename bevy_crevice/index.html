@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="GitHub CI Status crevice on crates.io crevice docs"><meta name="keywords" content="rust, rustlang, rust-lang, bevy_crevice"><title>bevy_crevice - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../bevy_crevice/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../bevy_crevice/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate bevy_crevice</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.7.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li></ul></div></section><div id="sidebar-vars" data-name="bevy_crevice" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../bevy_crevice/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">bevy_crevice</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/bevy_crevice/lib.rs.html#1-174">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><a href="https://github.com/LPGhatguy/crevice/actions"><img src="https://github.com/LPGhatguy/crevice/workflows/CI/badge.svg" alt="GitHub CI Status" /></a>
+<a href="https://crates.io/crates/crevice"><img src="https://img.shields.io/crates/v/crevice.svg" alt="crevice on crates.io" /></a>
+<a href="https://docs.rs/crevice"><img src="https://img.shields.io/badge/docs-docs.rs-orange.svg" alt="crevice docs" /></a></p>
+<p>Crevice creates GLSL-compatible versions of types through the power of derive
+macros. Generated structures provide an <a href="std140/trait.Std140.html#method.as_bytes" title="std140::Std140::as_bytes"><code>as_bytes</code></a>
+method to allow safely packing data into buffers for uploading.</p>
+<p>Generated structs also implement <a href="../bytemuck/zeroable/trait.Zeroable.html" title="bytemuck::Zeroable"><code>bytemuck::Zeroable</code></a> and
+<a href="../bytemuck/pod/trait.Pod.html" title="bytemuck::Pod"><code>bytemuck::Pod</code></a> for use with other libraries.</p>
+<p>Crevice is similar to <a href="https://github.com/rustgd/glsl-layout"><code>glsl-layout</code></a>, but supports types from many
+math crates, can generate GLSL source from structs, and explicitly initializes
+padding to remove one source of undefined behavior.</p>
+<p>Crevice has support for many Rust math libraries via feature flags, and most
+other math libraries by use of the mint crate. Crevice currently supports:</p>
+<ul>
+<li>mint 0.5, enabled by default</li>
+<li>cgmath 0.18, using the <code>cgmath</code> feature</li>
+<li>nalgebra 0.29, using the <code>nalgebra</code> feature</li>
+<li>glam 0.19, using the <code>glam</code> feature</li>
+</ul>
+<p>PRs are welcome to add or update math libraries to Crevice.</p>
+<p>If your math library is not supported, it’s possible to define structs using the
+types from mint and convert your math library’s types into mint types. This is
+supported by most Rust math libraries.</p>
+<p>Your math library may require you to turn on a feature flag to get mint support.
+For example, cgmath requires the “mint” feature to be enabled to allow
+conversions to and from mint types.</p>
+<h3 id="examples"><a href="#examples">Examples</a></h3><h4 id="single-value"><a href="#single-value">Single Value</a></h4>
+<p>Uploading many types can be done by deriving <a href="std140/trait.AsStd140.html" title="std140::AsStd140"><code>AsStd140</code></a> and
+using <a href="std140/trait.AsStd140.html#tymethod.as_std140" title="std140::AsStd140::as_std140"><code>as_std140</code></a> and
+<a href="std140/trait.Std140.html#method.as_bytes" title="std140::Std140::as_bytes"><code>as_bytes</code></a> to turn the result into bytes.</p>
+<div class="example-wrap"><pre class="language-glsl"><code>uniform MAIN {
+    mat3 orientation;
+    vec3 position;
+    float scale;
+} main;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy_crevice::std140</span>::{<span class="ident">AsStd140</span>, <span class="ident">Std140</span>};
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">AsStd140</span>)]</span>
+<span class="kw">struct</span> <span class="ident">MainUniform</span> {
+    <span class="ident">orientation</span>: <span class="ident">mint::ColumnMatrix3</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
+    <span class="ident">position</span>: <span class="ident">mint::Vector3</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
+    <span class="ident">scale</span>: <span class="ident">f32</span>,
+}
+
+<span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">MainUniform</span> {
+    <span class="ident">orientation</span>: [
+        [<span class="number">1.0</span>, <span class="number">0.0</span>, <span class="number">0.0</span>],
+        [<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">0.0</span>],
+        [<span class="number">0.0</span>, <span class="number">0.0</span>, <span class="number">1.0</span>],
+    ].<span class="ident">into</span>(),
+    <span class="ident">position</span>: [<span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>].<span class="ident">into</span>(),
+    <span class="ident">scale</span>: <span class="number">4.0</span>,
+};
+
+<span class="kw">let</span> <span class="ident">value_std140</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_std140</span>();
+
+<span class="ident">upload_data_to_gpu</span>(<span class="ident">value_std140</span>.<span class="ident">as_bytes</span>());</code></pre></div>
+<h4 id="sequential-types"><a href="#sequential-types">Sequential Types</a></h4>
+<p>More complicated data can be uploaded using the std140
+<a href="std140/struct.Writer.html" title="std140::Writer"><code>Writer</code></a> type.</p>
+<div class="example-wrap"><pre class="language-glsl"><code>struct PointLight {
+    vec3 position;
+    vec3 color;
+    float brightness;
+};
+
+buffer POINT_LIGHTS {
+    uint len;
+    PointLight[] lights;
+} point_lights;</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">bevy_crevice::std140</span>::{<span class="self">self</span>, <span class="ident">AsStd140</span>};
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">AsStd140</span>)]</span>
+<span class="kw">struct</span> <span class="ident">PointLight</span> {
+    <span class="ident">position</span>: <span class="ident">mint::Vector3</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
+    <span class="ident">color</span>: <span class="ident">mint::Vector3</span><span class="op">&lt;</span><span class="ident">f32</span><span class="op">&gt;</span>,
+    <span class="ident">brightness</span>: <span class="ident">f32</span>,
+}
+
+<span class="kw">let</span> <span class="ident">lights</span> <span class="op">=</span> <span class="macro">vec!</span>[
+    <span class="ident">PointLight</span> {
+        <span class="ident">position</span>: [<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">0.0</span>].<span class="ident">into</span>(),
+        <span class="ident">color</span>: [<span class="number">1.0</span>, <span class="number">0.0</span>, <span class="number">0.0</span>].<span class="ident">into</span>(),
+        <span class="ident">brightness</span>: <span class="number">0.6</span>,
+    },
+    <span class="ident">PointLight</span> {
+        <span class="ident">position</span>: [<span class="number">0.0</span>, <span class="number">4.0</span>, <span class="number">3.0</span>].<span class="ident">into</span>(),
+        <span class="ident">color</span>: [<span class="number">1.0</span>, <span class="number">1.0</span>, <span class="number">1.0</span>].<span class="ident">into</span>(),
+        <span class="ident">brightness</span>: <span class="number">1.0</span>,
+    },
+];
+
+<span class="kw">let</span> <span class="ident">target_buffer</span> <span class="op">=</span> <span class="ident">map_gpu_buffer_for_write</span>();
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer</span> <span class="op">=</span> <span class="ident">std140::Writer::new</span>(<span class="ident">target_buffer</span>);
+
+<span class="kw">let</span> <span class="ident">light_count</span> <span class="op">=</span> <span class="ident">lights</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>;
+<span class="ident">writer</span>.<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="ident">light_count</span>)<span class="question-mark">?</span>;
+
+<span class="comment">// Crevice will automatically insert the required padding to align the</span>
+<span class="comment">// PointLight structure correctly. In this case, there will be 12 bytes of</span>
+<span class="comment">// padding between the length field and the light list.</span>
+
+<span class="ident">writer</span>.<span class="ident">write</span>(<span class="ident">lights</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
+
+<span class="ident">unmap_gpu_buffer</span>();
+</code></pre></div>
+<h3 id="features"><a href="#features">Features</a></h3>
+<ul>
+<li><code>std</code> (default): Enables <a href="https://doc.rust-lang.org/1.61.0/std/io/trait.Write.html" title="std::io::Write"><code>std::io::Write</code></a>-based structs.</li>
+<li><code>cgmath</code>: Enables support for types from cgmath.</li>
+<li><code>nalgebra</code>: Enables support for types from nalgebra.</li>
+<li><code>glam</code>: Enables support for types from glam.</li>
+</ul>
+<h3 id="minimum-supported-rust-version-msrv"><a href="#minimum-supported-rust-version-msrv">Minimum Supported Rust Version (MSRV)</a></h3>
+<p>Crevice supports Rust 1.52.1 and newer due to use of new <code>const fn</code> features.</p>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="glsl/index.html" title="bevy_crevice::glsl mod">glsl</a></div><div class="item-right docblock-short"><p>Defines traits and types for generating GLSL code from Rust definitions.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="std140/index.html" title="bevy_crevice::std140 mod">std140</a></div><div class="item-right docblock-short"><p>Defines traits and types for working with data adhering to GLSL’s <code>std140</code>
+layout specification.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="std430/index.html" title="bevy_crevice::std430 mod">std430</a></div><div class="item-right docblock-short"><p>Defines traits and types for working with data adhering to GLSL’s <code>std140</code>
+layout specification.</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="bevy_crevice" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

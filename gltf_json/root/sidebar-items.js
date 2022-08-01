@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Index","Represents an offset into an array of type `T` owned by the root glTF object."],["Root","The root object of a glTF 2.0 asset."]],"trait":[["Get","Helper trait for retrieving top-level objects by a universal identifier."]]});

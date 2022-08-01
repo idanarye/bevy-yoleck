@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Text layout for ab_glyph."><meta name="keywords" content="rust, rustlang, rust-lang, glyph_brush_layout"><title>glyph_brush_layout - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../glyph_brush_layout/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../glyph_brush_layout/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate glyph_brush_layout</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.2.3</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="glyph_brush_layout" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../glyph_brush_layout/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">glyph_brush_layout</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/glyph_brush_layout/lib.rs.html#1-119">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Text layout for <a href="https://github.com/alexheretic/ab-glyph">ab_glyph</a>.</p>
+<h2 id="example"><a href="#example">Example</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">glyph_brush_layout</span>::{<span class="ident">ab_glyph</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+
+<span class="kw">let</span> <span class="ident">dejavu</span> <span class="op">=</span> <span class="ident">FontRef::try_from_slice</span>(<span class="macro">include_bytes!</span>(<span class="string">&quot;../../fonts/DejaVuSans.ttf&quot;</span>))<span class="question-mark">?</span>;
+<span class="kw">let</span> <span class="ident">garamond</span> <span class="op">=</span> <span class="ident">FontRef::try_from_slice</span>(<span class="macro">include_bytes!</span>(<span class="string">&quot;../../fonts/GaramondNo8-Reg.ttf&quot;</span>))<span class="question-mark">?</span>;
+
+<span class="comment">// Simple font mapping: FontId(0) -&gt; deja vu sans, FontId(1) -&gt; garamond</span>
+<span class="kw">let</span> <span class="ident">fonts</span> <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="ident">dejavu</span>, <span class="ident">garamond</span>];
+
+<span class="comment">// Layout &quot;hello glyph_brush_layout&quot; on an unbounded line with the second</span>
+<span class="comment">// word suitably bigger, greener and serif-ier.</span>
+<span class="kw">let</span> <span class="ident">glyphs</span> <span class="op">=</span> <span class="ident">Layout::default</span>().<span class="ident">calculate_glyphs</span>(
+    <span class="ident">fonts</span>,
+    <span class="kw-2">&amp;</span><span class="ident">SectionGeometry</span> {
+        <span class="ident">screen_position</span>: (<span class="number">150.0</span>, <span class="number">50.0</span>),
+        ..<span class="ident">SectionGeometry::default</span>()
+    },
+    <span class="kw-2">&amp;</span>[
+        <span class="ident">SectionText</span> {
+            <span class="ident">text</span>: <span class="string">&quot;hello &quot;</span>,
+            <span class="ident">scale</span>: <span class="ident">PxScale::from</span>(<span class="number">20.0</span>),
+            <span class="ident">font_id</span>: <span class="ident">FontId</span>(<span class="number">0</span>),
+        },
+        <span class="ident">SectionText</span> {
+            <span class="ident">text</span>: <span class="string">&quot;glyph_brush_layout&quot;</span>,
+            <span class="ident">scale</span>: <span class="ident">PxScale::from</span>(<span class="number">25.0</span>),
+            <span class="ident">font_id</span>: <span class="ident">FontId</span>(<span class="number">1</span>),
+        },
+    ],
+);
+
+<span class="macro">assert_eq!</span>(<span class="ident">glyphs</span>.<span class="ident">len</span>(), <span class="number">24</span>);
+
+<span class="kw">let</span> <span class="ident">SectionGlyph</span> { <span class="ident">glyph</span>, <span class="ident">font_id</span>, <span class="ident">section_index</span>, <span class="ident">byte_index</span> } <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">glyphs</span>[<span class="number">4</span>];
+<span class="macro">assert_eq!</span>(<span class="ident">glyph</span>.<span class="ident">id</span>, <span class="ident">fonts</span>[<span class="number">0</span>].<span class="ident">glyph_id</span>(<span class="string">&#39;o&#39;</span>));
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">font_id</span>, <span class="ident">FontId</span>(<span class="number">0</span>));
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">section_index</span>, <span class="number">0</span>);
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">byte_index</span>, <span class="number">4</span>);
+
+<span class="kw">let</span> <span class="ident">SectionGlyph</span> { <span class="ident">glyph</span>, <span class="ident">font_id</span>, <span class="ident">section_index</span>, <span class="ident">byte_index</span> } <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">glyphs</span>[<span class="number">14</span>];
+<span class="macro">assert_eq!</span>(<span class="ident">glyph</span>.<span class="ident">id</span>, <span class="ident">fonts</span>[<span class="number">1</span>].<span class="ident">glyph_id</span>(<span class="string">&#39;u&#39;</span>));
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">font_id</span>, <span class="ident">FontId</span>(<span class="number">1</span>));
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">section_index</span>, <span class="number">1</span>);
+<span class="macro">assert_eq!</span>(<span class="kw-2">*</span><span class="ident">byte_index</span>, <span class="number">8</span>);
+</code></pre></div>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="ab_glyph/index.html" title="glyph_brush_layout::ab_glyph mod">ab_glyph</a></div><div class="item-right docblock-short"><p>Re-exported ab_glyph types.</p>
+</div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.FontId.html" title="glyph_brush_layout::FontId struct">FontId</a></div><div class="item-right docblock-short"><p>Id for a font.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.SectionGeometry.html" title="glyph_brush_layout::SectionGeometry struct">SectionGeometry</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.SectionGlyph.html" title="glyph_brush_layout::SectionGlyph struct">SectionGlyph</a></div><div class="item-right docblock-short"><p>A positioned glyph with info relating to the <code>SectionText</code> from which it was derived.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.SectionText.html" title="glyph_brush_layout::SectionText struct">SectionText</a></div><div class="item-right docblock-short"><p>Text to layout together using a font &amp; scale.</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.BuiltInLineBreaker.html" title="glyph_brush_layout::BuiltInLineBreaker enum">BuiltInLineBreaker</a></div><div class="item-right docblock-short"><p>Built-in linebreaking logic.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.GlyphChange.html" title="glyph_brush_layout::GlyphChange enum">GlyphChange</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.HorizontalAlign.html" title="glyph_brush_layout::HorizontalAlign enum">HorizontalAlign</a></div><div class="item-right docblock-short"><p>Describes horizontal alignment preference for positioning &amp; bounds.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.Layout.html" title="glyph_brush_layout::Layout enum">Layout</a></div><div class="item-right docblock-short"><p>Built-in <a href="trait.GlyphPositioner.html"><code>GlyphPositioner</code></a> implementations.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.LineBreak.html" title="glyph_brush_layout::LineBreak enum">LineBreak</a></div><div class="item-right docblock-short"><p>Indicator that a character is a line break, soft or hard. Includes the offset (byte-index)
+position.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.VerticalAlign.html" title="glyph_brush_layout::VerticalAlign enum">VerticalAlign</a></div><div class="item-right docblock-short"><p>Describes vertical alignment preference for positioning &amp; bounds. Currently a placeholder
+for future functionality.</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.GlyphPositioner.html" title="glyph_brush_layout::GlyphPositioner trait">GlyphPositioner</a></div><div class="item-right docblock-short"><p>Logic to calculate glyph positioning using <a href="struct.Font.html"><code>Font</code></a>,
+<a href="struct.SectionGeometry.html"><code>SectionGeometry</code></a> and
+<a href="struct.SectionText.html"><code>SectionText</code></a>.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.LineBreaker.html" title="glyph_brush_layout::LineBreaker trait">LineBreaker</a></div><div class="item-right docblock-short"><p>Producer of a <a href="enum.LineBreak.html"><code>LineBreak</code></a> iterator. Used to allow to the
+<a href="enum.Layout.html"><code>Layout</code></a> to be line break aware in a generic way.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ToSectionText.html" title="glyph_brush_layout::ToSectionText trait">ToSectionText</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="glyph_brush_layout" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
+</body></html>

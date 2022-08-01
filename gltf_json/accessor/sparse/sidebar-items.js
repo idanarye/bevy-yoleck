@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Indices","Indices of those attributes that deviate from their initialization value."],["Sparse","Sparse storage of attributes that deviate from their initialization value."],["Values","Array of size `count * number_of_components` storing the displaced accessor attributes pointed by `accessor::sparse::Indices`."]]});

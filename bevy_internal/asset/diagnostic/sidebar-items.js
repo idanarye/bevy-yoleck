@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AssetCountDiagnosticsPlugin","Adds “asset count” diagnostic to an App"]]});
