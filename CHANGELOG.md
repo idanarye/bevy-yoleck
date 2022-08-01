@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Use the correct transform when dragging child entities (#11)
 
+### Added
+- Knobs!
+
 ## 0.2.0 - 2022-06-09
 ### Added
 - `YoleckVpeolSelectionCuePlugin` for adding a pulse effect to show the
