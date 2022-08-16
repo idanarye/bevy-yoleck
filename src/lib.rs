@@ -110,7 +110,7 @@
 //! }
 //!
 //! fn setup_camera(mut commands: Commands) {
-//!     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+//!     commands.spawn_bundle(Camera2dBundle::default());
 //! }
 //!
 //! #[derive(Clone, PartialEq, Serialize, Deserialize)]
@@ -152,7 +152,7 @@
 //!     mut game_state: ResMut<State<GameState>>,
 //! ) {
 //!     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
-//!     if let Some(level_index) = level_index_assets.get(level_index_handle) {
+//!     if let Some(level_index) = level_index_assets.get(&level_index_handle) {
 //!         // A proper game would have a proper level progression system, but here we are just
 //!         // taking the first level and loading it.
 //!         let level_handle: Handle<YoleckRawLevel> =

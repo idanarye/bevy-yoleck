@@ -25,7 +25,7 @@ pub struct YoleckLevelIndexEntry {
 /// ) {
 ///     # let level_number: usize = todo!();
 ///     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
-///     if let Some(level_index) = level_index_assets.get(level_index_handle) {
+///     if let Some(level_index) = level_index_assets.get(&level_index_handle) {
 ///         let level_to_load = level_index[level_number];
 ///         let level_handle: Handle<YoleckRawLevel> = asset_server.load(&format!("levels/{}", level_to_load.filename));
 ///         *yoleck_loading_command = YoleckLoadingCommand::FromAsset(level_handle);
