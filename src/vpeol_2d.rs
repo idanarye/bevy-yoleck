@@ -201,10 +201,7 @@ fn yoleck_clicks_on_objects(
             }
         }
         if let Some(text_2d_size) = text_2d {
-            if check(
-                &Anchor::TopLeft,
-                Vec2::new(text_2d_size.size.width, text_2d_size.size.height),
-            ) {
+            if check(&Anchor::TopLeft, text_2d_size.size) {
                 return true;
             }
         }
@@ -218,7 +215,12 @@ fn yoleck_clicks_on_objects(
             continue;
         };
         if let Some(screen_pos) = window.cursor_position() {
-            let world_pos = screen_pos_to_world_pos(screen_pos, window, camera_transform, camera);
+            let world_pos = screen_pos_to_world_pos(
+                screen_pos,
+                window,
+                &camera_transform.compute_matrix(),
+                camera,
+            );
 
             let state = state_by_camera
                 .entry(camera_entity)
@@ -249,7 +251,7 @@ fn yoleck_clicks_on_objects(
                         *state = YoleckClicksOnObjectsState::BeingDragged {
                             entity: knob_entity,
                             prev_screen_pos: screen_pos,
-                            offset: world_pos - knob_transform.translation.truncate(),
+                            offset: world_pos - knob_transform.translation().truncate(),
                         }
                     } else {
                         let entity_under_cursor = yoleck
@@ -261,13 +263,13 @@ fn yoleck_clicks_on_objects(
                                 {
                                     if is_world_pos_in(entity_transform, sprite, world_pos) {
                                         if let Some((_, current_result_z)) = result {
-                                            if entity_transform.translation.z < current_result_z {
+                                            if entity_transform.translation().z < current_result_z {
                                                 continue;
                                             }
                                         }
                                         result = Some((
                                             (entity, entity_transform),
-                                            entity_transform.translation.z,
+                                            entity_transform.translation().z,
                                         ));
                                     }
                                 }
@@ -288,7 +290,7 @@ fn yoleck_clicks_on_objects(
                             YoleckClicksOnObjectsState::BeingDragged {
                                 entity,
                                 prev_screen_pos: screen_pos,
-                                offset: world_pos - entity_transform.translation.truncate(),
+                                offset: world_pos - entity_transform.translation().truncate(),
                             }
                         } else {
                             directives_writer.send(YoleckDirective::set_selected(None));
@@ -358,8 +360,12 @@ fn camera_2d_pan(
             continue;
         };
         if let Some(screen_pos) = window.cursor_position() {
-            let world_pos =
-                screen_pos_to_world_pos(screen_pos, window, camera_global_transform, camera);
+            let world_pos = screen_pos_to_world_pos(
+                screen_pos,
+                window,
+                &camera_global_transform.compute_matrix(),
+                camera,
+            );
 
             match mouse_button_op {
                 MouseButtonOp::JustPressed => {
@@ -411,15 +417,19 @@ fn camera_2d_zoom(
             continue;
         };
         if let Some(screen_pos) = window.cursor_position() {
-            let world_pos =
-                screen_pos_to_world_pos(screen_pos, window, camera_global_transform, camera);
+            let camera_global_transform_matrix = camera_global_transform.compute_matrix();
+            let world_pos = screen_pos_to_world_pos(
+                screen_pos,
+                window,
+                &camera_global_transform_matrix,
+                camera,
+            );
             camera_transform.scale.x *= scale_by;
             camera_transform.scale.y *= scale_by;
-            let mut new_global_transform = *camera_global_transform;
-            new_global_transform.scale.x *= scale_by;
-            new_global_transform.scale.y *= scale_by;
+            let new_global_transform_matrix = camera_global_transform_matrix
+                .mul_mat4(&Mat4::from_scale(Vec3::new(scale_by, scale_by, 1.0)));
             let new_world_pos =
-                screen_pos_to_world_pos(screen_pos, window, &new_global_transform, camera);
+                screen_pos_to_world_pos(screen_pos, window, &new_global_transform_matrix, camera);
             camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
         }
     }
@@ -428,7 +438,7 @@ fn camera_2d_zoom(
 fn screen_pos_to_world_pos(
     screen_pos: Vec2,
     wnd: &Window,
-    camera_transform: &GlobalTransform,
+    camera_transform_matrix: &Mat4,
     camera: &Camera,
 ) -> Vec2 {
     // Code stolen from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
@@ -440,7 +450,7 @@ fn screen_pos_to_world_pos(
     let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
 
     // matrix for undoing the projection and camera transform
-    let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix.inverse();
+    let ndc_to_world = camera_transform_matrix.mul_mat4(&camera.projection_matrix().inverse());
 
     // use it to convert ndc to world-space coordinates
     let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));

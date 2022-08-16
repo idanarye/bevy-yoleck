@@ -3,7 +3,7 @@
 //! This module does not do much, but provide common functionalities for more concrete modules like
 //! [`vpeol_2d`](crate::vpeol_2d).
 
-use bevy::ecs::query::{FilterFetch, WorldQuery};
+use bevy::ecs::query::WorldQuery;
 use bevy::prelude::*;
 use bevy::transform::TransformSystem;
 
@@ -30,7 +30,6 @@ pub fn handle_clickable_children_system<F, B>(
     mut commands: Commands,
 ) where
     F: WorldQuery,
-    <F as WorldQuery>::Fetch: FilterFetch,
     B: Default + Bundle,
 {
     for (parent, children) in parents_query.iter() {

@@ -98,7 +98,7 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let mut camera = OrthographicCameraBundle::new_2d();
+    let mut camera = Camera2dBundle::default();
     camera.transform.translation.z = 100.0;
     commands.spawn_bundle(camera);
 }
@@ -248,9 +248,9 @@ struct Fruit {
 fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
-        cmd.insert_bundle(TransformBundle::from_transform(
-            Transform::from_translation(data.position.extend(0.0)),
-        ));
+        cmd.insert_bundle(SpatialBundle::from_transform(Transform::from_translation(
+            data.position.extend(0.0),
+        )));
         // Could have placed them on the main entity, but with this the children picking feature
         // can be tested and demonstrated.
         cmd.with_children(|commands| {
@@ -344,15 +344,12 @@ fn populate_text(mut populate: YoleckPopulate<FloatingText>, assets: Res<GameAss
     populate.populate(|_ctx, data, mut cmd| {
         cmd.insert_bundle(Text2dBundle {
             text: {
-                Text::with_section(
+                Text::from_section(
                     data.text.clone(),
                     TextStyle {
                         font: assets.font.clone(),
                         font_size: 72.0,
                         color: Color::WHITE,
-                    },
-                    TextAlignment {
-                        ..Default::default()
                     },
                 )
             },

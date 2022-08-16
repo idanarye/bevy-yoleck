@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Update Bevy version to 0.8 and bevy-egui version to 0.15.
+
 ### Removed
 - **REGRESSION**: Removed `vpeol_3d` and `example3d`. They were depending on
   crates that were slow to migrate to Bevy 0.8 (one of then has still not
