@@ -20,11 +20,8 @@ exclude = [
 anyhow = "^1"
 bevy = { version = "^0.7", default-features = false }
 bevy_egui = { version = "0.14.0", default-features = false }
-bevy_mod_picking = { version = "0.6.1", optional = true }
-bevy_transform_gizmo = { version = "0.2.1", optional = true }
 serde = "^1"
 serde_json = "^1"
-smooth-bevy-cameras = { version = "0.4.0", optional = true }
 
 [features]
 vpeol = []
@@ -33,12 +30,6 @@ vpeol_2d = [
     "bevy/bevy_text",
     "bevy/bevy_sprite",
 ]
-vpeol_3d = [
-    "vpeol",
-    "bevy_mod_picking",
-    "bevy_transform_gizmo",
-    "smooth-bevy-cameras",
-]
 
  [dev-dependencies]
  bevy = { version = "0.7", default-features = false, features = ["bevy_sprite", "x11"] }
@@ -46,7 +37,3 @@ vpeol_3d = [
 [[example]]
 name = "example2d"
 required-features = ["vpeol_2d", "bevy/png"]
-
-[[example]]
-name = "example3d"
-required-features = ["vpeol_3d", "bevy/bevy_pbr", "bevy/bevy_gltf"]

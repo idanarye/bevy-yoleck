@@ -53,8 +53,8 @@
 //!   * Use [`YoleckLoadingCommand`] to load the level.
 //!
 //! To support picking and moving entities in the viewport with the mouse, check out the
-//! [`vpeol_2d`](crate::vpeol_2d) or [`vpeol_3d`](crate::vpeol_3d) modules. Helpers that can be
-//! used in both `vpeol_2d` and `vpeol_3d` can be found in [`vpeol`](crate::vpeol).
+//! [`vpeol_2d`](crate::vpeol_2d) module. Helpers that can be used in `vpeol_2d` can be found in
+//! [`vpeol`](crate::vpeol).
 //!
 //! # Minimal Working Example
 //!
@@ -175,8 +175,6 @@ mod level_index;
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
-#[cfg(feature = "vpeol_3d")]
-pub mod vpeol_3d;
 
 use std::any::Any;
 use std::path::Path;

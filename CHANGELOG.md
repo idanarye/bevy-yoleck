@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Removed
+- **REGRESSION**: Removed `vpeol_3d` and `example3d`. They were depending on
+  crates that were slow to migrate to Bevy 0.8 (one of then has still not
+  released its Bevy 0.8 version when this changelog entry was written). Since
+  `vpeol_3d` was barely usable to begin with (the gizmo is not a good way to
+  move objects around - we need proper dragging! - and `bevy_mod_pickling`
+  required lots of hacks to play nice with Yoleck) it has been removed for now
+  and will be re-added in the future with less dependencies and better
+  interface.
+
 ### Fixed
 - Use the correct transform when dragging child entities (#11)
 

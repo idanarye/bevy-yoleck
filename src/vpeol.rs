@@ -1,7 +1,7 @@
 //! # Viewport Editing Overlay - utilities for editing entities from a viewport.
 //!
 //! This module does not do much, but provide common functionalities for more concrete modules like
-//! [`vpeol_2d`](crate::vpeol_2d) and [`vpeol_3d`](crate::vpeol_3d).
+//! [`vpeol_2d`](crate::vpeol_2d).
 
 use bevy::ecs::query::{FilterFetch, WorldQuery};
 use bevy::prelude::*;
