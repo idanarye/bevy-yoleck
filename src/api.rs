@@ -116,7 +116,7 @@ impl<'a> YoleckPopulateContext<'a> {
 
 /// A context for [`YoleckEdit::edit`].
 pub struct YoleckEditContext<'a> {
-    pub entity: Entity,
+    entity: Entity,
     pub(crate) passed: &'a mut HashMap<Entity, HashMap<TypeId, BoxedArc>>,
     knobs_cache: &'a mut YoleckKnobsCache,
 }
@@ -152,6 +152,33 @@ impl<'a> YoleckEditContext<'a> {
         }
     }
 
+    /// Create a knob - an helper entity the level editor can use to edit the entity.
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckEdit, egui};
+    /// # struct KidWithBalloon {
+    /// #     position: Vec2,
+    /// #     baloon_offset: Vec2,
+    /// # }
+    /// # struct MyAssets {
+    /// #     baloon_sprite: Handle<Image>,
+    /// # }
+    /// fn edit_kid_with_balloon(mut edit: YoleckEdit<KidWithBalloon>, mut commands: Commands, assets: Res<MyAssets>) {
+    ///     edit.edit(|ctx, data, _ui| {
+    ///         let mut balloon_knob = ctx.knob(&mut commands, "balloon");
+    ///         let knob_position = data.position + data.baloon_offset;
+    ///         balloon_knob.cmd.insert_bundle(SpriteBundle {
+    ///             transform: Transform::from_translation(knob_position.extend(1.0)),
+    ///             texture: assets.baloon_sprite.clone(),
+    ///             ..Default::default()
+    ///         });
+    ///         if let Some(new_baloon_pos) = balloon_knob.get_passed_data::<Vec2>() {
+    ///             data.baloon_offset = *new_baloon_pos - data.position;
+    ///         }
+    ///     });
+    /// }
+    /// ```
     pub fn knob<'b, 'w, 's, K>(
         &mut self,
         commands: &'b mut Commands<'w, 's>,
@@ -247,13 +274,18 @@ impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
     }
 }
 
+/// An handle for intearcing with a knob from an [edit system](YoleckEdit::edit).
 pub struct YoleckKnobHandle<'w, 's, 'a> {
+    /// The command of the knob entity.
     pub cmd: EntityCommands<'w, 's, 'a>,
+    /// `true` if the knob entity is just created this frame.
     pub is_new: bool,
     passed: HashMap<TypeId, BoxedArc>,
 }
 
 impl YoleckKnobHandle<'_, '_, '_> {
+    /// Get data sent to the knob from external systems (usually interaciton from the level
+    /// editor). See [`YoleckEditContext::get_passed_data`].
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
             dynamic.downcast_ref()

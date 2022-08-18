@@ -5,9 +5,11 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+/// Marks an entity as a knob - a temporary helper entity used for editing another entity.
 #[derive(Component)]
 pub struct YoleckKnob;
 
+#[doc(hidden)]
 #[derive(Default)]
 pub struct YoleckKnobsCache {
     by_key_hash: HashMap<u64, Vec<CachedKnob>>,
