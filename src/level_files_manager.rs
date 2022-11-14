@@ -235,32 +235,38 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             {
                                                 swap_with_previous = Some(index + 1);
                                             }
+                                            let mut load_level = || {
+                                                clear_level(&mut commands);
+                                                let fd = fs::File::open(
+                                                    levels_directory.0.join(&file.filename),
+                                                )
+                                                .unwrap();
+                                                let level: YoleckRawLevel =
+                                                    serde_json::from_reader(fd).unwrap();
+                                                for entry in level.entries().iter().cloned() {
+                                                    commands.spawn(entry);
+                                                }
+                                            };
                                             if ui
                                                 .selectable_label(is_selected, &file.filename)
                                                 .clicked()
                                             {
                                                 #[allow(clippy::collapsible_else_if)]
                                                 if !is_selected && !yoleck.level_needs_saving {
-                                                    clear_level(&mut commands);
                                                     selected_level_file =
                                                         SelectedLevelFile::Existing(
                                                             file.filename.clone(),
                                                         );
-                                                    let fd = fs::File::open(
-                                                        levels_directory.0.join(&file.filename),
-                                                    )
-                                                    .unwrap();
-                                                    let level: YoleckRawLevel =
-                                                        serde_json::from_reader(fd).unwrap();
-                                                    for entry in level.entries().iter().cloned() {
-                                                        commands.spawn(entry);
-                                                    }
+                                                    load_level();
                                                 }
                                             }
                                             if is_selected && yoleck.level_needs_saving {
-                                                #[allow(clippy::collapsible_else_if)]
                                                 if ui.button("SAVE").clicked() {
                                                     save_existing(&file.filename).unwrap();
+                                                    yoleck.level_needs_saving = false;
+                                                }
+                                                if ui.button("REVERT").clicked() {
+                                                    load_level();
                                                     yoleck.level_needs_saving = false;
                                                 }
                                             }
@@ -311,6 +317,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                 Err(err) => {
                                                     warn!("Cannot open {:?} - {}", file_path, err);
                                                 }
+                                            }
+                                        }
+                                        if yoleck.level_needs_saving {
+                                            if ui.button("Wipe Level").clicked() {
+                                                clear_level(&mut commands);
+                                                yoleck.level_needs_saving = false;
                                             }
                                         }
                                     }

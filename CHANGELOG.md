@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Update Bevy version to 0.9 and bevy-egui version to 0.17.
 
+### Added
+- Ability to revert levels to their initial state:
+  - `Wipe Level` button for new levels.
+  - `REVERT` button for existing levels
+  - This is important because otherwise the only ways to select a different
+    level are to save the changes or restart the editor.
+
 ### Fixed
 - Knobs remaining during playtest.
 
