@@ -176,17 +176,17 @@ struct Player {
 fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.insert((
-                SpriteBundle {
-                    sprite: Sprite {
-                        custom_size: Some(Vec2::new(100.0, 100.0)),
-                        ..Default::default()
-                    },
-                    transform: Transform::from_translation(data.position.extend(0.0))
-                        .with_rotation(Quat::from_rotation_z(data.rotation)),
-                        texture: assets.player_sprite.clone(),
-                        ..Default::default()
+            SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(100.0, 100.0)),
+                    ..Default::default()
                 },
-                IsPlayer,
+                transform: Transform::from_translation(data.position.extend(0.0))
+                    .with_rotation(Quat::from_rotation_z(data.rotation)),
+                texture: assets.player_sprite.clone(),
+                ..Default::default()
+            },
+            IsPlayer,
         ));
     });
 }
@@ -254,11 +254,9 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
         cmd.insert((
-                SpatialBundle::from_transform(Transform::from_translation(
-                        data.position.extend(0.0),
-                )),
-                YoleckWillContainClickableChildren,
-                IsFruit,
+            SpatialBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
+            YoleckWillContainClickableChildren,
+            IsFruit,
         ));
         // Could have placed them on the main entity, but with this the children picking feature
         // can be tested and demonstrated.

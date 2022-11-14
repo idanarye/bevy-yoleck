@@ -45,10 +45,9 @@ pub fn handle_clickable_children_system<F, B>(
                 children_to_check.extend(child_children.iter().copied());
             }
             if should_add_query.get(child).is_ok() {
-                commands.entity(child).insert((
-                    YoleckRouteClickTo(parent),
-                    B::default(),
-                ));
+                commands
+                    .entity(child)
+                    .insert((YoleckRouteClickTo(parent), B::default()));
                 any_added = true;
             }
         }

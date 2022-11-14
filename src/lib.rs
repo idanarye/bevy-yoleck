@@ -250,8 +250,7 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
         app.add_system(
-            editor_window::yoleck_editor_window
-                .after(YoleckSystemLabels::ProcessRawEntities),
+            editor_window::yoleck_editor_window.after(YoleckSystemLabels::ProcessRawEntities),
         );
     }
 }

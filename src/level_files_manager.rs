@@ -8,8 +8,8 @@ use bevy_egui::egui;
 
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
-    YoleckEditorState, YoleckEntryHeader, YoleckLevelIndex, YoleckManaged, YoleckRawEntry,
-    YoleckRawLevel, YoleckState, YoleckTypeHandlers, YoleckKnobsCache,
+    YoleckEditorState, YoleckEntryHeader, YoleckKnobsCache, YoleckLevelIndex, YoleckManaged,
+    YoleckRawEntry, YoleckRawLevel, YoleckState, YoleckTypeHandlers,
 };
 
 const EXTENSION: &str = ".yol";
