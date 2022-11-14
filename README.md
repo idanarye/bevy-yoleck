@@ -15,14 +15,13 @@ own level editor.
   systems for both loading the levels and visualizing them in the editor.
 * Entity editing is done with egui widgets that edit these structs.
 * Support for external plugins that offer more visual editing.
-  * Two simple such plugins included behind feature flags - `vpeol_2d` and `vpeol_3d`.
+  * One simple such plugin included behind feature flag - `vpeol_2d`.
 * Playtest the levels inside the editor.
 
 ## Examples:
 
 * WASM examples - you can't save the levels because it's WASM, but you can edit the levels run playtests:
   * https://idanarye.github.io/bevy-yoleck/demos/example2d
-  * https://idanarye.github.io/bevy-yoleck/demos/example3d
 * Example game:
   * Download binaries from https://aeon-felis.itch.io/danger-doofus
   * See the code at https://github.com/idanarye/sidekick-jam-entry-danger-doofus
