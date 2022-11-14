@@ -100,9 +100,10 @@ fn main() {
 fn setup_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
     camera.transform.translation.z = 100.0;
-    commands.spawn_bundle(camera);
+    commands.spawn(camera);
 }
 
+#[derive(Resource)]
 struct GameAssets {
     player_sprite: Handle<Image>,
     fruits_sprite_sheet: Handle<TextureAtlas>,
@@ -123,6 +124,8 @@ impl FromWorld for GameAssets {
             Vec2::new(64.0, 64.0),
             3,
             1,
+            None,
+            None,
         );
         let fruits_egui = if let Some(mut egui_context) = egui_context {
             (
@@ -172,17 +175,19 @@ struct Player {
 
 fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_translation(data.position.extend(0.0))
-                .with_rotation(Quat::from_rotation_z(data.rotation)),
-            texture: assets.player_sprite.clone(),
-            ..Default::default()
-        });
-        cmd.insert(IsPlayer);
+        cmd.insert((
+                SpriteBundle {
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::new(100.0, 100.0)),
+                        ..Default::default()
+                    },
+                    transform: Transform::from_translation(data.position.extend(0.0))
+                        .with_rotation(Quat::from_rotation_z(data.rotation)),
+                        texture: assets.player_sprite.clone(),
+                        ..Default::default()
+                },
+                IsPlayer,
+        ));
     });
 }
 
@@ -194,7 +199,7 @@ fn edit_player(mut edit: YoleckEdit<Player>, mut commands: Commands) {
         let mut rotate_knob = ctx.knob(&mut commands, "rotate");
         let knob_position =
             data.position.extend(1.0) + Quat::from_rotation_z(data.rotation) * (50.0 * Vec3::Y);
-        rotate_knob.cmd.insert_bundle(SpriteBundle {
+        rotate_knob.cmd.insert(SpriteBundle {
             sprite: Sprite {
                 color: Color::PURPLE,
                 custom_size: Some(Vec2::new(30.0, 30.0)),
@@ -248,13 +253,17 @@ struct Fruit {
 fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
-        cmd.insert_bundle(SpatialBundle::from_transform(Transform::from_translation(
-            data.position.extend(0.0),
-        )));
+        cmd.insert((
+                SpatialBundle::from_transform(Transform::from_translation(
+                        data.position.extend(0.0),
+                )),
+                YoleckWillContainClickableChildren,
+                IsFruit,
+        ));
         // Could have placed them on the main entity, but with this the children picking feature
         // can be tested and demonstrated.
         cmd.with_children(|commands| {
-            commands.spawn_bundle(SpriteSheetBundle {
+            commands.spawn(SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     index: data.fruit_index,
                     custom_size: Some(Vec2::new(100.0, 100.0)),
@@ -264,8 +273,6 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
                 ..Default::default()
             });
         });
-        cmd.insert(YoleckWillContainClickableChildren);
-        cmd.insert(IsFruit);
     });
 }
 
@@ -288,7 +295,7 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
                     let mut knob = ctx.knob(&mut commands, ("select", index));
                     let knob_position =
                         (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
-                    knob.cmd.insert_bundle(SpriteSheetBundle {
+                    knob.cmd.insert(SpriteSheetBundle {
                         sprite: TextureAtlasSprite {
                             index,
                             custom_size: Some(Vec2::new(20.0, 20.0)),
@@ -342,7 +349,7 @@ fn default_scale() -> f32 {
 
 fn populate_text(mut populate: YoleckPopulate<FloatingText>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert_bundle(Text2dBundle {
+        cmd.insert(Text2dBundle {
             text: {
                 Text::from_section(
                     data.text.clone(),

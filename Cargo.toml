@@ -18,8 +18,8 @@ exclude = [
 
 [dependencies]
 anyhow = "^1"
-bevy = { version = "^0.8", default-features = false }
-bevy_egui = { version = "^0.15", default-features = false, features = ["default_fonts"] }
+bevy = { version = "^0.9", default-features = false }
+bevy_egui = { version = "^0.17", default-features = false, features = ["default_fonts"] }
 serde = "^1"
 serde_json = "^1"
 
@@ -32,7 +32,7 @@ vpeol_2d = [
 ]
 
  [dev-dependencies]
- bevy = { version = "^0.8", default-features = false, features = ["bevy_sprite", "x11"] }
+ bevy = { version = "^0.9", default-features = false, features = ["bevy_sprite", "x11"] }
 
 [[example]]
 name = "example2d"

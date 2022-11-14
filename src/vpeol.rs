@@ -3,7 +3,7 @@
 //! This module does not do much, but provide common functionalities for more concrete modules like
 //! [`vpeol_2d`](crate::vpeol_2d).
 
-use bevy::ecs::query::WorldQuery;
+use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::prelude::*;
 use bevy::transform::TransformSystem;
 
@@ -31,7 +31,7 @@ pub fn handle_clickable_children_system<F, B>(
     should_add_query: Query<Entity, F>,
     mut commands: Commands,
 ) where
-    F: WorldQuery,
+    F: ReadOnlyWorldQuery,
     B: Default + Bundle,
 {
     for (parent, children) in parents_query.iter() {
@@ -45,9 +45,10 @@ pub fn handle_clickable_children_system<F, B>(
                 children_to_check.extend(child_children.iter().copied());
             }
             if should_add_query.get(child).is_ok() {
-                let mut cmd = commands.entity(child);
-                cmd.insert(YoleckRouteClickTo(parent));
-                cmd.insert_bundle(B::default());
+                commands.entity(child).insert((
+                    YoleckRouteClickTo(parent),
+                    B::default(),
+                ));
                 any_added = true;
             }
         }

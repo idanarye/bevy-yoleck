@@ -161,6 +161,7 @@ impl<'a> YoleckEditContext<'a> {
     /// #     position: Vec2,
     /// #     baloon_offset: Vec2,
     /// # }
+    /// # #[derive(Resource)]
     /// # struct MyAssets {
     /// #     baloon_sprite: Handle<Image>,
     /// # }
@@ -168,7 +169,7 @@ impl<'a> YoleckEditContext<'a> {
     ///     edit.edit(|ctx, data, _ui| {
     ///         let mut balloon_knob = ctx.knob(&mut commands, "balloon");
     ///         let knob_position = data.position + data.baloon_offset;
-    ///         balloon_knob.cmd.insert_bundle(SpriteBundle {
+    ///         balloon_knob.cmd.insert(SpriteBundle {
     ///             transform: Transform::from_translation(knob_position.extend(1.0)),
     ///             texture: assets.baloon_sprite.clone(),
     ///             ..Default::default()
@@ -198,6 +199,7 @@ impl<'a> YoleckEditContext<'a> {
 }
 
 #[doc(hidden)]
+#[derive(Resource)]
 pub struct YoleckUiForEditSystem(pub egui::Ui);
 
 /// Parameter for systems that edit entities. See [`YoleckEdit::edit`].
@@ -329,6 +331,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     /// # struct Example {
     /// #     position: Vec2,
     /// # }
+    /// # #[derive(Resource)]
     /// # struct GameAssets {
     /// #     example_sprite: Handle<Image>,
     /// # }
@@ -340,7 +343,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     ///
     /// fn populate_example(mut populate: YoleckPopulate<Example>, assets: Res<GameAssets>) {
     ///     populate.populate(|_ctx, data, mut cmd| {
-    ///         cmd.insert_bundle(SpriteBundle {
+    ///         cmd.insert(SpriteBundle {
     ///             sprite: Sprite {
     ///                 custom_size: Some(Vec2::new(100.0, 100.0)),
     ///                 ..Default::default()
@@ -403,6 +406,7 @@ impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
     }
 }
 
+#[derive(Resource)]
 pub enum YoleckUserSystemContext {
     Nope,
     Edit {

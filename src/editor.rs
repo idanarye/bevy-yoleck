@@ -79,8 +79,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
             for type_name in yoleck_type_handlers.type_handler_names.iter() {
                 if ui.button(type_name).clicked() {
-                    let mut cmd = commands.spawn();
-                    cmd.insert(YoleckRawEntry {
+                    let cmd = commands.spawn(YoleckRawEntry {
                         header: YoleckEntryHeader {
                             type_name: type_name.clone(),
                             name: "".to_owned(),

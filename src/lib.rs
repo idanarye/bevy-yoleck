@@ -221,7 +221,6 @@ impl Plugin for YoleckPluginBase {
         app.add_asset_loader(level_index::YoleckLevelIndexLoader);
         app.add_system(
             entity_management::yoleck_process_raw_entries
-                .exclusive_system()
                 .label(YoleckSystemLabels::ProcessRawEntities),
         );
         app.add_system(entity_management::yoleck_process_loading_command);
@@ -252,7 +251,6 @@ impl Plugin for YoleckPluginForEditor {
         app.add_event::<YoleckDirective>();
         app.add_system(
             editor_window::yoleck_editor_window
-                .exclusive_system()
                 .after(YoleckSystemLabels::ProcessRawEntities),
         );
     }
@@ -290,7 +288,7 @@ pub struct YoleckManaged {
     pub data: BoxedAny,
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct YoleckTypeHandlers {
     type_handler_names: Vec<String>,
     type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
@@ -312,6 +310,7 @@ impl YoleckTypeHandlers {
 }
 
 /// Fields of the Yoleck editor.
+#[derive(Resource)]
 pub struct YoleckState {
     entity_being_edited: Option<Entity>,
     level_needs_saving: bool,
@@ -343,10 +342,11 @@ impl YoleckState {
 ///         let (
 ///             time,
 ///         ) = system_state.get_mut(world);
-///         ui.label(format!("Time since startup is {:?}", time.time_since_startup()));
+///         ui.label(format!("Time since startup is {:?}", time.elapsed()));
 ///     }
 /// }).into());
 /// ```
+#[derive(Resource)]
 pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
 
 impl Default for YoleckEditorSections {

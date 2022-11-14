@@ -10,7 +10,7 @@ use bevy::utils::HashMap;
 pub struct YoleckKnob;
 
 #[doc(hidden)]
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct YoleckKnobsCache {
     by_key_hash: HashMap<u64, Vec<CachedKnob>>,
 }
@@ -44,8 +44,7 @@ impl YoleckKnobsCache {
                 }
             }
         }
-        let mut cmd = commands.spawn();
-        cmd.insert(YoleckKnob);
+        let cmd = commands.spawn(YoleckKnob);
         entries.push(CachedKnob {
             key: Box::new(key),
             entity: cmd.id(),

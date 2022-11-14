@@ -102,7 +102,7 @@ pub(crate) fn yoleck_process_loading_command(
         if let Some(asset) = raw_levels_assets.get(handle) {
             *yoleck_loading_command = YoleckLoadingCommand::NoCommand;
             for entry in asset.entries() {
-                commands.spawn().insert(entry.clone());
+                commands.spawn(entry.clone());
             }
         }
     }
@@ -119,6 +119,7 @@ pub(crate) fn yoleck_process_loading_command(
 /// ) {
 ///     *yoleck_loading_command = YoleckLoadingCommand::FromAsset(asset_server.load("levels/level1.yol"));
 /// }
+#[derive(Resource)]
 pub enum YoleckLoadingCommand {
     NoCommand,
     FromAsset(Handle<YoleckRawLevel>),

@@ -28,6 +28,7 @@ const EXTENSION_WITHOUT_DOT: &str = "yol";
 ///     Path::new(".").join("some").join("other").join("path"),
 /// ));
 /// ```
+#[derive(Resource)]
 pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 
 /// The UI part for managing level files. See [`YoleckEditorSections`](crate::YoleckEditorSections).
@@ -96,14 +97,14 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 if ui.button("Restart Playtest").clicked() {
                     clear_level(&mut commands);
                     for entry in level.entries() {
-                        commands.spawn().insert(entry.clone());
+                        commands.spawn(entry.clone());
                     }
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
                     editor_state.set(YoleckEditorState::EditorActive).unwrap();
                     for entry in level.entries() {
-                        commands.spawn().insert(entry.clone());
+                        commands.spawn(entry.clone());
                     }
                     level_being_playtested = None;
                 }
@@ -114,7 +115,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     clear_level(&mut commands);
                     editor_state.set(YoleckEditorState::GameActive).unwrap();
                     for entry in level.entries() {
-                        commands.spawn().insert(entry.clone());
+                        commands.spawn(entry.clone());
                     }
                     level_being_playtested = Some(level);
                 }
@@ -247,7 +248,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                     let level: YoleckRawLevel =
                                                         serde_json::from_reader(fd).unwrap();
                                                     for entry in level.entries().iter().cloned() {
-                                                        commands.spawn().insert(entry);
+                                                        commands.spawn(entry);
                                                     }
                                                 }
                                             }
