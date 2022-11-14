@@ -9,7 +9,7 @@ use bevy_egui::egui;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
     YoleckEditorState, YoleckEntryHeader, YoleckLevelIndex, YoleckManaged, YoleckRawEntry,
-    YoleckRawLevel, YoleckState, YoleckTypeHandlers,
+    YoleckRawLevel, YoleckState, YoleckTypeHandlers, YoleckKnobsCache,
 };
 
 const EXTENSION: &str = ".yol";
@@ -40,6 +40,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
         ResMut<State<YoleckEditorState>>,
+        ResMut<YoleckKnobsCache>,
     )>::new(world);
 
     let mut should_list_files = true;
@@ -63,6 +64,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             yoleck_type_handlers,
             yoleck_managed_query,
             mut editor_state,
+            mut knobs_cache,
         ) = system_state.get_mut(world);
 
         let gen_raw_level_file = || {
@@ -85,9 +87,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             })
         };
 
-        let clear_level = |commands: &mut Commands| {
+        let mut clear_level = |commands: &mut Commands| {
             for (entity, _) in yoleck_managed_query.iter() {
                 commands.entity(entity).despawn_recursive();
+            }
+            for knob_entity in knobs_cache.drain() {
+                commands.entity(knob_entity).despawn_recursive();
             }
         };
 

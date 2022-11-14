@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Update Bevy version to 0.9 and bevy-egui version to 0.17.
 
+### Fixed
+- Knobs remaining during playtest.
+
 ## 0.3.0 - 2022-08-18
 ### Changed
 - Update Bevy version to 0.8 and bevy-egui version to 0.15.
