@@ -57,8 +57,8 @@
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{
-    handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo, VpeolBasePlugin,
-    VpeolCameraState, VpeolRootResolver, VpeolSystemLabel,
+    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolRootResolver,
+    VpeolSystemLabel,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -67,9 +67,7 @@ use bevy::sprite::Anchor;
 use bevy::text::Text2dSize;
 use bevy::utils::HashMap;
 
-use crate::{
-    YoleckDirective, YoleckEdit, YoleckEditorState, YoleckKnob, YoleckState, YoleckTypeHandler,
-};
+use crate::{YoleckEdit, YoleckEditorState, YoleckTypeHandler};
 
 /// Add the systems required for 2D editing.
 ///
@@ -99,7 +97,6 @@ impl Plugin for Vpeol2dPlugin {
         });
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                // .with_system(yoleck_clicks_on_objects)
                 .with_system(camera_2d_pan)
                 .with_system(camera_2d_zoom)
                 .with_system(
@@ -116,41 +113,11 @@ impl Plugin for Vpeol2dPlugin {
     }
 }
 
-#[doc(hidden)]
-#[allow(dead_code)]
-enum YoleckClicksOnObjectsState {
-    Empty,
-    BeingDragged {
-        entity: Entity,
-        prev_screen_pos: Vec2,
-        offset: Vec2,
-    },
-}
-
 struct CursorInWorldPos {
     cursor_in_world_pos: Vec2,
 }
 
 impl CursorInWorldPos {
-    fn _new(
-        windows: &Windows,
-        camera: &Camera,
-        camera_transform: &GlobalTransform,
-    ) -> Option<Self> {
-        let RenderTarget::Window(window_id) = camera.target else { return None };
-        let window = windows.get(window_id)?;
-        let cursor_in_screen_pos = window.cursor_position()?;
-        let cursor_in_world_pos = screen_pos_to_world_pos(
-            cursor_in_screen_pos,
-            window,
-            &camera_transform.compute_matrix(),
-            camera,
-        );
-        Some(Self {
-            cursor_in_world_pos,
-        })
-    }
-
     fn from_camera_state(camera_state: &VpeolCameraState) -> Option<Self> {
         Some(Self {
             cursor_in_world_pos: camera_state.cursor_in_world_position?.truncate(),
@@ -284,224 +251,6 @@ fn update_camera_status_for_text_2d(
                 camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
-            }
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments, clippy::type_complexity)]
-#[allow(dead_code)]
-fn yoleck_clicks_on_objects(
-    mut egui_context: ResMut<EguiContext>,
-    windows: Res<Windows>,
-    buttons: Res<Input<MouseButton>>,
-    cameras_query: Query<(Entity, &GlobalTransform, &Camera), With<OrthographicProjection>>,
-    yolek_targets_query: Query<(
-        Entity,
-        &GlobalTransform,
-        AnyOf<(
-            (&Sprite, &Handle<Image>),
-            (&TextureAtlasSprite, &Handle<TextureAtlas>),
-            &Text2dSize,
-        )>,
-    )>,
-    root_resolver: Query<&YoleckRouteClickTo>,
-    global_transform_query: Query<&GlobalTransform>,
-    knob_query: Query<Entity, With<YoleckKnob>>,
-    image_assets: Res<Assets<Image>>,
-    texture_atlas_assets: Res<Assets<TextureAtlas>>,
-    yoleck: ResMut<YoleckState>,
-    mut state_by_camera: Local<HashMap<Entity, YoleckClicksOnObjectsState>>,
-    mut directives_writer: EventWriter<YoleckDirective>,
-) {
-    enum MouseButtonOp {
-        JustPressed,
-        BeingPressed,
-        JustReleased,
-    }
-
-    let mouse_button_op = if buttons.just_pressed(MouseButton::Left) {
-        if egui_context.ctx_mut().is_pointer_over_area() {
-            return;
-        }
-        MouseButtonOp::JustPressed
-    } else if buttons.just_released(MouseButton::Left) {
-        MouseButtonOp::JustReleased
-    } else if buttons.pressed(MouseButton::Left) {
-        MouseButtonOp::BeingPressed
-    } else {
-        state_by_camera.clear();
-        return;
-    };
-
-    let is_world_pos_in = |transform: &GlobalTransform,
-                           (regular_sprite, texture_atlas_sprite, text_2d): (
-        Option<(&Sprite, &Handle<Image>)>,
-        Option<(&TextureAtlasSprite, &Handle<TextureAtlas>)>,
-        Option<&Text2dSize>,
-    ),
-                           cursor_in_world_pos: Vec2|
-     -> bool {
-        let [x, y, _] = transform
-            .compute_matrix()
-            .inverse()
-            .project_point3(cursor_in_world_pos.extend(0.0))
-            .to_array();
-
-        let check = |anchor: &Anchor, size: Vec2| {
-            let anchor = anchor.as_vec();
-            let mut min_corner = Vec2::new(-0.5, -0.5) - anchor;
-            let mut max_corner = Vec2::new(0.5, 0.5) - anchor;
-            for corner in [&mut min_corner, &mut max_corner] {
-                corner.x *= size.x;
-                corner.y *= size.y;
-            }
-            min_corner.x <= x && x <= max_corner.x && min_corner.y <= y && y <= max_corner.y
-        };
-
-        if let Some((sprite, texture_handle)) = regular_sprite {
-            let size = if let Some(custom_size) = sprite.custom_size {
-                custom_size
-            } else if let Some(texture) = image_assets.get(texture_handle) {
-                texture.size()
-            } else {
-                return false;
-            };
-            if check(&sprite.anchor, size) {
-                return true;
-            }
-        }
-        if let Some((sprite, texture_atlas_handle)) = texture_atlas_sprite {
-            let size = if let Some(custom_size) = sprite.custom_size {
-                custom_size
-            } else if let Some(texture_atlas) = texture_atlas_assets.get(texture_atlas_handle) {
-                texture_atlas.textures[sprite.index].size()
-            } else {
-                return false;
-            };
-            if check(&sprite.anchor, size) {
-                return true;
-            }
-        }
-        if let Some(text_2d_size) = text_2d {
-            if check(&Anchor::TopLeft, text_2d_size.size) {
-                return true;
-            }
-        }
-        false
-    };
-
-    for (camera_entity, camera_transform, camera) in cameras_query.iter() {
-        let window = if let RenderTarget::Window(window_id) = camera.target {
-            windows.get(window_id).unwrap()
-        } else {
-            continue;
-        };
-        if let Some(screen_pos) = window.cursor_position() {
-            let world_pos = screen_pos_to_world_pos(
-                screen_pos,
-                window,
-                &camera_transform.compute_matrix(),
-                camera,
-            );
-
-            let state = state_by_camera
-                .entry(camera_entity)
-                .or_insert(YoleckClicksOnObjectsState::Empty);
-
-            let is_entity_still_pointed_at = |entity: Entity| {
-                if let Ok((_, entity_transform, sprite)) = yolek_targets_query.get(entity) {
-                    if is_world_pos_in(entity_transform, sprite, world_pos) {
-                        Some(entity_transform)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            };
-
-            match (&mouse_button_op, &state) {
-                (MouseButtonOp::JustPressed, YoleckClicksOnObjectsState::Empty) => {
-                    if let Some((knob_entity, knob_transform)) = knob_query
-                        .iter()
-                        .find_map(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
-                    {
-                        directives_writer.send(YoleckDirective::pass_to_entity(
-                            knob_entity,
-                            YoleckKnobClick,
-                        ));
-                        *state = YoleckClicksOnObjectsState::BeingDragged {
-                            entity: knob_entity,
-                            prev_screen_pos: screen_pos,
-                            offset: world_pos - knob_transform.translation().truncate(),
-                        }
-                    } else {
-                        let entity_under_cursor = yoleck
-                            .entity_being_edited()
-                            .and_then(|entity| Some((entity, is_entity_still_pointed_at(entity)?)))
-                            .or_else(|| {
-                                let mut result = None;
-                                for (entity, entity_transform, sprite) in yolek_targets_query.iter()
-                                {
-                                    if is_world_pos_in(entity_transform, sprite, world_pos) {
-                                        if let Some((_, current_result_z)) = result {
-                                            if entity_transform.translation().z < current_result_z {
-                                                continue;
-                                            }
-                                        }
-                                        result = Some((
-                                            (entity, entity_transform),
-                                            entity_transform.translation().z,
-                                        ));
-                                    }
-                                }
-                                result.map(|(result, _)| result)
-                            });
-                        *state = if let Some((entity, entity_transform)) = entity_under_cursor {
-                            let (entity, entity_transform) = if let Ok(YoleckRouteClickTo(
-                                root_entity,
-                            )) = root_resolver.get(entity)
-                            {
-                                let root_entity_transform = global_transform_query.get(*root_entity)
-                                    .expect("when routing to root entity, the root entity should have its own GlobalTransform");
-                                (*root_entity, root_entity_transform)
-                            } else {
-                                (entity, entity_transform)
-                            };
-                            directives_writer.send(YoleckDirective::set_selected(Some(entity)));
-                            YoleckClicksOnObjectsState::BeingDragged {
-                                entity,
-                                prev_screen_pos: screen_pos,
-                                offset: world_pos - entity_transform.translation().truncate(),
-                            }
-                        } else {
-                            directives_writer.send(YoleckDirective::set_selected(None));
-                            YoleckClicksOnObjectsState::Empty
-                        }
-                    }
-                }
-                (
-                    MouseButtonOp::BeingPressed,
-                    YoleckClicksOnObjectsState::BeingDragged {
-                        entity,
-                        prev_screen_pos,
-                        offset,
-                    },
-                ) => {
-                    if 0.1 <= prev_screen_pos.distance_squared(screen_pos) {
-                        directives_writer.send(YoleckDirective::pass_to_entity(
-                            *entity,
-                            world_pos - *offset,
-                        ));
-                        *state = YoleckClicksOnObjectsState::BeingDragged {
-                            entity: *entity,
-                            prev_screen_pos: screen_pos,
-                            offset: *offset,
-                        };
-                    }
-                }
-                _ => {}
             }
         }
     }

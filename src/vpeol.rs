@@ -178,12 +178,11 @@ fn handle_camera_state(
                         YoleckKnobClick,
                     ));
                     let Ok(knob_transform) = global_transform_query.get(knob_entity) else { continue };
-                    camera_state.clicks_on_objects_state =
-                        VpeolClicksOnObjectsState::BeingDragged {
-                            entity: knob_entity,
-                            prev_screen_pos: cursor_in_screen_pos,
-                            offset: cursor_in_world_position - knob_transform.translation(),
-                        }
+                    camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::BeingDragged {
+                        entity: knob_entity,
+                        prev_screen_pos: cursor_in_screen_pos,
+                        offset: cursor_in_world_position - knob_transform.translation(),
+                    }
                 } else {
                     camera_state.clicks_on_objects_state = if let Some((entity, _cursor_pointing)) =
                         &camera_state.entity_under_cursor
