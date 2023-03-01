@@ -13,13 +13,23 @@ use bevy_egui::EguiContext;
 
 use crate::{YoleckDirective, YoleckEditorState, YoleckKnob, YoleckState};
 
+/// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemLabel)]
 pub enum VpeolSystemLabel {
+    /// Initialize [`VpeolCameraState`]
+    ///
+    /// * Clear all pointing.
+    /// * Update [`entities_of_interest`](VpeolCameraState::entities_of_interest).
+    /// * Update cursor position (can be overriden later if needed)
     PrepareCameraState,
+    /// Mostly used by the backend to iterate over the entities and determine which ones are
+    /// being pointed (using [`consider`](VpeolCameraState::consider))
     UpdateCameraState,
+    /// Interpret the mouse data and pass it back to Yoleck.
     HandleCameraState,
 }
 
+/// Add base systems common for Vpeol editing.
 pub struct VpeolBasePlugin;
 
 impl Plugin for VpeolBasePlugin {
@@ -41,36 +51,49 @@ impl Plugin for VpeolBasePlugin {
     }
 }
 
+/// Data passed between Vpeol abstraction and backends.
 #[derive(Component, Default, Debug)]
 pub struct VpeolCameraState {
+    /// Where this camera considers the cursor to be in the world.
     pub cursor_in_world_position: Option<Vec3>,
     /// The topmost entity being pointed by the cursor.
     pub entity_under_cursor: Option<(Entity, VpeolCursorPointing)>,
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
     /// are pointed at.
     pub entities_of_interest: HashMap<Entity, Option<VpeolCursorPointing>>,
+    /// The mouse selection state.
     pub clicks_on_objects_state: VpeolClicksOnObjectsState,
 }
 
+/// Information on how the cursor is pointing at an entity.
 #[derive(Clone, Debug)]
 pub struct VpeolCursorPointing {
+    /// The location on the entity, in world coords, where the cursor is pointing.
     pub cursor_position_world_coords: Vec3,
+    /// Used to determine entity selection priorities.
     pub z_depth_screen_coords: f32,
 }
 
-#[doc(hidden)]
+/// State for determining how the user is interacting with entities using the mouse buttons.
 #[derive(Default, Debug)]
 pub enum VpeolClicksOnObjectsState {
     #[default]
     Empty,
     BeingDragged {
         entity: Entity,
+        /// Used for deciding if the cursor has moved.
         prev_screen_pos: Vec2,
+        /// Offset from the entity's center to
+        /// [`cursor_in_world_position`](VpeolCameraState::cursor_in_world_position).
         offset: Vec3,
     },
 }
 
 impl VpeolCameraState {
+    /// Tell Vpeol the the user is pointing at an entity.
+    ///
+    /// This function may ignore the input if the entity is covered by another entity and is not an
+    /// entity of interest.
     pub fn consider(
         &mut self,
         entity: Entity,
@@ -241,12 +264,15 @@ pub struct YoleckWillContainClickableChildren;
 #[derive(Component)]
 pub struct YoleckRouteClickTo(pub Entity);
 
+/// Helper utility for finding the Yoleck controlled entity that's in charge of an entity the user
+/// points at.
 #[derive(SystemParam)]
 pub struct VpeolRootResolver<'w, 's> {
     root_resolver: Query<'w, 's, &'static YoleckRouteClickTo>,
 }
 
 impl VpeolRootResolver<'_, '_> {
+    /// Find the Yoleck controlled entity that's in charge of an entity the user points at.
     pub fn resolve_root(&self, entity: Entity) -> Entity {
         if let Ok(YoleckRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
             *root_entity
