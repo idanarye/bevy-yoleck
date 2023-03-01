@@ -6,8 +6,99 @@
 use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::prelude::*;
 use bevy::transform::TransformSystem;
+use bevy::utils::HashMap;
 
-use crate::YoleckState;
+use crate::{YoleckEditorState, YoleckState};
+
+pub struct YoleckVpeolBasePlugin;
+
+impl Plugin for YoleckVpeolBasePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_set({
+            SystemSet::on_update(YoleckEditorState::EditorActive)
+                .label(YoleckVpeolSystemLabel::PrepareCameraState)
+                .before(YoleckVpeolSystemLabel::UpdateCameraState)
+                .before(YoleckVpeolSystemLabel::HandleCameraState)
+                .with_system(prepare_camera_state)
+        });
+        app.add_system_set({
+            SystemSet::on_update(YoleckEditorState::EditorActive)
+                .label(YoleckVpeolSystemLabel::HandleCameraState)
+                .after(YoleckVpeolSystemLabel::PrepareCameraState)
+                .after(YoleckVpeolSystemLabel::UpdateCameraState)
+                .with_system(handle_camera_state)
+        });
+    }
+}
+
+fn prepare_camera_state(mut query: Query<&mut YoleckVpeolCameraState>) {
+    for mut camera_state in query.iter_mut() {
+        camera_state.entity_under_cursor = None;
+    }
+}
+
+fn handle_camera_state(mut query: Query<&mut YoleckVpeolCameraState>) {
+    for camera_state in query.iter_mut() {
+        info!("{:?}", camera_state.entity_under_cursor);
+    }
+}
+
+#[derive(SystemLabel)]
+pub enum YoleckVpeolSystemLabel {
+    PrepareCameraState,
+    UpdateCameraState,
+    HandleCameraState,
+}
+
+#[derive(Component, Default, Debug)]
+pub struct YoleckVpeolCameraState {
+    /// The topmost entity being pointed by the cursor.
+    pub entity_under_cursor: Option<(Entity, YoleckVpeolCursorPointing)>,
+    /// Entities that may or may not be topmost, but the editor needs to know whether or not they
+    /// are pointed at.
+    pub entities_of_interest: HashMap<Entity, Option<YoleckVpeolCursorPointing>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct YoleckVpeolCursorPointing {
+    pub cursor_position_world_coords: Vec3,
+    pub z_depth_screen_coords: f32,
+}
+
+impl YoleckVpeolCameraState {
+    pub fn consider(
+        &mut self,
+        entity: Entity,
+        z_depth_screen_coords: f32,
+        cursor_position_world_coords: impl FnOnce() -> Vec3,
+    ) {
+        let should_update_entity = if let Some((_, old_cursor)) = self.entity_under_cursor.as_ref()
+        {
+            old_cursor.z_depth_screen_coords < z_depth_screen_coords
+        } else {
+            true
+        };
+
+        if let Some(of_interest) = self.entities_of_interest.get_mut(&entity) {
+            let pointing = YoleckVpeolCursorPointing {
+                cursor_position_world_coords: cursor_position_world_coords(),
+                z_depth_screen_coords,
+            };
+            if should_update_entity {
+                self.entity_under_cursor = Some((entity, pointing.clone()));
+            }
+            *of_interest = Some(pointing);
+        } else if should_update_entity {
+            self.entity_under_cursor = Some((
+                entity,
+                YoleckVpeolCursorPointing {
+                    cursor_position_world_coords: cursor_position_world_coords(),
+                    z_depth_screen_coords,
+                },
+            ));
+        }
+    }
+}
 
 /// A [passed data](crate::api::YoleckEditContext::get_passed_data) to a knob entity that indicate it was
 /// clicked by the level editor.

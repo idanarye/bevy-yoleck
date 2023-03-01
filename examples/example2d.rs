@@ -4,7 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::vpeol::YoleckKnobClick;
+use bevy_yoleck::vpeol::{YoleckKnobClick, YoleckVpeolCameraState};
 use bevy_yoleck::vpeol_2d::{
     yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection,
     YoleckWillContainClickableChildren,
@@ -100,7 +100,9 @@ fn main() {
 fn setup_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
     camera.transform.translation.z = 100.0;
-    commands.spawn(camera);
+    commands
+        .spawn(camera)
+        .insert(YoleckVpeolCameraState::default());
 }
 
 #[derive(Resource)]

@@ -56,7 +56,10 @@
 
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
-use crate::vpeol::{handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo};
+use crate::vpeol::{
+    handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo, YoleckVpeolBasePlugin,
+    YoleckVpeolCameraState, YoleckVpeolSystemLabel,
+};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -78,6 +81,14 @@ pub struct YoleckVpeol2dPlugin;
 
 impl Plugin for YoleckVpeol2dPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugin(YoleckVpeolBasePlugin);
+        app.add_system_set({
+            SystemSet::on_update(YoleckEditorState::EditorActive)
+                .label(YoleckVpeolSystemLabel::UpdateCameraState)
+                .with_system(update_camera_status_for_sprites)
+                .with_system(update_camera_status_for_atlas_sprites)
+                .with_system(update_camera_status_for_text_2d)
+        });
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
                 .with_system(yoleck_clicks_on_objects)
@@ -105,6 +116,142 @@ enum YoleckClicksOnObjectsState {
         prev_screen_pos: Vec2,
         offset: Vec2,
     },
+}
+
+struct CursorInWorldPos {
+    cursor_in_world_pos: Vec2,
+}
+
+impl CursorInWorldPos {
+    fn new(windows: &Windows, camera: &Camera, camera_transform: &GlobalTransform) -> Option<Self> {
+        let RenderTarget::Window(window_id) = camera.target else { return None };
+        let window = windows.get(window_id)?;
+        let cursor_in_screen_pos = window.cursor_position()?;
+        let cursor_in_world_pos = screen_pos_to_world_pos(
+            cursor_in_screen_pos,
+            window,
+            &camera_transform.compute_matrix(),
+            camera,
+        );
+        Some(Self {
+            cursor_in_world_pos,
+        })
+    }
+
+    fn cursor_in_entity_space(&self, transform: &GlobalTransform) -> Vec2 {
+        transform
+            .compute_matrix()
+            .inverse()
+            .project_point3(self.cursor_in_world_pos.extend(0.0))
+            .truncate()
+    }
+
+    fn check_square(
+        &self,
+        entity_transform: &GlobalTransform,
+        anchor: &Anchor,
+        size: Vec2,
+    ) -> bool {
+        let cursor = self.cursor_in_entity_space(entity_transform);
+        let anchor = anchor.as_vec();
+        let mut min_corner = Vec2::new(-0.5, -0.5) - anchor;
+        let mut max_corner = Vec2::new(0.5, 0.5) - anchor;
+        for corner in [&mut min_corner, &mut max_corner] {
+            corner.x *= size.x;
+            corner.y *= size.y;
+        }
+        min_corner.x <= cursor.x
+            && cursor.x <= max_corner.x
+            && min_corner.y <= cursor.y
+            && cursor.y <= max_corner.y
+    }
+}
+
+fn update_camera_status_for_sprites(
+    mut cameras_query: Query<
+        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
+        With<OrthographicProjection>,
+    >,
+    windows: Res<Windows>,
+    entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
+    image_assets: Res<Assets<Image>>,
+) {
+    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+
+        for (entity, entity_transform, sprite, texture) in entities_query.iter() {
+            let size = if let Some(custom_size) = sprite.custom_size {
+                custom_size
+            } else if let Some(texture) = image_assets.get(texture) {
+                texture.size()
+            } else {
+                continue;
+            };
+            if cursor.check_square(entity_transform, &sprite.anchor, size) {
+                let z_depth = entity_transform.translation().z;
+                camera_state.consider(entity, z_depth, || {
+                    cursor.cursor_in_world_pos.extend(z_depth)
+                });
+            }
+        }
+    }
+}
+
+fn update_camera_status_for_atlas_sprites(
+    mut cameras_query: Query<
+        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
+        With<OrthographicProjection>,
+    >,
+    windows: Res<Windows>,
+    entities_query: Query<(
+        Entity,
+        &GlobalTransform,
+        &TextureAtlasSprite,
+        &Handle<TextureAtlas>,
+    )>,
+    texture_atlas_assets: Res<Assets<TextureAtlas>>,
+) {
+    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+
+        for (entity, entity_transform, sprite, texture) in entities_query.iter() {
+            let size = if let Some(custom_size) = sprite.custom_size {
+                custom_size
+            } else if let Some(texture_atlas) = texture_atlas_assets.get(texture) {
+                texture_atlas.textures[sprite.index].size()
+            } else {
+                continue;
+            };
+            if cursor.check_square(entity_transform, &sprite.anchor, size) {
+                let z_depth = entity_transform.translation().z;
+                camera_state.consider(entity, z_depth, || {
+                    cursor.cursor_in_world_pos.extend(z_depth)
+                });
+            }
+        }
+    }
+}
+
+fn update_camera_status_for_text_2d(
+    mut cameras_query: Query<
+        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
+        With<OrthographicProjection>,
+    >,
+    windows: Res<Windows>,
+    entities_query: Query<(Entity, &GlobalTransform, &Text2dSize)>,
+) {
+    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+
+        for (entity, entity_transform, text_2d_size) in entities_query.iter() {
+            if cursor.check_square(entity_transform, &Anchor::TopLeft, text_2d_size.size) {
+                let z_depth = entity_transform.translation().z;
+                camera_state.consider(entity, z_depth, || {
+                    cursor.cursor_in_world_pos.extend(z_depth)
+                });
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]

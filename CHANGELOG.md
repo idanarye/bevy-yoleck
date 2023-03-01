@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [**BREAKING**] `YoleckVpeolCameraState` - must be placed on a camera in order for vpoel to work
 
 ## 0.5.0 - 2023-02-22
 ### Changed
