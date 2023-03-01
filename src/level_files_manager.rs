@@ -319,11 +319,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                 }
                                             }
                                         }
-                                        if yoleck.level_needs_saving {
-                                            if ui.button("Wipe Level").clicked() {
-                                                clear_level(&mut commands);
-                                                yoleck.level_needs_saving = false;
-                                            }
+                                        if yoleck.level_needs_saving
+                                            && ui.button("Wipe Level").clicked()
+                                        {
+                                            clear_level(&mut commands);
+                                            yoleck.level_needs_saving = false;
                                         }
                                     }
                                     SelectedLevelFile::Existing(_) => {

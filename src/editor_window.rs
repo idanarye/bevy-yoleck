@@ -17,9 +17,9 @@ pub(crate) fn yoleck_editor_window(world: &mut World) {
     });
 }
 
+#[allow(clippy::type_complexity)]
 enum YoleckEditorSectionInner {
     Uninitialized(
-        #[allow(clippy::type_complexity)]
         Box<
             dyn 'static
                 + Send
