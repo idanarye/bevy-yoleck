@@ -211,8 +211,8 @@ fn edit_player(mut edit: YoleckEdit<Player>, mut commands: Commands) {
             global_transform: Transform::from_translation(knob_position).into(),
             ..Default::default()
         });
-        if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec2>() {
-            data.rotation = Vec2::Y.angle_between(*rotate_to - data.position);
+        if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec3>() {
+            data.rotation = Vec2::Y.angle_between(rotate_to.truncate() - data.position);
         }
     });
 }

@@ -4,11 +4,21 @@
 //! [`vpeol_2d`](crate::vpeol_2d).
 
 use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy::render::camera::RenderTarget;
 use bevy::transform::TransformSystem;
 use bevy::utils::HashMap;
+use bevy_egui::EguiContext;
 
-use crate::{YoleckEditorState, YoleckState};
+use crate::{YoleckDirective, YoleckEditorState, YoleckKnob, YoleckState};
+
+#[derive(SystemLabel)]
+pub enum YoleckVpeolSystemLabel {
+    PrepareCameraState,
+    UpdateCameraState,
+    HandleCameraState,
+}
 
 pub struct YoleckVpeolBasePlugin;
 
@@ -31,25 +41,6 @@ impl Plugin for YoleckVpeolBasePlugin {
     }
 }
 
-fn prepare_camera_state(mut query: Query<&mut YoleckVpeolCameraState>) {
-    for mut camera_state in query.iter_mut() {
-        camera_state.entity_under_cursor = None;
-    }
-}
-
-fn handle_camera_state(mut query: Query<&mut YoleckVpeolCameraState>) {
-    for camera_state in query.iter_mut() {
-        info!("{:?}", camera_state.entity_under_cursor);
-    }
-}
-
-#[derive(SystemLabel)]
-pub enum YoleckVpeolSystemLabel {
-    PrepareCameraState,
-    UpdateCameraState,
-    HandleCameraState,
-}
-
 #[derive(Component, Default, Debug)]
 pub struct YoleckVpeolCameraState {
     /// The topmost entity being pointed by the cursor.
@@ -57,12 +48,25 @@ pub struct YoleckVpeolCameraState {
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
     /// are pointed at.
     pub entities_of_interest: HashMap<Entity, Option<YoleckVpeolCursorPointing>>,
+    pub clicks_on_objects_state: YoleckVpeolClicksOnObjectsState,
 }
 
 #[derive(Clone, Debug)]
 pub struct YoleckVpeolCursorPointing {
     pub cursor_position_world_coords: Vec3,
     pub z_depth_screen_coords: f32,
+}
+
+#[doc(hidden)]
+#[derive(Default, Debug)]
+pub enum YoleckVpeolClicksOnObjectsState {
+    #[default]
+    Empty,
+    BeingDragged {
+        entity: Entity,
+        prev_screen_pos: Vec2,
+        offset: Vec3,
+    },
 }
 
 impl YoleckVpeolCameraState {
@@ -98,6 +102,114 @@ impl YoleckVpeolCameraState {
             ));
         }
     }
+
+    pub fn pointing_at_entity(&self, entity: Entity) -> Option<&YoleckVpeolCursorPointing> {
+        if let Some((entity_under_cursor, pointing_at)) = &self.entity_under_cursor {
+            if *entity_under_cursor == entity {
+                return Some(pointing_at);
+            }
+        }
+        self.entities_of_interest.get(&entity)?.as_ref()
+    }
+}
+
+fn prepare_camera_state(
+    mut query: Query<&mut YoleckVpeolCameraState>,
+    knob_query: Query<Entity, With<YoleckKnob>>,
+) {
+    for mut camera_state in query.iter_mut() {
+        camera_state.entity_under_cursor = None;
+        camera_state.entities_of_interest = knob_query
+            .iter()
+            .chain(match camera_state.clicks_on_objects_state {
+                YoleckVpeolClicksOnObjectsState::Empty => None,
+                YoleckVpeolClicksOnObjectsState::BeingDragged { entity, .. } => Some(entity),
+            })
+            .map(|entity| (entity, None))
+            .collect();
+    }
+}
+
+fn handle_camera_state(
+    mut egui_context: ResMut<EguiContext>,
+    mut query: Query<(&Camera, &mut YoleckVpeolCameraState)>,
+    windows: Res<Windows>,
+    buttons: Res<Input<MouseButton>>,
+    global_transform_query: Query<&GlobalTransform>,
+    _knob_query: Query<Entity, With<YoleckKnob>>,
+    mut directives_writer: EventWriter<YoleckDirective>,
+) {
+    enum MouseButtonOp {
+        JustPressed,
+        BeingPressed,
+        JustReleased,
+    }
+    let mouse_button_op = if buttons.just_pressed(MouseButton::Left) {
+        if egui_context.ctx_mut().is_pointer_over_area() {
+            return;
+        }
+        MouseButtonOp::JustPressed
+    } else if buttons.just_released(MouseButton::Left) {
+        MouseButtonOp::JustReleased
+    } else if buttons.pressed(MouseButton::Left) {
+        MouseButtonOp::BeingPressed
+    } else {
+        for (_, mut camera_state) in query.iter_mut() {
+            camera_state.clicks_on_objects_state = YoleckVpeolClicksOnObjectsState::Empty;
+        }
+        return;
+    };
+    for (camera, mut camera_state) in query.iter_mut() {
+        let RenderTarget::Window(window_id) = camera.target else { continue };
+        let Some(window) = windows.get(window_id) else { continue };
+        let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
+
+        match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
+            (MouseButtonOp::JustPressed, YoleckVpeolClicksOnObjectsState::Empty) => {
+                // TODO: knobs
+
+                camera_state.clicks_on_objects_state = if let Some((entity, cursor_pointing)) =
+                    &camera_state.entity_under_cursor
+                {
+                    let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
+                    directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                    YoleckVpeolClicksOnObjectsState::BeingDragged {
+                        entity: *entity,
+                        prev_screen_pos: cursor_in_screen_pos,
+                        offset: cursor_pointing.cursor_position_world_coords
+                            - entity_transform.translation(),
+                    }
+                } else {
+                    directives_writer.send(YoleckDirective::set_selected(None));
+                    YoleckVpeolClicksOnObjectsState::Empty
+                };
+            }
+            (
+                MouseButtonOp::BeingPressed,
+                YoleckVpeolClicksOnObjectsState::BeingDragged {
+                    entity,
+                    prev_screen_pos,
+                    offset,
+                },
+            ) => {
+                if 0.1 <= prev_screen_pos.distance_squared(cursor_in_screen_pos) {
+                    if let Some(pointing_at) = camera_state.pointing_at_entity(*entity) {
+                        directives_writer.send(YoleckDirective::pass_to_entity(
+                            *entity,
+                            pointing_at.cursor_position_world_coords - *offset,
+                        ));
+                        camera_state.clicks_on_objects_state =
+                            YoleckVpeolClicksOnObjectsState::BeingDragged {
+                                entity: *entity,
+                                prev_screen_pos: cursor_in_screen_pos,
+                                offset: *offset,
+                            };
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// A [passed data](crate::api::YoleckEditContext::get_passed_data) to a knob entity that indicate it was
@@ -114,6 +226,21 @@ pub struct YoleckWillContainClickableChildren;
 /// Marker for viewport editor overlay plugins to route child interaction to parent entites.
 #[derive(Component)]
 pub struct YoleckRouteClickTo(pub Entity);
+
+#[derive(SystemParam)]
+pub struct YoleckVpeolRootResolver<'w, 's> {
+    root_resolver: Query<'w, 's, &'static YoleckRouteClickTo>,
+}
+
+impl YoleckVpeolRootResolver<'_, '_> {
+    pub fn resolve_root(&self, entity: Entity) -> Entity {
+        if let Ok(YoleckRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
+            *root_entity
+        } else {
+            entity
+        }
+    }
+}
 
 /// Add [`YoleckRouteClickTo`] of entities marked with [`YoleckWillContainClickableChildren`].
 pub fn handle_clickable_children_system<F, B>(

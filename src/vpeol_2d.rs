@@ -35,8 +35,8 @@
 //!
 //! fn edit_example(mut edit: YoleckEdit<Example>) {
 //!     edit.edit(|ctx, data, _ui| {
-//!         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-//!             data.position = *pos;
+//!         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
+//!             data.position = pos.truncate();
 //!         }
 //!     });
 //! }
@@ -58,7 +58,7 @@ use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{
     handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo, YoleckVpeolBasePlugin,
-    YoleckVpeolCameraState, YoleckVpeolSystemLabel,
+    YoleckVpeolCameraState, YoleckVpeolRootResolver, YoleckVpeolSystemLabel,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -91,7 +91,7 @@ impl Plugin for YoleckVpeol2dPlugin {
         });
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .with_system(yoleck_clicks_on_objects)
+                // .with_system(yoleck_clicks_on_objects)
                 .with_system(camera_2d_pan)
                 .with_system(camera_2d_zoom)
                 .with_system(
@@ -109,6 +109,7 @@ impl Plugin for YoleckVpeol2dPlugin {
 }
 
 #[doc(hidden)]
+#[allow(dead_code)]
 enum YoleckClicksOnObjectsState {
     Empty,
     BeingDragged {
@@ -175,6 +176,7 @@ fn update_camera_status_for_sprites(
     windows: Res<Windows>,
     entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
     image_assets: Res<Assets<Image>>,
+    root_resolver: YoleckVpeolRootResolver,
 ) {
     for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
@@ -189,7 +191,7 @@ fn update_camera_status_for_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(entity, z_depth, || {
+                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
@@ -210,6 +212,7 @@ fn update_camera_status_for_atlas_sprites(
         &Handle<TextureAtlas>,
     )>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
+    root_resolver: YoleckVpeolRootResolver,
 ) {
     for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
@@ -224,7 +227,7 @@ fn update_camera_status_for_atlas_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(entity, z_depth, || {
+                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
@@ -239,6 +242,7 @@ fn update_camera_status_for_text_2d(
     >,
     windows: Res<Windows>,
     entities_query: Query<(Entity, &GlobalTransform, &Text2dSize)>,
+    root_resolver: YoleckVpeolRootResolver,
 ) {
     for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
@@ -246,7 +250,7 @@ fn update_camera_status_for_text_2d(
         for (entity, entity_transform, text_2d_size) in entities_query.iter() {
             if cursor.check_square(entity_transform, &Anchor::TopLeft, text_2d_size.size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(entity, z_depth, || {
+                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
@@ -255,6 +259,7 @@ fn update_camera_status_for_text_2d(
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+#[allow(dead_code)]
 fn yoleck_clicks_on_objects(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
@@ -659,8 +664,8 @@ pub fn yoleck_vpeol_position_edit_adapter<T: 'static>(
         handler.edit_with(move |mut edit: YoleckEdit<T>| {
             edit.edit(|ctx, data, ui| {
                 let YoleckVpeolTransform2dProjection { translation } = projection(data);
-                if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-                    *translation = *pos;
+                if let Some(pos) = ctx.get_passed_data::<Vec3>() {
+                    *translation = pos.truncate();
                 }
                 ui.horizontal(|ui| {
                     ui.add(egui::DragValue::new(&mut translation.x).prefix("X:"));

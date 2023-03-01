@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [**BREAKING**] `YoleckVpeolCameraState` - must be placed on a camera in order for vpoel to work
 
+### Changed
+- [**BREAKING**] `vpeol_2d` sends drag coordinates as `Vec3`, not `Vec2`.
+
 ## 0.5.0 - 2023-02-22
 ### Changed
 - Update bevy-egui version to 0.19.
@@ -18,7 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Ability to revert levels to their initial state:
-  - `Wipe Level` button for new levels.
+  - `Wipe Level` button for ne` levels.
   - `REVERT` button for existing levels
   - This is important because otherwise the only ways to select a different
     level are to save the changes or restart the editor.

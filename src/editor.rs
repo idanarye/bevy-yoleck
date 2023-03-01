@@ -13,12 +13,14 @@ use crate::{
     YoleckManaged, YoleckRawEntry, YoleckState, YoleckTypeHandlers,
 };
 
+#[derive(Debug)]
 enum YoleckDirectiveInner {
     SetSelected(Option<Entity>),
     PassToEntity(Entity, TypeId, BoxedArc),
 }
 
 /// Event that can be sent to control Yoleck's editor.
+#[derive(Debug)]
 pub struct YoleckDirective(YoleckDirectiveInner);
 
 impl YoleckDirective {

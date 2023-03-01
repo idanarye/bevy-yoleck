@@ -134,8 +134,8 @@ impl<'a> YoleckEditContext<'a> {
     /// # }
     /// fn edit_example(mut edit: YoleckEdit<Example>) {
     ///     edit.edit(|ctx, data, _ui| {
-    ///         if let Some(pos) = ctx.get_passed_data::<Vec2>() {
-    ///             data.position = *pos;
+    ///         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
+    ///             data.position = pos.truncate();
     ///         }
     ///     });
     /// }
@@ -174,8 +174,8 @@ impl<'a> YoleckEditContext<'a> {
     ///             texture: assets.baloon_sprite.clone(),
     ///             ..Default::default()
     ///         });
-    ///         if let Some(new_baloon_pos) = balloon_knob.get_passed_data::<Vec2>() {
-    ///             data.baloon_offset = *new_baloon_pos - data.position;
+    ///         if let Some(new_baloon_pos) = balloon_knob.get_passed_data::<Vec3>() {
+    ///             data.baloon_offset = new_baloon_pos.truncate() - data.position;
     ///         }
     ///     });
     /// }
