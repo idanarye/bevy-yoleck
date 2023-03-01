@@ -137,7 +137,7 @@ fn handle_camera_state(
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
-    _knob_query: Query<Entity, With<YoleckKnob>>,
+    knob_query: Query<Entity, With<YoleckKnob>>,
     mut directives_writer: EventWriter<YoleckDirective>,
 ) {
     enum MouseButtonOp {
@@ -169,22 +169,37 @@ fn handle_camera_state(
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
             (MouseButtonOp::JustPressed, YoleckVpeolClicksOnObjectsState::Empty) => {
-                // TODO: knobs
-
-                camera_state.clicks_on_objects_state = if let Some((entity, _cursor_pointing)) =
-                    &camera_state.entity_under_cursor
+                if let Some(knob_entity) = knob_query
+                    .iter()
+                    .find(|knob_entity| camera_state.pointing_at_entity(*knob_entity).is_some())
                 {
-                    let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
-                    directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
-                    YoleckVpeolClicksOnObjectsState::BeingDragged {
-                        entity: *entity,
-                        prev_screen_pos: cursor_in_screen_pos,
-                        offset: cursor_in_world_position - entity_transform.translation(),
-                    }
+                    directives_writer.send(YoleckDirective::pass_to_entity(
+                        knob_entity,
+                        YoleckKnobClick,
+                    ));
+                    let Ok(knob_transform) = global_transform_query.get(knob_entity) else { continue };
+                    camera_state.clicks_on_objects_state =
+                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                            entity: knob_entity,
+                            prev_screen_pos: cursor_in_screen_pos,
+                            offset: cursor_in_world_position - knob_transform.translation(),
+                        }
                 } else {
-                    directives_writer.send(YoleckDirective::set_selected(None));
-                    YoleckVpeolClicksOnObjectsState::Empty
-                };
+                    camera_state.clicks_on_objects_state = if let Some((entity, _cursor_pointing)) =
+                        &camera_state.entity_under_cursor
+                    {
+                        let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
+                        directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                            entity: *entity,
+                            prev_screen_pos: cursor_in_screen_pos,
+                            offset: cursor_in_world_position - entity_transform.translation(),
+                        }
+                    } else {
+                        directives_writer.send(YoleckDirective::set_selected(None));
+                        YoleckVpeolClicksOnObjectsState::Empty
+                    };
+                }
             }
             (
                 MouseButtonOp::BeingPressed,
