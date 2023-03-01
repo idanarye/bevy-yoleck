@@ -5,11 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Added
-- [**BREAKING**] `YoleckVpeolCameraState` - must be placed on a camera in order for vpoel to work
-
 ### Changed
+- [**BREAKING**] Vpeol names no longer container the "yoleck" prefix - so
+  `YoleckVpeolXYZ` becomes `VpeolXYZ` and `yoleck_vpeol_xyz` becomes
+  `vpeol_xyz`. Vpeol is enough to avoid conflicts.
 - [**BREAKING**] `vpeol_2d` sends drag coordinates as `Vec3`, not `Vec2`.
+
+### Added
+- [**BREAKING**] `VpeolCameraState` - must be placed on a camera in order for vpoel to work
 
 ## 0.5.0 - 2023-02-22
 ### Changed

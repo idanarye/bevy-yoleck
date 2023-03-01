@@ -14,53 +14,53 @@ use bevy_egui::EguiContext;
 use crate::{YoleckDirective, YoleckEditorState, YoleckKnob, YoleckState};
 
 #[derive(SystemLabel)]
-pub enum YoleckVpeolSystemLabel {
+pub enum VpeolSystemLabel {
     PrepareCameraState,
     UpdateCameraState,
     HandleCameraState,
 }
 
-pub struct YoleckVpeolBasePlugin;
+pub struct VpeolBasePlugin;
 
-impl Plugin for YoleckVpeolBasePlugin {
+impl Plugin for VpeolBasePlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(YoleckVpeolSystemLabel::PrepareCameraState)
-                .before(YoleckVpeolSystemLabel::UpdateCameraState)
-                .before(YoleckVpeolSystemLabel::HandleCameraState)
+                .label(VpeolSystemLabel::PrepareCameraState)
+                .before(VpeolSystemLabel::UpdateCameraState)
+                .before(VpeolSystemLabel::HandleCameraState)
                 .with_system(prepare_camera_state)
         });
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(YoleckVpeolSystemLabel::HandleCameraState)
-                .after(YoleckVpeolSystemLabel::PrepareCameraState)
-                .after(YoleckVpeolSystemLabel::UpdateCameraState)
+                .label(VpeolSystemLabel::HandleCameraState)
+                .after(VpeolSystemLabel::PrepareCameraState)
+                .after(VpeolSystemLabel::UpdateCameraState)
                 .with_system(handle_camera_state)
         });
     }
 }
 
 #[derive(Component, Default, Debug)]
-pub struct YoleckVpeolCameraState {
+pub struct VpeolCameraState {
     pub cursor_in_world_position: Option<Vec3>,
     /// The topmost entity being pointed by the cursor.
-    pub entity_under_cursor: Option<(Entity, YoleckVpeolCursorPointing)>,
+    pub entity_under_cursor: Option<(Entity, VpeolCursorPointing)>,
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
     /// are pointed at.
-    pub entities_of_interest: HashMap<Entity, Option<YoleckVpeolCursorPointing>>,
-    pub clicks_on_objects_state: YoleckVpeolClicksOnObjectsState,
+    pub entities_of_interest: HashMap<Entity, Option<VpeolCursorPointing>>,
+    pub clicks_on_objects_state: VpeolClicksOnObjectsState,
 }
 
 #[derive(Clone, Debug)]
-pub struct YoleckVpeolCursorPointing {
+pub struct VpeolCursorPointing {
     pub cursor_position_world_coords: Vec3,
     pub z_depth_screen_coords: f32,
 }
 
 #[doc(hidden)]
 #[derive(Default, Debug)]
-pub enum YoleckVpeolClicksOnObjectsState {
+pub enum VpeolClicksOnObjectsState {
     #[default]
     Empty,
     BeingDragged {
@@ -70,7 +70,7 @@ pub enum YoleckVpeolClicksOnObjectsState {
     },
 }
 
-impl YoleckVpeolCameraState {
+impl VpeolCameraState {
     pub fn consider(
         &mut self,
         entity: Entity,
@@ -85,7 +85,7 @@ impl YoleckVpeolCameraState {
         };
 
         if let Some(of_interest) = self.entities_of_interest.get_mut(&entity) {
-            let pointing = YoleckVpeolCursorPointing {
+            let pointing = VpeolCursorPointing {
                 cursor_position_world_coords: cursor_position_world_coords(),
                 z_depth_screen_coords,
             };
@@ -96,7 +96,7 @@ impl YoleckVpeolCameraState {
         } else if should_update_entity {
             self.entity_under_cursor = Some((
                 entity,
-                YoleckVpeolCursorPointing {
+                VpeolCursorPointing {
                     cursor_position_world_coords: cursor_position_world_coords(),
                     z_depth_screen_coords,
                 },
@@ -104,7 +104,7 @@ impl YoleckVpeolCameraState {
         }
     }
 
-    pub fn pointing_at_entity(&self, entity: Entity) -> Option<&YoleckVpeolCursorPointing> {
+    pub fn pointing_at_entity(&self, entity: Entity) -> Option<&VpeolCursorPointing> {
         if let Some((entity_under_cursor, pointing_at)) = &self.entity_under_cursor {
             if *entity_under_cursor == entity {
                 return Some(pointing_at);
@@ -115,7 +115,7 @@ impl YoleckVpeolCameraState {
 }
 
 fn prepare_camera_state(
-    mut query: Query<&mut YoleckVpeolCameraState>,
+    mut query: Query<&mut VpeolCameraState>,
     knob_query: Query<Entity, With<YoleckKnob>>,
 ) {
     for mut camera_state in query.iter_mut() {
@@ -123,8 +123,8 @@ fn prepare_camera_state(
         camera_state.entities_of_interest = knob_query
             .iter()
             .chain(match camera_state.clicks_on_objects_state {
-                YoleckVpeolClicksOnObjectsState::Empty => None,
-                YoleckVpeolClicksOnObjectsState::BeingDragged { entity, .. } => Some(entity),
+                VpeolClicksOnObjectsState::Empty => None,
+                VpeolClicksOnObjectsState::BeingDragged { entity, .. } => Some(entity),
             })
             .map(|entity| (entity, None))
             .collect();
@@ -133,7 +133,7 @@ fn prepare_camera_state(
 
 fn handle_camera_state(
     mut egui_context: ResMut<EguiContext>,
-    mut query: Query<(&Camera, &mut YoleckVpeolCameraState)>,
+    mut query: Query<(&Camera, &mut VpeolCameraState)>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
@@ -156,7 +156,7 @@ fn handle_camera_state(
         MouseButtonOp::BeingPressed
     } else {
         for (_, mut camera_state) in query.iter_mut() {
-            camera_state.clicks_on_objects_state = YoleckVpeolClicksOnObjectsState::Empty;
+            camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::Empty;
         }
         return;
     };
@@ -168,7 +168,7 @@ fn handle_camera_state(
         let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
-            (MouseButtonOp::JustPressed, YoleckVpeolClicksOnObjectsState::Empty) => {
+            (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
                 if let Some(knob_entity) = knob_query
                     .iter()
                     .find(|knob_entity| camera_state.pointing_at_entity(*knob_entity).is_some())
@@ -179,7 +179,7 @@ fn handle_camera_state(
                     ));
                     let Ok(knob_transform) = global_transform_query.get(knob_entity) else { continue };
                     camera_state.clicks_on_objects_state =
-                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                        VpeolClicksOnObjectsState::BeingDragged {
                             entity: knob_entity,
                             prev_screen_pos: cursor_in_screen_pos,
                             offset: cursor_in_world_position - knob_transform.translation(),
@@ -190,20 +190,20 @@ fn handle_camera_state(
                     {
                         let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
                         directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
-                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                        VpeolClicksOnObjectsState::BeingDragged {
                             entity: *entity,
                             prev_screen_pos: cursor_in_screen_pos,
                             offset: cursor_in_world_position - entity_transform.translation(),
                         }
                     } else {
                         directives_writer.send(YoleckDirective::set_selected(None));
-                        YoleckVpeolClicksOnObjectsState::Empty
+                        VpeolClicksOnObjectsState::Empty
                     };
                 }
             }
             (
                 MouseButtonOp::BeingPressed,
-                YoleckVpeolClicksOnObjectsState::BeingDragged {
+                VpeolClicksOnObjectsState::BeingDragged {
                     entity,
                     prev_screen_pos,
                     offset,
@@ -215,7 +215,7 @@ fn handle_camera_state(
                         cursor_in_world_position - *offset,
                     ));
                     camera_state.clicks_on_objects_state =
-                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                        VpeolClicksOnObjectsState::BeingDragged {
                             entity: *entity,
                             prev_screen_pos: cursor_in_screen_pos,
                             offset: *offset,
@@ -243,11 +243,11 @@ pub struct YoleckWillContainClickableChildren;
 pub struct YoleckRouteClickTo(pub Entity);
 
 #[derive(SystemParam)]
-pub struct YoleckVpeolRootResolver<'w, 's> {
+pub struct VpeolRootResolver<'w, 's> {
     root_resolver: Query<'w, 's, &'static YoleckRouteClickTo>,
 }
 
-impl YoleckVpeolRootResolver<'_, '_> {
+impl VpeolRootResolver<'_, '_> {
     pub fn resolve_root(&self, entity: Entity) -> Entity {
         if let Ok(YoleckRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
             *root_entity
@@ -293,14 +293,14 @@ pub fn handle_clickable_children_system<F, B>(
 }
 
 /// Add a pulse effect when an entity is being selected.
-pub struct YoleckVpeolSelectionCuePlugin {
+pub struct VpeolSelectionCuePlugin {
     /// How long, in seconds, the entire pulse effect will take. Defaults to 0.3.
     pub effect_duration: f32,
     /// By how much (relative to original size) the entity will grow during the pulse. Defaults to 0.3.
     pub effect_magnitude: f32,
 }
 
-impl Default for YoleckVpeolSelectionCuePlugin {
+impl Default for VpeolSelectionCuePlugin {
     fn default() -> Self {
         Self {
             effect_duration: 0.3,
@@ -309,7 +309,7 @@ impl Default for YoleckVpeolSelectionCuePlugin {
     }
 }
 
-impl Plugin for YoleckVpeolSelectionCuePlugin {
+impl Plugin for VpeolSelectionCuePlugin {
     fn build(&self, app: &mut App) {
         app.add_system(manage_selection_transform_components);
         app.add_system_to_stage(

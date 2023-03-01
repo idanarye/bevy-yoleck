@@ -8,11 +8,11 @@
 //! # use bevy::prelude::*;
 //! # use bevy_yoleck::bevy_egui::EguiPlugin;
 //! # use bevy_yoleck::YoleckPluginForEditor;
-//! # use bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin;
+//! # use bevy_yoleck::vpeol_2d::Vpeol2dPlugin;
 //! # let mut app = App::new();
 //! app.add_plugin(EguiPlugin);
 //! app.add_plugin(YoleckPluginForEditor);
-//! app.add_plugin(YoleckVpeol2dPlugin);
+//! app.add_plugin(Vpeol2dPlugin);
 //! ```
 //!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
@@ -52,13 +52,13 @@
 //! }
 //! ```
 //!
-//! Alternatively, use [`yoleck_vpeol_position_edit_adapter`].
+//! Alternatively, use [`vpeol_position_edit_adapter`].
 
 use crate::bevy_egui::{egui, EguiContext};
 pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{
-    handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo, YoleckVpeolBasePlugin,
-    YoleckVpeolCameraState, YoleckVpeolRootResolver, YoleckVpeolSystemLabel,
+    handle_clickable_children_system, YoleckKnobClick, YoleckRouteClickTo, VpeolBasePlugin,
+    VpeolCameraState, VpeolRootResolver, VpeolSystemLabel,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -77,22 +77,22 @@ use crate::{
 /// * Entity selection.
 /// * Entity dragging.
 /// * Connecting nested entities.
-pub struct YoleckVpeol2dPlugin;
+pub struct Vpeol2dPlugin;
 
-impl Plugin for YoleckVpeol2dPlugin {
+impl Plugin for Vpeol2dPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(YoleckVpeolBasePlugin);
+        app.add_plugin(VpeolBasePlugin);
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(YoleckVpeolSystemLabel::PrepareCameraState)
-                .before(YoleckVpeolSystemLabel::UpdateCameraState)
-                .before(YoleckVpeolSystemLabel::HandleCameraState)
+                .label(VpeolSystemLabel::PrepareCameraState)
+                .before(VpeolSystemLabel::UpdateCameraState)
+                .before(VpeolSystemLabel::HandleCameraState)
                 .with_system(update_camera_world_position)
         });
 
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(YoleckVpeolSystemLabel::UpdateCameraState)
+                .label(VpeolSystemLabel::UpdateCameraState)
                 .with_system(update_camera_status_for_sprites)
                 .with_system(update_camera_status_for_atlas_sprites)
                 .with_system(update_camera_status_for_text_2d)
@@ -151,7 +151,7 @@ impl CursorInWorldPos {
         })
     }
 
-    fn from_camera_state(camera_state: &YoleckVpeolCameraState) -> Option<Self> {
+    fn from_camera_state(camera_state: &VpeolCameraState) -> Option<Self> {
         Some(Self {
             cursor_in_world_pos: camera_state.cursor_in_world_position?.truncate(),
         })
@@ -188,7 +188,7 @@ impl CursorInWorldPos {
 
 fn update_camera_world_position(
     mut cameras_query: Query<
-        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
+        (&mut VpeolCameraState, &GlobalTransform, &Camera),
         With<OrthographicProjection>,
     >,
     windows: Res<Windows>,
@@ -212,10 +212,10 @@ fn update_camera_world_position(
 }
 
 fn update_camera_status_for_sprites(
-    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
+    mut cameras_query: Query<&mut VpeolCameraState>,
     entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
     image_assets: Res<Assets<Image>>,
-    root_resolver: YoleckVpeolRootResolver,
+    root_resolver: VpeolRootResolver,
 ) {
     for mut camera_state in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
@@ -239,7 +239,7 @@ fn update_camera_status_for_sprites(
 }
 
 fn update_camera_status_for_atlas_sprites(
-    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
+    mut cameras_query: Query<&mut VpeolCameraState>,
     entities_query: Query<(
         Entity,
         &GlobalTransform,
@@ -247,7 +247,7 @@ fn update_camera_status_for_atlas_sprites(
         &Handle<TextureAtlas>,
     )>,
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
-    root_resolver: YoleckVpeolRootResolver,
+    root_resolver: VpeolRootResolver,
 ) {
     for mut camera_state in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
@@ -271,9 +271,9 @@ fn update_camera_status_for_atlas_sprites(
 }
 
 fn update_camera_status_for_text_2d(
-    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
+    mut cameras_query: Query<&mut VpeolCameraState>,
     entities_query: Query<(Entity, &GlobalTransform, &Text2dSize)>,
-    root_resolver: YoleckVpeolRootResolver,
+    root_resolver: VpeolRootResolver,
 ) {
     for mut camera_state in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
@@ -642,8 +642,8 @@ fn screen_pos_to_world_pos(
     world_pos.truncate()
 }
 
-/// See [`yoleck_vpeol_position_edit_adapter`].
-pub struct YoleckVpeolTransform2dProjection<'a> {
+/// See [`vpeol_position_edit_adapter`].
+pub struct VpeolTransform2dProjection<'a> {
     pub translation: &'a mut Vec2,
 }
 
@@ -655,7 +655,7 @@ pub struct YoleckVpeolTransform2dProjection<'a> {
 /// ```no_run
 /// # use bevy::prelude::*;
 /// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckPopulate};
-/// # use bevy_yoleck::vpeol_2d::{yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection};
+/// # use bevy_yoleck::vpeol_2d::{vpeol_position_edit_adapter, VpeolTransform2dProjection};
 /// # use serde::{Deserialize, Serialize};
 /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
 /// # struct Example {
@@ -664,9 +664,9 @@ pub struct YoleckVpeolTransform2dProjection<'a> {
 /// # let mut app = App::new();
 /// app.add_yoleck_handler({
 ///     YoleckTypeHandler::<Example>::new("Example")
-///         .with(yoleck_vpeol_position_edit_adapter(
+///         .with(vpeol_position_edit_adapter(
 ///             |data: &mut Example| {
-///                 YoleckVpeolTransform2dProjection {
+///                 VpeolTransform2dProjection {
 ///                     translation: &mut data.position,
 ///                 }
 ///             }
@@ -684,17 +684,17 @@ pub struct YoleckVpeolTransform2dProjection<'a> {
 ///     });
 /// }
 /// ```
-pub fn yoleck_vpeol_position_edit_adapter<T: 'static>(
+pub fn vpeol_position_edit_adapter<T: 'static>(
     projection: impl 'static
         + Clone
         + Send
         + Sync
-        + for<'a> Fn(&'a mut T) -> YoleckVpeolTransform2dProjection<'a>,
+        + for<'a> Fn(&'a mut T) -> VpeolTransform2dProjection<'a>,
 ) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
     move |handler| {
         handler.edit_with(move |mut edit: YoleckEdit<T>| {
             edit.edit(|ctx, data, ui| {
-                let YoleckVpeolTransform2dProjection { translation } = projection(data);
+                let VpeolTransform2dProjection { translation } = projection(data);
                 if let Some(pos) = ctx.get_passed_data::<Vec3>() {
                     *translation = pos.truncate();
                 }

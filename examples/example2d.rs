@@ -4,9 +4,9 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::vpeol::{YoleckKnobClick, YoleckVpeolCameraState};
+use bevy_yoleck::vpeol::{YoleckKnobClick, VpeolCameraState};
 use bevy_yoleck::vpeol_2d::{
-    yoleck_vpeol_position_edit_adapter, YoleckVpeolTransform2dProjection,
+    vpeol_position_edit_adapter, VpeolTransform2dProjection,
     YoleckWillContainClickableChildren,
 };
 use bevy_yoleck::{
@@ -39,8 +39,8 @@ fn main() {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_2d::YoleckVpeol2dPlugin);
-        app.add_plugin(bevy_yoleck::vpeol::YoleckVpeolSelectionCuePlugin::default());
+        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,
@@ -57,8 +57,8 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Player>::new("Player")
             .populate_with(populate_player)
-            .with(yoleck_vpeol_position_edit_adapter(|data: &mut Player| {
-                YoleckVpeolTransform2dProjection {
+            .with(vpeol_position_edit_adapter(|data: &mut Player| {
+                VpeolTransform2dProjection {
                     translation: &mut data.position,
                 }
             }))
@@ -68,8 +68,8 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Fruit>::new("Fruit")
             .populate_with(populate_fruit)
-            .with(yoleck_vpeol_position_edit_adapter(|data: &mut Fruit| {
-                YoleckVpeolTransform2dProjection {
+            .with(vpeol_position_edit_adapter(|data: &mut Fruit| {
+                VpeolTransform2dProjection {
                     translation: &mut data.position,
                 }
             }))
@@ -79,9 +79,9 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
             .populate_with(populate_text)
-            .with(yoleck_vpeol_position_edit_adapter(
+            .with(vpeol_position_edit_adapter(
                 |floating_text: &mut FloatingText| {
-                    bevy_yoleck::vpeol_2d::YoleckVpeolTransform2dProjection {
+                    bevy_yoleck::vpeol_2d::VpeolTransform2dProjection {
                         translation: &mut floating_text.position,
                     }
                 },
@@ -102,7 +102,7 @@ fn setup_camera(mut commands: Commands) {
     camera.transform.translation.z = 100.0;
     commands
         .spawn(camera)
-        .insert(YoleckVpeolCameraState::default());
+        .insert(VpeolCameraState::default());
 }
 
 #[derive(Resource)]
