@@ -84,6 +84,14 @@ impl Plugin for YoleckVpeol2dPlugin {
         app.add_plugin(YoleckVpeolBasePlugin);
         app.add_system_set({
             SystemSet::on_update(YoleckEditorState::EditorActive)
+                .label(YoleckVpeolSystemLabel::PrepareCameraState)
+                .before(YoleckVpeolSystemLabel::UpdateCameraState)
+                .before(YoleckVpeolSystemLabel::HandleCameraState)
+                .with_system(update_camera_world_position)
+        });
+
+        app.add_system_set({
+            SystemSet::on_update(YoleckEditorState::EditorActive)
                 .label(YoleckVpeolSystemLabel::UpdateCameraState)
                 .with_system(update_camera_status_for_sprites)
                 .with_system(update_camera_status_for_atlas_sprites)
@@ -124,7 +132,11 @@ struct CursorInWorldPos {
 }
 
 impl CursorInWorldPos {
-    fn new(windows: &Windows, camera: &Camera, camera_transform: &GlobalTransform) -> Option<Self> {
+    fn _new(
+        windows: &Windows,
+        camera: &Camera,
+        camera_transform: &GlobalTransform,
+    ) -> Option<Self> {
         let RenderTarget::Window(window_id) = camera.target else { return None };
         let window = windows.get(window_id)?;
         let cursor_in_screen_pos = window.cursor_position()?;
@@ -136,6 +148,12 @@ impl CursorInWorldPos {
         );
         Some(Self {
             cursor_in_world_pos,
+        })
+    }
+
+    fn from_camera_state(camera_state: &YoleckVpeolCameraState) -> Option<Self> {
+        Some(Self {
+            cursor_in_world_pos: camera_state.cursor_in_world_position?.truncate(),
         })
     }
 
@@ -168,18 +186,39 @@ impl CursorInWorldPos {
     }
 }
 
-fn update_camera_status_for_sprites(
+fn update_camera_world_position(
     mut cameras_query: Query<
         (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
         With<OrthographicProjection>,
     >,
     windows: Res<Windows>,
+) {
+    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+        camera_state.cursor_in_world_position = (|| {
+            let RenderTarget::Window(window_id) = camera.target else { return None };
+            let window = windows.get(window_id)?;
+            let cursor_in_screen_pos = window.cursor_position()?;
+            Some(
+                screen_pos_to_world_pos(
+                    cursor_in_screen_pos,
+                    window,
+                    &camera_transform.compute_matrix(),
+                    camera,
+                )
+                .extend(0.0),
+            )
+        })();
+    }
+}
+
+fn update_camera_status_for_sprites(
+    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
     entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
     image_assets: Res<Assets<Image>>,
     root_resolver: YoleckVpeolRootResolver,
 ) {
-    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+    for mut camera_state in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
         for (entity, entity_transform, sprite, texture) in entities_query.iter() {
             let size = if let Some(custom_size) = sprite.custom_size {
@@ -200,11 +239,7 @@ fn update_camera_status_for_sprites(
 }
 
 fn update_camera_status_for_atlas_sprites(
-    mut cameras_query: Query<
-        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
-        With<OrthographicProjection>,
-    >,
-    windows: Res<Windows>,
+    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
     entities_query: Query<(
         Entity,
         &GlobalTransform,
@@ -214,8 +249,8 @@ fn update_camera_status_for_atlas_sprites(
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     root_resolver: YoleckVpeolRootResolver,
 ) {
-    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+    for mut camera_state in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
         for (entity, entity_transform, sprite, texture) in entities_query.iter() {
             let size = if let Some(custom_size) = sprite.custom_size {
@@ -236,16 +271,12 @@ fn update_camera_status_for_atlas_sprites(
 }
 
 fn update_camera_status_for_text_2d(
-    mut cameras_query: Query<
-        (&mut YoleckVpeolCameraState, &GlobalTransform, &Camera),
-        With<OrthographicProjection>,
-    >,
-    windows: Res<Windows>,
+    mut cameras_query: Query<&mut YoleckVpeolCameraState>,
     entities_query: Query<(Entity, &GlobalTransform, &Text2dSize)>,
     root_resolver: YoleckVpeolRootResolver,
 ) {
-    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::new(&windows, camera, camera_transform) else { continue };
+    for mut camera_state in cameras_query.iter_mut() {
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
         for (entity, entity_transform, text_2d_size) in entities_query.iter() {
             if cursor.check_square(entity_transform, &Anchor::TopLeft, text_2d_size.size) {

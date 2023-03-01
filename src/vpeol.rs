@@ -43,6 +43,7 @@ impl Plugin for YoleckVpeolBasePlugin {
 
 #[derive(Component, Default, Debug)]
 pub struct YoleckVpeolCameraState {
+    pub cursor_in_world_position: Option<Vec3>,
     /// The topmost entity being pointed by the cursor.
     pub entity_under_cursor: Option<(Entity, YoleckVpeolCursorPointing)>,
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
@@ -160,6 +161,8 @@ fn handle_camera_state(
         return;
     };
     for (camera, mut camera_state) in query.iter_mut() {
+        let Some(cursor_in_world_position) = camera_state.cursor_in_world_position else { continue };
+
         let RenderTarget::Window(window_id) = camera.target else { continue };
         let Some(window) = windows.get(window_id) else { continue };
         let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
@@ -168,7 +171,7 @@ fn handle_camera_state(
             (MouseButtonOp::JustPressed, YoleckVpeolClicksOnObjectsState::Empty) => {
                 // TODO: knobs
 
-                camera_state.clicks_on_objects_state = if let Some((entity, cursor_pointing)) =
+                camera_state.clicks_on_objects_state = if let Some((entity, _cursor_pointing)) =
                     &camera_state.entity_under_cursor
                 {
                     let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
@@ -176,8 +179,7 @@ fn handle_camera_state(
                     YoleckVpeolClicksOnObjectsState::BeingDragged {
                         entity: *entity,
                         prev_screen_pos: cursor_in_screen_pos,
-                        offset: cursor_pointing.cursor_position_world_coords
-                            - entity_transform.translation(),
+                        offset: cursor_in_world_position - entity_transform.translation(),
                     }
                 } else {
                     directives_writer.send(YoleckDirective::set_selected(None));
@@ -193,18 +195,16 @@ fn handle_camera_state(
                 },
             ) => {
                 if 0.1 <= prev_screen_pos.distance_squared(cursor_in_screen_pos) {
-                    if let Some(pointing_at) = camera_state.pointing_at_entity(*entity) {
-                        directives_writer.send(YoleckDirective::pass_to_entity(
-                            *entity,
-                            pointing_at.cursor_position_world_coords - *offset,
-                        ));
-                        camera_state.clicks_on_objects_state =
-                            YoleckVpeolClicksOnObjectsState::BeingDragged {
-                                entity: *entity,
-                                prev_screen_pos: cursor_in_screen_pos,
-                                offset: *offset,
-                            };
-                    }
+                    directives_writer.send(YoleckDirective::pass_to_entity(
+                        *entity,
+                        cursor_in_world_position - *offset,
+                    ));
+                    camera_state.clicks_on_objects_state =
+                        YoleckVpeolClicksOnObjectsState::BeingDragged {
+                            entity: *entity,
+                            prev_screen_pos: cursor_in_screen_pos,
+                            offset: *offset,
+                        };
                 }
             }
             _ => {}
