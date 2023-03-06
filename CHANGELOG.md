@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [**BREAKING**] `vpeol_2d` sends drag coordinates as `Vec3`, not `Vec2`.
 
 ### Added
-- [**BREAKING**] `VpeolCameraState` - must be placed on a camera in order for vpoel to work
+- [**BREAKING**] `VpeolCameraState` - must be placed on a camera in order for
+  vpoel to work.
+- [**BREAKING**] `Vpeol2dCameraControl` - must be placed on a camera in order
+  for vpoel_2d to apply camera panning and scrolling.
 
 ## 0.5.0 - 2023-02-22
 ### Changed

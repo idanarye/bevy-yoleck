@@ -6,7 +6,8 @@ use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 use bevy_yoleck::vpeol::{VpeolCameraState, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
-    vpeol_position_edit_adapter, VpeolTransform2dProjection, YoleckWillContainClickableChildren,
+    vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
+    YoleckWillContainClickableChildren,
 };
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
@@ -99,7 +100,10 @@ fn main() {
 fn setup_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
     camera.transform.translation.z = 100.0;
-    commands.spawn(camera).insert(VpeolCameraState::default());
+    commands
+        .spawn(camera)
+        .insert(VpeolCameraState::default())
+        .insert(Vpeol2dCameraControl::default());
 }
 
 #[derive(Resource)]

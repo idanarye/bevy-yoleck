@@ -15,6 +15,23 @@
 //! app.add_plugin(Vpeol2dPlugin);
 //! ```
 //!
+//! Add the following components to the camera entity:
+//! * [`VpeolCameraState`] in order to select and drag entities.
+//! * [`Vpeol2dCameraControl`] in order to pan and zoom the camera with the mouse. This one can be
+//!   skipped if there are other means to control the camera inside the editor, or if no camera
+//!   control inside the editor is desired.
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::vpeol::VpeolCameraState;
+//! # use bevy_yoleck::vpeol_2d::Vpeol2dCameraControl;
+//! # let commands: Commands = panic!();
+//! commands
+//!     .spawn(Camera2dBundle::default())
+//!     .insert(VpeolCameraState::default())
+//!     .insert(Vpeol2dCameraControl::default());
+//! ```
+//!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options. Either use the passed data:
 //!
@@ -256,13 +273,31 @@ fn update_camera_status_for_text_2d(
     }
 }
 
+/// Pan and zoom a camera entity with the mouse while inisde the editor.
+#[derive(Component)]
+pub struct Vpeol2dCameraControl {
+    /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.
+    pub zoom_per_scroll_line: f32,
+    /// How much to zoom when receiving scroll event in `MouseScrollUnit::Pixel` units.
+    pub zoom_per_scroll_pixel: f32,
+}
+
+impl Default for Vpeol2dCameraControl {
+    fn default() -> Self {
+        Self {
+            zoom_per_scroll_line: 0.2,
+            zoom_per_scroll_pixel: 0.001,
+        }
+    }
+}
+
 fn camera_2d_pan(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<
         (Entity, &mut Transform, &GlobalTransform, &Camera),
-        With<OrthographicProjection>,
+        With<Vpeol2dCameraControl>,
     >,
     mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec2>>,
 ) {
@@ -318,31 +353,39 @@ fn camera_2d_pan(
 fn camera_2d_zoom(
     mut egui_context: ResMut<EguiContext>,
     windows: Res<Windows>,
-    mut cameras_query: Query<
-        (&mut Transform, &GlobalTransform, &Camera),
-        With<OrthographicProjection>,
-    >,
+    mut cameras_query: Query<(
+        &mut Transform,
+        &GlobalTransform,
+        &Camera,
+        &Vpeol2dCameraControl,
+    )>,
     mut wheel_events_reader: EventReader<MouseWheel>,
 ) {
     if egui_context.ctx_mut().is_pointer_over_area() {
         return;
     }
 
-    let zoom_amount: f32 = wheel_events_reader
-        .iter()
-        .map(|wheel_event| match wheel_event.unit {
-            bevy::input::mouse::MouseScrollUnit::Line => wheel_event.y * 0.2,
-            bevy::input::mouse::MouseScrollUnit::Pixel => wheel_event.y * 0.001,
-        })
-        .sum();
+    for (mut camera_transform, camera_global_transform, camera, camera_control) in
+        cameras_query.iter_mut()
+    {
+        let zoom_amount: f32 = wheel_events_reader
+            .iter()
+            .map(|wheel_event| match wheel_event.unit {
+                bevy::input::mouse::MouseScrollUnit::Line => {
+                    wheel_event.y * camera_control.zoom_per_scroll_line
+                }
+                bevy::input::mouse::MouseScrollUnit::Pixel => {
+                    wheel_event.y * camera_control.zoom_per_scroll_pixel
+                }
+            })
+            .sum();
 
-    if zoom_amount == 0.0 {
-        return;
-    }
+        if zoom_amount == 0.0 {
+            continue;
+        }
 
-    let scale_by = (-zoom_amount).exp();
+        let scale_by = (-zoom_amount).exp();
 
-    for (mut camera_transform, camera_global_transform, camera) in cameras_query.iter_mut() {
         let window = if let RenderTarget::Window(window_id) = camera.target {
             windows.get(window_id).unwrap()
         } else {
