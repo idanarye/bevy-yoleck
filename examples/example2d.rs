@@ -4,10 +4,9 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 
-use bevy_yoleck::vpeol::{VpeolCameraState, YoleckKnobClick};
+use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
     vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
-    YoleckWillContainClickableChildren,
 };
 use bevy_yoleck::{
     YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
@@ -258,7 +257,7 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
         cmd.despawn_descendants();
         cmd.insert((
             SpatialBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
-            YoleckWillContainClickableChildren,
+            VpeolWillContainClickableChildren,
             IsFruit,
         ));
         // Could have placed them on the main entity, but with this the children picking feature

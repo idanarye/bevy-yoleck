@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `YoleckVpeolXYZ` becomes `VpeolXYZ` and `yoleck_vpeol_xyz` becomes
   `vpeol_xyz`. Vpeol is enough to avoid conflicts.
 - [**BREAKING**] `vpeol_2d` sends drag coordinates as `Vec3`, not `Vec2`.
+- [**BREAKING**] `YoleckWillContainClickableChildren` is renamed to
+  `VpeolWillContainClickableChildren` and is no longer reexported by
+  `vpeol_2d`.
 
 ### Added
 - [**BREAKING**] `VpeolCameraState` - must be placed on a camera in order for

@@ -258,7 +258,7 @@ pub struct YoleckKnobClick;
 /// Populate systems should mark the entity with this component when applicable. The viewport
 /// overlay plugin is responsible for handling it by using [`handle_clickable_children_system`].
 #[derive(Component)]
-pub struct YoleckWillContainClickableChildren;
+pub struct VpeolWillContainClickableChildren;
 
 /// Marker for viewport editor overlay plugins to route child interaction to parent entites.
 #[derive(Component)]
@@ -282,9 +282,9 @@ impl VpeolRootResolver<'_, '_> {
     }
 }
 
-/// Add [`YoleckRouteClickTo`] of entities marked with [`YoleckWillContainClickableChildren`].
+/// Add [`YoleckRouteClickTo`] of entities marked with [`VpeolWillContainClickableChildren`].
 pub fn handle_clickable_children_system<F, B>(
-    parents_query: Query<(Entity, &Children), With<YoleckWillContainClickableChildren>>,
+    parents_query: Query<(Entity, &Children), With<VpeolWillContainClickableChildren>>,
     children_query: Query<&Children>,
     should_add_query: Query<Entity, F>,
     mut commands: Commands,
@@ -312,7 +312,7 @@ pub fn handle_clickable_children_system<F, B>(
         if any_added {
             commands
                 .entity(parent)
-                .remove::<YoleckWillContainClickableChildren>();
+                .remove::<VpeolWillContainClickableChildren>();
         }
     }
 }

@@ -72,7 +72,6 @@
 //! Alternatively, use [`vpeol_position_edit_adapter`].
 
 use crate::bevy_egui::{egui, EguiContext};
-pub use crate::vpeol::YoleckWillContainClickableChildren;
 use crate::vpeol::{
     handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolRootResolver,
     VpeolSystemLabel,
