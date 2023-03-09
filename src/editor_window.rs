@@ -1,20 +1,31 @@
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext};
 
 use crate::YoleckEditorSections;
 
-pub(crate) fn yoleck_editor_window(world: &mut World) {
-    world.resource_scope(|world, mut egui_context: Mut<EguiContext>| {
+pub(crate) fn yoleck_editor_window(
+    world: &mut World,
+    mut egui_query: Local<Option<QueryState<&mut EguiContext, With<PrimaryWindow>>>>,
+) {
+    let egui_query = egui_query.get_or_insert_with(|| world.query_filtered());
+    let mut borrowed_egui = if let Ok(mut egui_context) = egui_query.get_single_mut(world) {
+        core::mem::take(egui_context.as_mut())
+    } else {
+        return;
+    };
+    egui::Window::new("Level Editor").show(borrowed_egui.get_mut(), |ui| {
         world.resource_scope(
             |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
-                egui::Window::new("Level Editor").show(egui_context.ctx_mut(), |ui| {
-                    for section in yoleck_editor_sections.0.iter_mut() {
-                        section.0.invoke(world, ui);
-                    }
-                });
+                for section in yoleck_editor_sections.0.iter_mut() {
+                    section.0.invoke(world, ui);
+                }
             },
         );
     });
+    if let Ok(mut egui_context) = egui_query.get_single_mut(world) {
+        *egui_context = borrowed_egui;
+    }
 }
 
 #[allow(clippy::type_complexity)]

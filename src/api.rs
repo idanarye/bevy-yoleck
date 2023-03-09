@@ -11,9 +11,10 @@ use crate::knobs::{KnobFromCache, YoleckKnobsCache};
 use crate::{BoxedArc, YoleckManaged};
 
 /// Whether or not the Yoleck editor is active.
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum YoleckEditorState {
     /// Editor mode. The editor is active and can be used to edit entities.
+    #[default]
     EditorActive,
     /// Game mode. Either the actual game or playtest from the editor mode.
     GameActive,
@@ -22,14 +23,18 @@ pub enum YoleckEditorState {
 /// Sync the game's state back and forth when the level editor enters and exits playtest mode.
 ///
 /// Add this as a plugin. When using it, there is no need to initialize the state with `add_state`
-/// - `YoleckSyncWithEditorState` will initialize it to the value in `when_editor`.
+/// - `YoleckSyncWithEditorState` will initialize it and set its initial value to `when_editor`.
+/// This means that the state's default value should be it's initial value for non-editor mode
+/// (which is not necessarily `when_game`, because the game may start in a menu state or a loading
+/// state)
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
 /// # use bevy_yoleck::{YoleckSyncWithEditorState, YoleckPluginForEditor, YoleckPluginForGame};
 /// # use bevy_yoleck::bevy_egui::EguiPlugin;
-/// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 /// enum GameState {
+///     #[default]
 ///     Loading,
 ///     Game,
 ///     Editor,
@@ -50,11 +55,11 @@ pub enum YoleckEditorState {
 ///     // This plugin is needed for game mode:
 ///     app.add_plugin(YoleckPluginForGame);
 ///
-///     app.add_state(GameState::Loading);
+///     app.add_state::<GameState>();
 /// }
 pub struct YoleckSyncWithEditorState<T>
 where
-    T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
 {
     pub when_editor: T,
     pub when_game: T,
@@ -62,15 +67,20 @@ where
 
 impl<T> Plugin for YoleckSyncWithEditorState<T>
 where
-    T: 'static + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut App) {
+        app.add_state::<T>();
+        let initial_state = self.when_editor.clone();
+        app.add_startup_system(move |mut game_state: ResMut<NextState<T>>| {
+            game_state.set(initial_state.clone());
+        });
         let when_editor = self.when_editor.clone();
-        app.add_state(when_editor.clone());
         let when_game = self.when_game.clone();
         app.add_system(
-            move |editor_state: Res<State<YoleckEditorState>>, mut game_state: ResMut<State<T>>| {
-                let _ = game_state.set(match editor_state.current() {
+            move |editor_state: Res<State<YoleckEditorState>>,
+                  mut game_state: ResMut<NextState<T>>| {
+                game_state.set(match editor_state.0 {
                     YoleckEditorState::EditorActive => when_editor.clone(),
                     YoleckEditorState::GameActive => when_game.clone(),
                 });

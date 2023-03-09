@@ -86,10 +86,10 @@
 //!         });
 //!     } else {
 //!         app.add_plugin(YoleckPluginForGame);
-//!         app.add_state(GameState::Loading);
+//!         app.add_state::<GameState>();
 //!         // In editor mode Yoleck takes care of level loading. In game mode the game needs to
 //!         // tell yoleck which levels to load and when.
-//!         app.add_system_set(SystemSet::on_update(GameState::Loading).with_system(load_first_level));
+//!         app.add_system(load_first_level.in_set(OnUpdate(GameState::Loading)));
 //!     }
 //!     app.add_startup_system(setup_camera);
 //!
@@ -102,15 +102,16 @@
 //!     app.run();
 //! }
 //!
-//! #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+//! #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 //! enum GameState {
+//!     #[default]
 //!     Loading,
 //!     Game,
 //!     Editor,
 //! }
 //!
 //! fn setup_camera(mut commands: Commands) {
-//!     commands.spawn_bundle(Camera2dBundle::default());
+//!     commands.spawn(Camera2dBundle::default());
 //! }
 //!
 //! #[derive(Clone, PartialEq, Serialize, Deserialize)]
@@ -127,7 +128,7 @@
 //!
 //! fn populate_rectangle(mut populate: YoleckPopulate<Rectangle>) {
 //!     populate.populate(|_ctx, data, mut cmd| {
-//!         cmd.insert_bundle(SpriteBundle {
+//!         cmd.insert(SpriteBundle {
 //!             sprite: Sprite {
 //!                 color: Color::RED,
 //!                 custom_size: Some(Vec2::new(data.width, data.height)),
@@ -149,7 +150,7 @@
 //!     asset_server: Res<AssetServer>,
 //!     level_index_assets: Res<Assets<YoleckLevelIndex>>,
 //!     mut loading_command: ResMut<YoleckLoadingCommand>,
-//!     mut game_state: ResMut<State<GameState>>,
+//!     mut game_state: ResMut<NextState<GameState>>,
 //! ) {
 //!     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
 //!     if let Some(level_index) = level_index_assets.get(&level_index_handle) {
@@ -158,7 +159,7 @@
 //!         let level_handle: Handle<YoleckRawLevel> =
 //!             asset_server.load(&format!("levels/{}", level_index[0].filename));
 //!         *loading_command = YoleckLoadingCommand::FromAsset(level_handle);
-//!         game_state.set(GameState::Game).unwrap();
+//!         game_state.set(GameState::Game);
 //!     }
 //! }
 //! ```
@@ -205,8 +206,8 @@ struct YoleckPluginBase;
 pub struct YoleckPluginForGame;
 pub struct YoleckPluginForEditor;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
-enum YoleckSystemLabels {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
+enum YoleckSystemSet {
     ProcessRawEntities,
 }
 
@@ -221,7 +222,7 @@ impl Plugin for YoleckPluginBase {
         app.add_asset_loader(level_index::YoleckLevelIndexLoader);
         app.add_system(
             entity_management::yoleck_process_raw_entries
-                .label(YoleckSystemLabels::ProcessRawEntities),
+                .in_set(YoleckSystemSet::ProcessRawEntities),
         );
         app.add_system(entity_management::yoleck_process_loading_command);
     }
@@ -229,14 +230,17 @@ impl Plugin for YoleckPluginBase {
 
 impl Plugin for YoleckPluginForGame {
     fn build(&self, app: &mut App) {
-        app.add_state(YoleckEditorState::GameActive);
+        app.add_state::<YoleckEditorState>();
+        app.add_startup_system(|mut state: ResMut<NextState<YoleckEditorState>>| {
+            state.set(YoleckEditorState::GameActive);
+        });
         app.add_plugin(YoleckPluginBase);
     }
 }
 
 impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
-        app.add_state(YoleckEditorState::EditorActive);
+        app.add_state::<YoleckEditorState>();
         app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
         app.insert_resource(YoleckKnobsCache::default());
@@ -250,7 +254,7 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
         app.add_system(
-            editor_window::yoleck_editor_window.after(YoleckSystemLabels::ProcessRawEntities),
+            editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
         );
     }
 }

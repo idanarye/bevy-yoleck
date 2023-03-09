@@ -68,14 +68,14 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         let (mut commands, yoleck_type_handlers, mut yoleck, editor_state, mut writer) =
             system_state.get_mut(world);
 
-        if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+        if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
         }
 
         let popup_id = ui.make_persistent_id("add_new_entity_popup_id");
         let button_response = ui.button("Add New Entity");
         if button_response.clicked() {
-            ui.memory().toggle_popup(popup_id);
+            ui.memory_mut(|memory| memory.toggle_popup(popup_id));
         }
 
         egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
@@ -91,7 +91,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
                     writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
                     yoleck.entity_being_edited = Some(cmd.id());
                     yoleck.level_needs_saving = true;
-                    ui.memory().toggle_popup(popup_id);
+                    ui.memory_mut(|memory| memory.toggle_popup(popup_id));
                 }
             }
         });
@@ -117,7 +117,7 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
         let (mut yoleck, yoleck_type_handlers, yoleck_managed_query, editor_state, mut writer) =
             system_state.get_mut(world);
 
-        if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+        if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
         }
 
@@ -195,7 +195,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut knobs_cache,
             ) = system_state.get_mut(world);
 
-            if !matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+            if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
                 return;
             }
 

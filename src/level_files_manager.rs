@@ -39,7 +39,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<YoleckEditorLevelsDirectoryPath>,
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
-        ResMut<State<YoleckEditorState>>,
+        Res<State<YoleckEditorState>>,
+        ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
     )>::new(world);
 
@@ -63,7 +64,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut levels_directory,
             yoleck_type_handlers,
             yoleck_managed_query,
-            mut editor_state,
+            editor_state,
+            mut next_editor_state,
             mut knobs_cache,
         ) = system_state.get_mut(world);
 
@@ -107,7 +109,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
-                    editor_state.set(YoleckEditorState::EditorActive).unwrap();
+                    next_editor_state.set(YoleckEditorState::EditorActive);
                     for entry in level.entries() {
                         commands.spawn(entry.clone());
                     }
@@ -118,7 +120,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 if ui.button("Playtest").clicked() {
                     let level = gen_raw_level_file();
                     clear_level(&mut commands);
-                    editor_state.set(YoleckEditorState::GameActive).unwrap();
+                    next_editor_state.set(YoleckEditorState::GameActive);
                     for entry in level.entries() {
                         commands.spawn(entry.clone());
                     }
@@ -127,7 +129,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             }
         });
 
-        if matches!(editor_state.current(), YoleckEditorState::EditorActive) {
+        if matches!(editor_state.0, YoleckEditorState::EditorActive) {
             egui::CollapsingHeader::new("Files")
                 .default_open(true)
                 .show(ui, |ui| {

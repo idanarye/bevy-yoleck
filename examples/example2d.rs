@@ -2,7 +2,7 @@ use std::path::Path;
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContext, EguiPlugin};
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
@@ -88,11 +88,7 @@ fn main() {
             .edit_with(edit_text)
     });
 
-    app.add_system_set({
-        SystemSet::on_update(YoleckEditorState::GameActive)
-            .with_system(control_player)
-            .with_system(eat_fruits)
-    });
+    app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
     app.run();
 }
 
@@ -115,12 +111,12 @@ struct GameAssets {
 
 impl FromWorld for GameAssets {
     fn from_world(world: &mut World) -> Self {
-        let (asset_server, mut texture_atlas_assets, egui_context) = SystemState::<(
-            Res<AssetServer>,
-            ResMut<Assets<TextureAtlas>>,
-            Option<ResMut<EguiContext>>,
-        )>::new(world)
-        .get_mut(world);
+        let mut system_state =
+            SystemState::<(Res<AssetServer>, ResMut<Assets<TextureAtlas>>, EguiContexts)>::new(
+                world,
+            );
+        let (asset_server, mut texture_atlas_assets, mut egui_context) =
+            system_state.get_mut(world);
         let fruits_atlas = TextureAtlas::from_grid(
             asset_server.load("sprites/fruits.png"),
             Vec2::new(64.0, 64.0),
@@ -129,7 +125,7 @@ impl FromWorld for GameAssets {
             None,
             None,
         );
-        let fruits_egui = if let Some(mut egui_context) = egui_context {
+        let fruits_egui = {
             (
                 egui_context.add_image(fruits_atlas.texture.clone()),
                 fruits_atlas
@@ -152,8 +148,6 @@ impl FromWorld for GameAssets {
                     })
                     .collect(),
             )
-        } else {
-            Default::default()
         };
         Self {
             player_sprite: asset_server.load("sprites/player.png"),

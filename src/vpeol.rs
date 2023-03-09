@@ -9,13 +9,14 @@ use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::transform::TransformSystem;
 use bevy::utils::HashMap;
-use bevy_egui::EguiContext;
+use bevy::window::{PrimaryWindow, WindowRef};
+use bevy_egui::EguiContexts;
 
 use crate::{YoleckDirective, YoleckEditorState, YoleckKnob, YoleckState};
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
-#[derive(SystemLabel)]
-pub enum VpeolSystemLabel {
+#[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum VpeolSystemSet {
     /// Initialize [`VpeolCameraState`]
     ///
     /// * Clear all pointing.
@@ -34,19 +35,22 @@ pub struct VpeolBasePlugin;
 
 impl Plugin for VpeolBasePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_set({
-            SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(VpeolSystemLabel::PrepareCameraState)
-                .before(VpeolSystemLabel::UpdateCameraState)
-                .before(VpeolSystemLabel::HandleCameraState)
-                .with_system(prepare_camera_state)
+        app.configure_sets(
+            (
+                VpeolSystemSet::PrepareCameraState,
+                VpeolSystemSet::UpdateCameraState,
+                VpeolSystemSet::HandleCameraState,
+            )
+                .chain()
+                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+        );
+        app.add_system({
+            prepare_camera_state.in_set(VpeolSystemSet::PrepareCameraState)
+            // .in_set(OnUpdate(YoleckEditorState::EditorActive))
         });
-        app.add_system_set({
-            SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(VpeolSystemLabel::HandleCameraState)
-                .after(VpeolSystemLabel::PrepareCameraState)
-                .after(VpeolSystemLabel::UpdateCameraState)
-                .with_system(handle_camera_state)
+        app.add_system({
+            handle_camera_state.in_set(VpeolSystemSet::HandleCameraState)
+            // .in_set(OnUpdate(YoleckEditorState::EditorActive))
         });
     }
 }
@@ -154,10 +158,25 @@ fn prepare_camera_state(
     }
 }
 
+#[derive(SystemParam)]
+pub(crate) struct WindowGetter<'w, 's> {
+    windows: Query<'w, 's, &'static Window>,
+    primary_window: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+}
+
+impl WindowGetter<'_, '_> {
+    pub fn get_window(&self, window_ref: WindowRef) -> Option<&Window> {
+        match window_ref {
+            WindowRef::Primary => self.primary_window.get_single().ok(),
+            WindowRef::Entity(window_id) => self.windows.get(window_id).ok(),
+        }
+    }
+}
+
 fn handle_camera_state(
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
     mut query: Query<(&Camera, &mut VpeolCameraState)>,
-    windows: Res<Windows>,
+    window_getter: WindowGetter,
     buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
     knob_query: Query<Entity, With<YoleckKnob>>,
@@ -186,8 +205,8 @@ fn handle_camera_state(
     for (camera, mut camera_state) in query.iter_mut() {
         let Some(cursor_in_world_position) = camera_state.cursor_in_world_position else { continue };
 
-        let RenderTarget::Window(window_id) = camera.target else { continue };
-        let Some(window) = windows.get(window_id) else { continue };
+        let RenderTarget::Window(window_ref) = camera.target else { continue };
+        let Some(window) = window_getter.get_window(window_ref) else { continue };
         let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
@@ -337,19 +356,19 @@ impl Default for VpeolSelectionCuePlugin {
 impl Plugin for VpeolSelectionCuePlugin {
     fn build(&self, app: &mut App) {
         app.add_system(manage_selection_transform_components);
-        app.add_system_to_stage(
-            CoreStage::PostUpdate,
+        app.add_system({
             add_selection_cue_before_transform_propagate(
                 1.0 / self.effect_duration,
                 2.0 * self.effect_magnitude,
             )
-            .before(TransformSystem::TransformPropagate),
-        );
-        app.add_system_to_stage(
-            CoreStage::PostUpdate,
+            .in_base_set(CoreSet::PostUpdate)
+            .before(TransformSystem::TransformPropagate)
+        });
+        app.add_system({
             restore_transform_from_cache_after_transform_propagate
-                .after(TransformSystem::TransformPropagate),
-        );
+                .in_base_set(CoreSet::PostUpdate)
+                .after(TransformSystem::TransformPropagate)
+        });
     }
 }
 

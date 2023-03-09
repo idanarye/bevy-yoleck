@@ -49,7 +49,7 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
 }
 
 pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
-    let is_in_editor = match world.resource::<State<YoleckEditorState>>().current() {
+    let is_in_editor = match world.resource::<State<YoleckEditorState>>().0 {
         YoleckEditorState::EditorActive => true,
         YoleckEditorState::GameActive => false,
     };

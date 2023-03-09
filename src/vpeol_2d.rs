@@ -60,7 +60,7 @@
 //!
 //! fn populate_example(mut populate: YoleckPopulate<Example>) {
 //!     populate.populate(|_ctx, data, mut cmd| {
-//!         cmd.insert_bundle(SpriteBundle {
+//!         cmd.insert(SpriteBundle {
 //!             transform: Transform::from_translation(data.position.extend(0.0)),
 //!             // Actual sprite components
 //!             ..Default::default()
@@ -71,16 +71,16 @@
 //!
 //! Alternatively, use [`vpeol_position_edit_adapter`].
 
-use crate::bevy_egui::{egui, EguiContext};
+use crate::bevy_egui::{egui, EguiContexts};
 use crate::vpeol::{
     handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolRootResolver,
-    VpeolSystemLabel,
+    VpeolSystemSet, WindowGetter,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::sprite::Anchor;
-use bevy::text::Text2dSize;
+use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 
 use crate::{YoleckEdit, YoleckEditorState, YoleckTypeHandler};
@@ -96,36 +96,34 @@ pub struct Vpeol2dPlugin;
 impl Plugin for Vpeol2dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(VpeolBasePlugin);
-        app.add_system_set({
-            SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(VpeolSystemLabel::PrepareCameraState)
-                .before(VpeolSystemLabel::UpdateCameraState)
-                .before(VpeolSystemLabel::HandleCameraState)
-                .with_system(update_camera_world_position)
-        });
+        app.add_system(update_camera_world_position.in_set(VpeolSystemSet::PrepareCameraState));
 
-        app.add_system_set({
-            SystemSet::on_update(YoleckEditorState::EditorActive)
-                .label(VpeolSystemLabel::UpdateCameraState)
-                .with_system(update_camera_status_for_sprites)
-                .with_system(update_camera_status_for_atlas_sprites)
-                .with_system(update_camera_status_for_text_2d)
-        });
-        app.add_system_set({
-            SystemSet::on_update(YoleckEditorState::EditorActive)
-                .with_system(camera_2d_pan)
-                .with_system(camera_2d_zoom)
-                .with_system(
-                    handle_clickable_children_system::<
-                        Or<(
-                            (With<Sprite>, With<Handle<Image>>),
-                            (With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
-                            With<Text2dSize>,
-                        )>,
-                        (),
-                    >,
-                )
-        });
+        app.add_systems(
+            (
+                update_camera_status_for_sprites,
+                update_camera_status_for_atlas_sprites,
+                update_camera_status_for_text_2d,
+            )
+                .in_set(VpeolSystemSet::UpdateCameraState),
+        );
+        app.add_systems(
+            (camera_2d_pan, camera_2d_zoom).in_set(OnUpdate(YoleckEditorState::EditorActive)),
+        );
+        app.add_systems(
+            (
+                apply_system_buffers,
+                handle_clickable_children_system::<
+                    Or<(
+                        (With<Sprite>, With<Handle<Image>>),
+                        (With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
+                        (With<TextLayoutInfo>, With<Anchor>),
+                    )>,
+                    (),
+                >,
+            )
+                .chain()
+                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+        );
     }
 }
 
@@ -174,12 +172,12 @@ fn update_camera_world_position(
         (&mut VpeolCameraState, &GlobalTransform, &Camera),
         With<OrthographicProjection>,
     >,
-    windows: Res<Windows>,
+    window_getter: WindowGetter,
 ) {
     for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
         camera_state.cursor_in_world_position = (|| {
-            let RenderTarget::Window(window_id) = camera.target else { return None };
-            let window = windows.get(window_id)?;
+            let RenderTarget::Window(window_ref) = camera.target else { return None };
+            let window = window_getter.get_window(window_ref)?;
             let cursor_in_screen_pos = window.cursor_position()?;
             Some(
                 screen_pos_to_world_pos(
@@ -255,14 +253,14 @@ fn update_camera_status_for_atlas_sprites(
 
 fn update_camera_status_for_text_2d(
     mut cameras_query: Query<&mut VpeolCameraState>,
-    entities_query: Query<(Entity, &GlobalTransform, &Text2dSize)>,
+    entities_query: Query<(Entity, &GlobalTransform, &TextLayoutInfo, &Anchor)>,
     root_resolver: VpeolRootResolver,
 ) {
     for mut camera_state in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
-        for (entity, entity_transform, text_2d_size) in entities_query.iter() {
-            if cursor.check_square(entity_transform, &Anchor::TopLeft, text_2d_size.size) {
+        for (entity, entity_transform, text_layout_info, anchor) in entities_query.iter() {
+            if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
                 camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
@@ -291,8 +289,8 @@ impl Default for Vpeol2dCameraControl {
 }
 
 fn camera_2d_pan(
-    mut egui_context: ResMut<EguiContext>,
-    windows: Res<Windows>,
+    mut egui_context: EguiContexts,
+    window_getter: WindowGetter,
     buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<
         (Entity, &mut Transform, &GlobalTransform, &Camera),
@@ -320,8 +318,8 @@ fn camera_2d_pan(
     for (camera_entity, mut camera_transform, camera_global_transform, camera) in
         cameras_query.iter_mut()
     {
-        let window = if let RenderTarget::Window(window_id) = camera.target {
-            windows.get(window_id).unwrap()
+        let window = if let RenderTarget::Window(window_ref) = camera.target {
+            window_getter.get_window(window_ref).unwrap()
         } else {
             continue;
         };
@@ -350,8 +348,8 @@ fn camera_2d_pan(
 }
 
 fn camera_2d_zoom(
-    mut egui_context: ResMut<EguiContext>,
-    windows: Res<Windows>,
+    mut egui_context: EguiContexts,
+    window_getter: WindowGetter,
     mut cameras_query: Query<(
         &mut Transform,
         &GlobalTransform,
@@ -385,8 +383,8 @@ fn camera_2d_zoom(
 
         let scale_by = (-zoom_amount).exp();
 
-        let window = if let RenderTarget::Window(window_id) = camera.target {
-            windows.get(window_id).unwrap()
+        let window = if let RenderTarget::Window(window_ref) = camera.target {
+            window_getter.get_window(window_ref).unwrap()
         } else {
             continue;
         };
@@ -467,7 +465,7 @@ pub struct VpeolTransform2dProjection<'a> {
 ///
 /// fn populate_example(mut populate: YoleckPopulate<Example>) {
 ///     populate.populate(|_ctx, data, mut cmd| {
-///         cmd.insert_bundle(SpriteBundle {
+///         cmd.insert(SpriteBundle {
 ///             transform: Transform::from_translation(data.position.extend(0.0)),
 ///             // Actual sprite components
 ///             ..Default::default()
