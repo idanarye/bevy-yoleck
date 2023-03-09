@@ -31,9 +31,13 @@ vpeol_2d = [
     "bevy/bevy_sprite",
 ]
 
- [dev-dependencies]
- bevy = { version = "^0.10", default-features = false, features = ["bevy_sprite", "x11"] }
+[dev-dependencies]
+bevy = { version = "^0.10", default-features = false, features = ["bevy_sprite", "x11"] }
 
 [[example]]
 name = "example2d"
 required-features = ["vpeol_2d", "bevy/png"]
+
+[package.metadata.docs.rs]
+
+all-features = true
