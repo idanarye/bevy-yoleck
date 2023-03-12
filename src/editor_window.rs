@@ -14,15 +14,17 @@ pub(crate) fn yoleck_editor_window(
     } else {
         return;
     };
-    egui::Window::new("Level Editor").vscroll(true).show(borrowed_egui.get_mut(), |ui| {
-        world.resource_scope(
-            |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
-                for section in yoleck_editor_sections.0.iter_mut() {
-                    section.0.invoke(world, ui);
-                }
-            },
-        );
-    });
+    egui::Window::new("Level Editor")
+        .vscroll(true)
+        .show(borrowed_egui.get_mut(), |ui| {
+            world.resource_scope(
+                |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
+                    for section in yoleck_editor_sections.0.iter_mut() {
+                        section.0.invoke(world, ui);
+                    }
+                },
+            );
+        });
     if let Ok(mut egui_context) = egui_query.get_single_mut(world) {
         *egui_context = borrowed_egui;
     }
