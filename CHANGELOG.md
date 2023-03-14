@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Panic that happens sometimes when dragging an entity with children.
 
+### Added
+- `YoleckDirective::spawn_entity` for spawning entities from user code (e.g.
+  for creating entity duplication buttons)
+
 ## 0.7.0 - 2023-03-09
 ### Changed
 - Upgrade Bevy to 0.10 (and bevy_egui to 0.20)

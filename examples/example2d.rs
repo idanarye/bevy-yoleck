@@ -9,9 +9,9 @@ use bevy_yoleck::vpeol_2d::{
     vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
 };
 use bevy_yoleck::{
-    YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckExtForApp,
-    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
-    YoleckTypeHandler,
+    YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState,
+    YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame,
+    YoleckPopulate, YoleckTypeHandler,
 };
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +67,7 @@ fn main() {
     app.add_yoleck_handler({
         YoleckTypeHandler::<Fruit>::new("Fruit")
             .populate_with(populate_fruit)
+            .edit_with(duplicate_fruit)
             .with(vpeol_position_edit_adapter(|data: &mut Fruit| {
                 VpeolTransform2dProjection {
                     translation: &mut data.position,
@@ -267,6 +268,21 @@ fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) 
                 ..Default::default()
             });
         });
+    });
+}
+
+fn duplicate_fruit(mut edit: YoleckEdit<Fruit>, mut writer: EventWriter<YoleckDirective>) {
+    edit.edit(|_ctx, data, ui| {
+        if ui.button("Duplicate").clicked() {
+            writer.send(YoleckDirective::spawn_entity(
+                "Fruit",
+                Fruit {
+                    position: data.position - 100.0 * Vec2::Y,
+                    fruit_index: data.fruit_index,
+                },
+                true, // select_created_entity
+            ));
+        }
     });
 }
 
