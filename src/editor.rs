@@ -5,6 +5,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
+use serde::Serialize;
 
 use crate::api::YoleckUserSystemContext;
 use crate::dynamic_source_handling::YoleckEditingResult;
@@ -17,6 +18,11 @@ use crate::{
 enum YoleckDirectiveInner {
     SetSelected(Option<Entity>),
     PassToEntity(Entity, TypeId, BoxedArc),
+    SpawnEntity {
+        type_name: String,
+        data: serde_json::Value,
+        select_created_entity: bool,
+    },
 }
 
 /// Event that can be sent to control Yoleck's editor.
@@ -41,6 +47,45 @@ impl YoleckDirective {
     pub fn set_selected(entity: Option<Entity>) -> Self {
         Self(YoleckDirectiveInner::SetSelected(entity))
     }
+
+    /// Spawn a new entity with pre-populated data.
+    ///
+    /// ```no_run
+    /// # use serde::{Deserialize, Serialize};
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckDirective};
+    /// # #[derive(Serialize)]
+    /// # struct Example {
+    /// #     position: Vec2,
+    /// # }
+    /// fn duplicate_example(mut edit: YoleckEdit<Example>, mut writer: EventWriter<YoleckDirective>) {
+    ///     edit.edit(|_ctx, data, ui| {
+    ///         if ui.button("Duplicate").clicked() {
+    ///             writer.send(YoleckDirective::spawn_entity(
+    ///                 "Example",
+    ///                 Example {
+    ///                     // Create the new example entity 100 units below the current one:
+    ///                     position: data.position - 100.0 * Vec2::Y,
+    ///                 },
+    ///                 // Automatically select the newly created entity:
+    ///                 true,
+    ///             ));
+    ///         }
+    ///     });
+    /// }
+    /// ```
+    pub fn spawn_entity(
+        type_name: impl ToString,
+        data: impl Serialize,
+        select_created_entity: bool,
+    ) -> Self {
+        Self(YoleckDirectiveInner::SpawnEntity {
+            type_name: type_name.to_string(),
+            data: serde_json::to_value(data)
+                .expect("Serialization of Yoleck values must always work"),
+            select_created_entity,
+        })
+    }
 }
 
 fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
@@ -57,16 +102,13 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 /// The UI part for creating new entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
-        Commands,
         Res<YoleckTypeHandlers>,
-        ResMut<YoleckState>,
         Res<State<YoleckEditorState>>,
-        EventWriter<YoleckEditorEvent>,
+        EventWriter<YoleckDirective>,
     )>::new(world);
 
     move |world, ui| {
-        let (mut commands, yoleck_type_handlers, mut yoleck, editor_state, mut writer) =
-            system_state.get_mut(world);
+        let (yoleck_type_handlers, editor_state, mut writer) = system_state.get_mut(world);
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
@@ -81,16 +123,11 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
             for type_name in yoleck_type_handlers.type_handler_names.iter() {
                 if ui.button(type_name).clicked() {
-                    let cmd = commands.spawn(YoleckRawEntry {
-                        header: YoleckEntryHeader {
-                            type_name: type_name.clone(),
-                            name: "".to_owned(),
-                        },
+                    writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                        type_name: type_name.clone(),
                         data: serde_json::Value::Object(Default::default()),
-                    });
-                    writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
-                    yoleck.entity_being_edited = Some(cmd.id());
-                    yoleck.level_needs_saving = true;
+                        select_created_entity: true,
+                    }));
                     ui.memory_mut(|memory| memory.toggle_popup(popup_id));
                 }
             }
@@ -222,6 +259,24 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             }
                             yoleck.entity_being_edited = *entity;
                         }
+                    }
+                    YoleckDirectiveInner::SpawnEntity {
+                        type_name,
+                        data,
+                        select_created_entity,
+                    } => {
+                        let cmd = commands.spawn(YoleckRawEntry {
+                            header: YoleckEntryHeader {
+                                type_name: type_name.clone(),
+                                name: "".to_owned(),
+                            },
+                            data: data.clone(),
+                        });
+                        if *select_created_entity {
+                            writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
+                        }
+                        yoleck.entity_being_edited = Some(cmd.id());
+                        yoleck.level_needs_saving = true;
                     }
                 }
             }
