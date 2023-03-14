@@ -120,6 +120,7 @@ impl Plugin for Vpeol2dPlugin {
                     )>,
                     (),
                 >,
+                apply_system_buffers,
             )
                 .chain()
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),

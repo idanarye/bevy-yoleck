@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Add scroll area to editor window.
 
+### Fixed
+- Panic that happens sometimes when dragging an entity with children.
+
 ## 0.7.0 - 2023-03-09
 ### Changed
 - Upgrade Bevy to 0.10 (and bevy_egui to 0.20)
