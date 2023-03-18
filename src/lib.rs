@@ -171,6 +171,7 @@ mod editor_window;
 mod entity_management;
 mod knobs;
 mod level_files_manager;
+pub mod level_files_upgrading;
 mod level_index;
 #[cfg(feature = "vpeol")]
 pub mod vpeol;
