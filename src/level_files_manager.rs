@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_egui::egui;
 
+use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
     YoleckEditorState, YoleckEntryHeader, YoleckKnobsCache, YoleckLevelIndex, YoleckManaged,
@@ -243,10 +244,23 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                     levels_directory.0.join(&file.filename),
                                                 )
                                                 .unwrap();
-                                                let level: YoleckRawLevel =
+                                                let level: serde_json::Value =
                                                     serde_json::from_reader(fd).unwrap();
-                                                for entry in level.entries().iter().cloned() {
-                                                    commands.spawn(entry);
+                                                match upgrade_level_file(level) {
+                                                    Ok(level) => {
+                                                        let level: YoleckRawLevel =
+                                                            serde_json::from_value(level).unwrap();
+                                                        for entry in level.entries().iter().cloned()
+                                                        {
+                                                            commands.spawn(entry);
+                                                        }
+                                                    }
+                                                    Err(err) => {
+                                                        warn!(
+                                                            "Cannot upgrade {:?} - {}",
+                                                            file.filename, err
+                                                        );
+                                                    }
                                                 }
                                             };
                                             if ui

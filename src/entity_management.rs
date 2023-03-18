@@ -6,6 +6,7 @@ use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::api::YoleckUserSystemContext;
+use crate::level_files_upgrading::upgrade_level_file;
 use crate::{YoleckEditorState, YoleckManaged, YoleckTypeHandlers};
 
 /// Used by Yoleck to determine how to handle the entity.
@@ -164,8 +165,10 @@ impl AssetLoader for YoleckLevelAssetLoader {
     ) -> bevy::asset::BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
             let json = std::str::from_utf8(bytes)?;
-            let level: YoleckRawLevel = serde_json::from_str(json)?;
-            load_context.set_default_asset(LoadedAsset::new(level));
+            let level: serde_json::Value = serde_json::from_str(json)?;
+            let level = upgrade_level_file(level)?;
+            let level: YoleckRawLevel = serde_json::from_value(level)?;
+            load_context.set_default_asset(LoadedAsset::new(dbg!(level)));
             Ok(())
         })
     }

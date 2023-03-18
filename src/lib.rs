@@ -188,7 +188,7 @@ use bevy::utils::HashMap;
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckKnobHandle,
-    YoleckPopulate, YoleckPopulateContext, YoleckSyncWithEditorState,
+    YoleckPopulate, YoleckPopulateContext, YoleckSyncWithEditorState, YoleckUi,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -263,6 +263,9 @@ impl Plugin for YoleckPluginForEditor {
 pub trait YoleckExtForApp {
     /// Register a [`YoleckTypeHandler`] to describe a type of entity that can be edited with Yoleck.
     fn add_yoleck_handler(&mut self, handler: impl 'static + YoleckTypeHandlerTrait);
+
+    /// TODO: document
+    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
 }
 
 impl YoleckExtForApp for App {
@@ -272,6 +275,15 @@ impl YoleckExtForApp for App {
             .world
             .get_resource_or_insert_with(YoleckTypeHandlers::default);
         handlers.add_handler(Box::new(handler));
+    }
+
+    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>) {
+        let mut system = IntoSystem::into_system(system);
+        system.initialize(&mut self.world);
+        let mut edit_systems = self
+            .world
+            .get_resource_or_insert_with(YoleckEditSystems::default);
+        edit_systems.edit_systems.push(Box::new(system));
     }
 }
 
@@ -310,6 +322,19 @@ impl YoleckTypeHandlers {
             }
         }
         self.type_handler_names.push(type_name);
+    }
+}
+
+#[derive(Default, Resource)]
+struct YoleckEditSystems {
+    edit_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
+}
+
+impl YoleckEditSystems {
+    pub(crate) fn run_systems(&mut self, world: &mut World) {
+        for system in self.edit_systems.iter_mut() {
+            system.run((), world);
+        }
     }
 }
 

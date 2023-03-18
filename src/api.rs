@@ -1,6 +1,7 @@
 use std::any::TypeId;
 use std::hash::Hash;
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
@@ -449,4 +450,22 @@ pub enum YoleckEditorEvent {
     EntitySelected(Entity),
     EntityDeselected(Entity),
     EditedEntityPopulated(Entity),
+}
+
+/// TODO: document
+#[derive(Resource)]
+pub struct YoleckUi(pub egui::Ui);
+
+impl Deref for YoleckUi {
+    type Target = egui::Ui;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for YoleckUi {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }

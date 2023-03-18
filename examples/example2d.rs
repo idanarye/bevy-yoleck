@@ -11,7 +11,7 @@ use bevy_yoleck::vpeol_2d::{
 use bevy_yoleck::{
     YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState,
     YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame,
-    YoleckPopulate, YoleckTypeHandler,
+    YoleckPopulate, YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -75,6 +75,7 @@ fn main() {
             }))
             .edit_with(edit_fruit)
     });
+    app.add_yoleck_edit_system(edit_fruit_type);
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
@@ -323,6 +324,10 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
             }
         });
     });
+}
+
+fn edit_fruit_type(mut ui: ResMut<YoleckUi>) {
+    ui.label("edit_fruit_type");
 }
 
 fn eat_fruits(

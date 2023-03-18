@@ -10,8 +10,8 @@ use serde::Serialize;
 use crate::api::YoleckUserSystemContext;
 use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
-    BoxedArc, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader, YoleckKnobsCache,
-    YoleckManaged, YoleckRawEntry, YoleckState, YoleckTypeHandlers,
+    BoxedArc, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader,
+    YoleckKnobsCache, YoleckManaged, YoleckRawEntry, YoleckState, YoleckTypeHandlers, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -326,6 +326,24 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             }
         }
         system_state.apply(world);
+
+        let frame = egui::Frame::none();
+        let mut prepared = frame.begin(ui);
+        let content_ui = std::mem::replace(
+            &mut prepared.content_ui,
+            ui.child_ui(egui::Rect::EVERYTHING, *ui.layout()),
+        );
+        world.insert_resource(YoleckUi(content_ui));
+        world.resource_scope(|world, mut yoleck_edit_systems: Mut<YoleckEditSystems>| {
+            yoleck_edit_systems.run_systems(world);
+        });
+        let YoleckUi(content_ui) = world
+            .remove_resource()
+            .expect("The YoleckUi resource was put in the world by this very function");
+        prepared.content_ui = content_ui;
+        prepared.end(ui);
+
+        // TODO: This part should be removed
         if let Some(type_name) = handler_to_run {
             world.resource_scope(|world, mut yoleck_type_handlers: Mut<YoleckTypeHandlers>| {
                 let entity = world
