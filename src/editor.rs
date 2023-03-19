@@ -10,8 +10,9 @@ use serde::Serialize;
 use crate::api::YoleckUserSystemContext;
 use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
-    BoxedArc, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState, YoleckEntryHeader,
-    YoleckKnobsCache, YoleckManaged, YoleckRawEntry, YoleckState, YoleckTypeHandlers, YoleckUi,
+    BoxedArc, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
+    YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache, YoleckManaged,
+    YoleckRawEntry, YoleckState, YoleckTypeHandlers, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -143,15 +144,15 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
     let mut filter_types = HashSet::<String>::new();
 
     let mut system_state = SystemState::<(
-        ResMut<YoleckState>,
+        Res<YoleckState>,
         Res<YoleckTypeHandlers>,
         Query<(Entity, &YoleckManaged)>,
         Res<State<YoleckEditorState>>,
-        EventWriter<YoleckEditorEvent>,
+        EventWriter<YoleckDirective>,
     )>::new(world);
 
     move |world, ui| {
-        let (mut yoleck, yoleck_type_handlers, yoleck_managed_query, editor_state, mut writer) =
+        let (yoleck, yoleck_type_handlers, yoleck_managed_query, editor_state, mut writer) =
             system_state.get_mut(world);
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -188,11 +189,9 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                     .clicked()
                 {
                     if is_selected {
-                        writer.send(YoleckEditorEvent::EntityDeselected(entity));
-                        yoleck.entity_being_edited = None;
+                        writer.send(YoleckDirective::set_selected(None));
                     } else {
-                        writer.send(YoleckEditorEvent::EntitySelected(entity));
-                        yoleck.entity_being_edited = Some(entity);
+                        writer.send(YoleckDirective::set_selected(Some(entity)));
                     }
                 }
             }
@@ -206,11 +205,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         ResMut<YoleckState>,
         ResMut<YoleckUserSystemContext>,
         Query<(Entity, &mut YoleckManaged)>,
+        Query<Entity, With<YoleckEditNewStyle>>,
         EventReader<YoleckDirective>,
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
         ResMut<YoleckKnobsCache>,
+        Res<YoleckEntityConstructionSpecs>,
     )>::new(world);
 
     let mut writer_state = SystemState::<EventWriter<YoleckEditorEvent>>::new(world);
@@ -225,11 +226,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut yoleck,
                 mut yoleck_user_system_context,
                 mut yoleck_managed_query,
+                yoleck_edited_query,
                 mut directives_reader,
                 mut commands,
                 editor_state,
                 mut writer,
                 mut knobs_cache,
+                construction_specs,
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -247,6 +250,35 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             .insert(*type_id, data.clone());
                     }
                     YoleckDirectiveInner::SetSelected(entity) => {
+                        if let Some(entity) = entity {
+                            let mut already_selected = false;
+                            for entity_to_deselect in yoleck_edited_query.iter() {
+                                if entity_to_deselect == *entity {
+                                    already_selected = true;
+                                } else {
+                                    commands
+                                        .entity(entity_to_deselect)
+                                        .remove::<YoleckEditNewStyle>();
+                                    writer.send(YoleckEditorEvent::EntityDeselected(
+                                        entity_to_deselect,
+                                    ));
+                                }
+                            }
+                            if !already_selected {
+                                commands.entity(*entity).insert(YoleckEditNewStyle {});
+                                writer.send(YoleckEditorEvent::EntitySelected(*entity));
+                            }
+                        } else {
+                            for entity_to_deselect in yoleck_edited_query.iter() {
+                                commands
+                                    .entity(entity_to_deselect)
+                                    .remove::<YoleckEditNewStyle>();
+                                writer
+                                    .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
+                            }
+                        }
+
+                        // TODO: this one can be removed
                         if *entity != yoleck.entity_being_edited {
                             if let Some(entity) = entity {
                                 writer.send(YoleckEditorEvent::EntitySelected(*entity));
@@ -265,17 +297,32 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         data,
                         select_created_entity,
                     } => {
-                        let cmd = commands.spawn(YoleckRawEntry {
+                        let Some(component_handlers) = construction_specs.component_handlers_for(type_name) else {
+                            error!("Entity type {:?} is not registered", type_name);
+                            break;
+                        };
+                        let mut cmd = commands.spawn(YoleckRawEntry {
                             header: YoleckEntryHeader {
                                 type_name: type_name.clone(),
                                 name: "".to_owned(),
                             },
                             data: data.clone(),
                         });
-                        if *select_created_entity {
-                            writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
+                        for handler in component_handlers {
+                            (handler.insert_to_command)(&mut cmd, None);
                         }
-                        yoleck.entity_being_edited = Some(cmd.id());
+                        if *select_created_entity {
+                            yoleck.entity_being_edited = Some(cmd.id());
+                            writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
+                            cmd.insert(YoleckEditNewStyle {});
+                            for entity_to_deselect in yoleck_edited_query.iter() {
+                                commands
+                                    .entity(entity_to_deselect)
+                                    .remove::<YoleckEditNewStyle>();
+                                writer
+                                    .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
+                            }
+                        }
                         yoleck.level_needs_saving = true;
                     }
                 }

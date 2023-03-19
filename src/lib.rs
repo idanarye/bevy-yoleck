@@ -188,8 +188,8 @@ use bevy::utils::HashMap;
 
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState,
-    YoleckEntityType, YoleckKnobHandle, YoleckPopulate, YoleckPopulateContext,
+    YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditNewStyle, YoleckEditorEvent,
+    YoleckEditorState, YoleckEntityType, YoleckKnobHandle, YoleckPopulate, YoleckPopulateContext,
     YoleckSyncWithEditorState, YoleckUi,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;

@@ -9,9 +9,10 @@ use bevy_yoleck::vpeol_2d::{
     vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
 };
 use bevy_yoleck::{
-    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath,
-    YoleckEditorState, YoleckEntityType, YoleckExtForApp, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandler, YoleckUi,
+    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
+    YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType, YoleckExtForApp,
+    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
+    YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -331,8 +332,13 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
     });
 }
 
-fn edit_fruit_type(mut ui: ResMut<YoleckUi>, query: Query<&Fruit>) {
-    ui.label(format!("edit_fruit_type. Has {}", query.iter().count()));
+fn edit_fruit_type(
+    mut ui: ResMut<YoleckUi>,
+    mut query: Query<(Entity, &mut Fruit), With<YoleckEditNewStyle>>,
+) {
+    ui.label(format!("edit_fruit_type {}", query.iter().count()));
+    let Ok((entity, _fruit)) = query.get_single_mut() else { return };
+    ui.label(format!("edit_fruit_type. Editing {:?}", entity));
 }
 
 fn eat_fruits(

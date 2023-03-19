@@ -494,3 +494,7 @@ impl YoleckEntityType {
         self
     }
 }
+
+// TODO: remove the NewStyle suffix after removing the old YoleckEdit
+#[derive(Component)]
+pub struct YoleckEditNewStyle {}
