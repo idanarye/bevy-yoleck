@@ -7,9 +7,10 @@ use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
+use serde::{Deserialize, Serialize};
 
 use crate::knobs::{KnobFromCache, YoleckKnobsCache};
-use crate::{BoxedArc, YoleckManaged};
+use crate::{BoxedArc, YoleckComponentHandler, YoleckManaged};
 
 /// Whether or not the Yoleck editor is active.
 #[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -467,5 +468,29 @@ impl Deref for YoleckUi {
 impl DerefMut for YoleckUi {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+pub trait YoleckComponent: Component + Serialize + for<'a> Deserialize<'a> {
+    const KEY: &'static str;
+    const VERSION: usize = 1;
+}
+
+pub struct YoleckEntityType {
+    pub name: String,
+    pub(crate) components: Vec<YoleckComponentHandler>,
+}
+
+impl YoleckEntityType {
+    pub fn new(name: impl ToString) -> Self {
+        Self {
+            name: name.to_string(),
+            components: Default::default(),
+        }
+    }
+
+    pub fn with<T: YoleckComponent>(mut self) -> Self {
+        self.components.push(YoleckComponentHandler::new::<T>());
+        self
     }
 }

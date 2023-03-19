@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::YoleckUserSystemContext;
 use crate::level_files_upgrading::upgrade_level_file;
-use crate::{YoleckEditorState, YoleckManaged, YoleckTypeHandlers};
+use crate::{YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckTypeHandlers};
 
 /// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -98,12 +98,40 @@ pub(crate) fn yoleck_process_loading_command(
     mut commands: Commands,
     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
     raw_levels_assets: Res<Assets<YoleckRawLevel>>,
+    specs: Res<YoleckEntityConstructionSpecs>,
 ) {
-    if let YoleckLoadingCommand::FromAsset(handle) = &*yoleck_loading_command {
-        if let Some(asset) = raw_levels_assets.get(handle) {
-            *yoleck_loading_command = YoleckLoadingCommand::NoCommand;
-            for entry in asset.entries() {
-                commands.spawn(entry.clone());
+    let mut process_entry = |entry: YoleckRawEntry| {
+        let component_handlers = specs.component_handlers_for(&entry.header.type_name);
+        if let Some(component_handlers) = component_handlers {
+            let mut data = entry.data.clone();
+            let Some(data) = data.as_object_mut() else {
+                warn!("Entity data is not an object");
+                return;
+            };
+            let mut cmd = commands.spawn(entry);
+            for handler in component_handlers {
+                (handler.insert_to_command)(&mut cmd, data.remove(handler.key));
+            }
+        } else {
+            warn!("Entity type {:?} is not registered", entry.header.type_name);
+        }
+    };
+
+    match core::mem::replace(
+        yoleck_loading_command.as_mut(),
+        YoleckLoadingCommand::NoCommand,
+    ) {
+        YoleckLoadingCommand::NoCommand => {}
+        YoleckLoadingCommand::FromAsset(handle) => {
+            if let Some(asset) = raw_levels_assets.get(&handle) {
+                for entry in asset.entries() {
+                    process_entry(entry.clone());
+                }
+            }
+        }
+        YoleckLoadingCommand::FromData(level) => {
+            for entry in level.into_entries() {
+                process_entry(entry);
             }
         }
     }
@@ -124,12 +152,13 @@ pub(crate) fn yoleck_process_loading_command(
 pub enum YoleckLoadingCommand {
     NoCommand,
     FromAsset(Handle<YoleckRawLevel>),
+    FromData(YoleckRawLevel),
 }
 
 pub(crate) struct YoleckLevelAssetLoader;
 
 /// Represents a level file.
-#[derive(TypeUuid, Debug, Serialize, Deserialize)]
+#[derive(TypeUuid, Debug, Serialize, Deserialize, Clone)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
 pub struct YoleckRawLevel(
     YoleckRawLevelHeader,
@@ -138,7 +167,7 @@ pub struct YoleckRawLevel(
 );
 
 /// Internal Yoleck metadata for a level file.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct YoleckRawLevelHeader {
     format_version: usize,
 }
@@ -154,6 +183,10 @@ impl YoleckRawLevel {
 
     pub fn entries(&self) -> &[YoleckRawEntry] {
         &self.2
+    }
+
+    pub fn into_entries(self) -> impl Iterator<Item = YoleckRawEntry> {
+        self.2.into_iter()
     }
 }
 

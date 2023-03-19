@@ -9,9 +9,9 @@ use bevy_yoleck::vpeol_2d::{
     vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
 };
 use bevy_yoleck::{
-    YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath, YoleckEditorState,
-    YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame,
-    YoleckPopulate, YoleckTypeHandler, YoleckUi,
+    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath,
+    YoleckEditorState, YoleckEntityType, YoleckExtForApp, YoleckLoadingCommand,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -76,6 +76,7 @@ fn main() {
             .edit_with(edit_fruit)
     });
     app.add_yoleck_edit_system(edit_fruit_type);
+    app.add_yoleck_entity_type(YoleckEntityType::new("Fruit").with::<Fruit>());
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
@@ -240,12 +241,16 @@ fn control_player(
 #[derive(Component)]
 struct IsFruit;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
 struct Fruit {
     #[serde(default)]
     position: Vec2,
     #[serde(default)]
     fruit_index: usize,
+}
+
+impl YoleckComponent for Fruit {
+    const KEY: &'static str = "Fruit";
 }
 
 fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
@@ -326,8 +331,8 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
     });
 }
 
-fn edit_fruit_type(mut ui: ResMut<YoleckUi>) {
-    ui.label("edit_fruit_type");
+fn edit_fruit_type(mut ui: ResMut<YoleckUi>, query: Query<&Fruit>) {
+    ui.label(format!("edit_fruit_type. Has {}", query.iter().count()));
 }
 
 fn eat_fruits(

@@ -178,17 +178,19 @@ pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
 
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::path::Path;
 use std::sync::Arc;
 
+use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState, YoleckKnobHandle,
-    YoleckPopulate, YoleckPopulateContext, YoleckSyncWithEditorState, YoleckUi,
+    YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditorEvent, YoleckEditorState,
+    YoleckEntityType, YoleckKnobHandle, YoleckPopulate, YoleckPopulateContext,
+    YoleckSyncWithEditorState, YoleckUi,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -266,6 +268,7 @@ pub trait YoleckExtForApp {
 
     /// TODO: document
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
+    fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType);
 }
 
 impl YoleckExtForApp for App {
@@ -284,6 +287,30 @@ impl YoleckExtForApp for App {
             .world
             .get_resource_or_insert_with(YoleckEditSystems::default);
         edit_systems.edit_systems.push(Box::new(system));
+    }
+
+    fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType) {
+        let mut construction_specs = self
+            .world
+            .get_resource_or_insert_with(YoleckEntityConstructionSpecs::default);
+        let new_index = construction_specs.entity_types.len();
+        construction_specs
+            .entity_types_index
+            .insert(entity_type.name.clone(), new_index);
+        construction_specs.entity_types.push(YoleckEntityTypeInfo {
+            name: entity_type.name.clone(),
+            components: entity_type
+                .components
+                .iter()
+                .map(|c| c.component_type)
+                .collect(),
+        });
+        for handler in entity_type.components {
+            // Can handlers can register systems? If so, this needs to be broken into two phases...
+            construction_specs
+                .component_handlers
+                .insert(handler.component_type, handler);
+        }
     }
 }
 
@@ -338,6 +365,33 @@ impl YoleckEditSystems {
     }
 }
 
+pub struct YoleckEntityTypeInfo {
+    pub name: String,
+    pub components: Vec<TypeId>,
+}
+
+#[derive(Default, Resource)]
+pub(crate) struct YoleckEntityConstructionSpecs {
+    entity_types: Vec<YoleckEntityTypeInfo>,
+    entity_types_index: HashMap<String, usize>,
+    component_handlers: HashMap<TypeId, YoleckComponentHandler>,
+}
+
+impl YoleckEntityConstructionSpecs {
+    pub fn component_handlers_for(
+        &self,
+        entity_type: &str,
+    ) -> Option<impl Iterator<Item = &YoleckComponentHandler>> {
+        let entity_type_index = self.entity_types_index.get(entity_type)?;
+        Some(
+            self.entity_types[*entity_type_index]
+                .components
+                .iter()
+                .map(|component_type| &self.component_handlers[component_type]),
+        )
+    }
+}
+
 /// Fields of the Yoleck editor.
 #[derive(Resource)]
 pub struct YoleckState {
@@ -386,5 +440,48 @@ impl Default for YoleckEditorSections {
             editor::entity_selection_section.into(),
             editor::entity_editing_section.into(),
         ])
+    }
+}
+
+#[allow(dead_code)]
+struct YoleckComponentHandler {
+    pub component_type: TypeId,
+    pub key: &'static str,
+    #[allow(clippy::type_complexity)]
+    pub insert_to_command:
+        Box<dyn Sync + Send + Fn(&mut EntityCommands, Option<serde_json::Value>)>,
+}
+
+impl YoleckComponentHandler {
+    pub fn new<T: YoleckComponent>() -> Self {
+        Self {
+            component_type: TypeId::of::<T>(),
+            key: T::KEY,
+            insert_to_command: Box::new(|cmd, data| {
+                let component: T = if let Some(data) = data {
+                    match serde_json::from_value(data) {
+                        Ok(component) => component,
+                        Err(err) => {
+                            error!("Cannot load {:?}: {:?}", T::KEY, err);
+                            return;
+                        }
+                    }
+                } else if let Ok(component) = serde_json::from_value(serde_json::Value::Null) {
+                    component
+                } else if let Ok(component) =
+                    serde_json::from_value(serde_json::Value::Object(Default::default()))
+                {
+                    component
+                } else if let Ok(component) =
+                    serde_json::from_value(serde_json::Value::Array(Default::default()))
+                {
+                    component
+                } else {
+                    error!("{:?} cannot be initialized from empty data", T::KEY);
+                    return;
+                };
+                cmd.insert(component);
+            }),
+        }
     }
 }
