@@ -12,7 +12,7 @@ use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
     BoxedArc, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
     YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache, YoleckManaged,
-    YoleckRawEntry, YoleckState, YoleckTypeHandlers, YoleckUi,
+    YoleckRawEntry, YoleckSchedule, YoleckState, YoleckTypeHandlers, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -389,6 +389,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             .expect("The YoleckUi resource was put in the world by this very function");
         prepared.content_ui = content_ui;
         prepared.end(ui);
+
+        // Some systems may have edited the entries, so we need to update them
+        world.run_schedule(YoleckSchedule::UpdateRawDataFromComponents);
 
         // TODO: This part should be removed
         if let Some(type_name) = handler_to_run {

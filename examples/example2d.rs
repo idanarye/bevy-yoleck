@@ -296,6 +296,7 @@ fn duplicate_fruit(mut edit: YoleckEdit<Fruit>, mut writer: EventWriter<YoleckDi
 fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands: Commands) {
     edit.edit(|ctx, data, ui| {
         ui.horizontal(|ui| {
+            ui.label(format!("Old Style:\n#{} chosen", data.fruit_index));
             let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
             for (index, rect) in rects.iter().enumerate() {
                 if ui
@@ -334,11 +335,48 @@ fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands
 
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(Entity, &mut Fruit), With<YoleckEditNewStyle>>,
+    mut query: Query<&mut Fruit, With<YoleckEditNewStyle>>,
+    assets: Res<GameAssets>,
 ) {
-    ui.label(format!("edit_fruit_type {}", query.iter().count()));
-    let Ok((entity, _fruit)) = query.get_single_mut() else { return };
-    ui.label(format!("edit_fruit_type. Editing {:?}", entity));
+    let Ok(mut fruit) = query.get_single_mut() else { return };
+    ui.horizontal(|ui| {
+        ui.label(format!("New Style:\n#{} chosen", fruit.fruit_index));
+        let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
+        for (index, rect) in rects.iter().enumerate() {
+            if ui
+                .add_enabled(
+                    index != fruit.fruit_index,
+                    egui::ImageButton::new(*texture_id, [100.0, 100.0]).uv(*rect),
+                )
+                .clicked()
+            {
+                fruit.fruit_index = index;
+            }
+
+            if index != fruit.fruit_index {
+                // TODO: knobs
+                /*
+                let mut knob = ctx.knob(&mut commands, ("select", index));
+                let knob_position =
+                    (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
+                knob.cmd.insert(SpriteSheetBundle {
+                    sprite: TextureAtlasSprite {
+                        index,
+                        custom_size: Some(Vec2::new(20.0, 20.0)),
+                        ..Default::default()
+                    },
+                    texture_atlas: assets.fruits_sprite_sheet.clone(),
+                    transform: Transform::from_translation(knob_position),
+                    global_transform: Transform::from_translation(knob_position).into(),
+                    ..Default::default()
+                });
+                if knob.get_passed_data::<YoleckKnobClick>().is_some() {
+                    data.fruit_index = index;
+                }
+                */
+            }
+        }
+    });
 }
 
 fn eat_fruits(

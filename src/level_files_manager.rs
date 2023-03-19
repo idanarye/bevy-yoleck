@@ -77,7 +77,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 yoleck_managed_query
                     .iter()
                     .map(|(_entity, yoleck_managed)| {
-                        let handler = yoleck_type_handlers
+                        let _handler = yoleck_type_handlers
                             .type_handlers
                             .get(&yoleck_managed.type_name)
                             .unwrap();
@@ -86,7 +86,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                 type_name: yoleck_managed.type_name.clone(),
                                 name: yoleck_managed.name.clone(),
                             },
-                            data: handler.make_raw(&yoleck_managed.data),
+                            data: serde_json::to_value(&yoleck_managed.components_data).expect(
+                                "Converting a HashMap of JSON values to JSON should always work",
+                            ),
                         }
                     })
             })

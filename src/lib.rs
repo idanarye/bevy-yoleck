@@ -182,6 +182,7 @@ use std::any::{Any, TypeId};
 use std::path::Path;
 use std::sync::Arc;
 
+use bevy::ecs::schedule::ScheduleLabel;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -259,6 +260,8 @@ impl Plugin for YoleckPluginForEditor {
         app.add_system(
             editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
         );
+
+        app.add_schedule(YoleckSchedule::UpdateRawDataFromComponents, Schedule::new());
     }
 }
 
@@ -290,22 +293,42 @@ impl YoleckExtForApp for App {
     }
 
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType) {
-        let mut construction_specs = self
+        let construction_specs = self
             .world
             .get_resource_or_insert_with(YoleckEntityConstructionSpecs::default);
+
+        let mut component_type_ids = Vec::with_capacity(entity_type.components.len());
+        let mut component_handlers_to_register = Vec::new();
+        for handler in entity_type.components.into_iter() {
+            component_type_ids.push(handler.component_type);
+            if !construction_specs
+                .component_handlers
+                .contains_key(&handler.component_type)
+            {
+                component_handlers_to_register.push(handler);
+            }
+        }
+
+        for handler in component_handlers_to_register.iter() {
+            (handler.build_in_bevy_app)(self);
+        }
+
+        let new_entry = YoleckEntityTypeInfo {
+            name: entity_type.name.clone(),
+            components: component_type_ids,
+        };
+
+        let mut construction_specs = self
+            .world
+            .get_resource_mut::<YoleckEntityConstructionSpecs>()
+            .expect("YoleckEntityConstructionSpecs was inserted earlier in this function");
+
         let new_index = construction_specs.entity_types.len();
         construction_specs
             .entity_types_index
-            .insert(entity_type.name.clone(), new_index);
-        construction_specs.entity_types.push(YoleckEntityTypeInfo {
-            name: entity_type.name.clone(),
-            components: entity_type
-                .components
-                .iter()
-                .map(|c| c.component_type)
-                .collect(),
-        });
-        for handler in entity_type.components {
+            .insert(entity_type.name, new_index);
+        construction_specs.entity_types.push(new_entry);
+        for handler in component_handlers_to_register {
             // Can handlers can register systems? If so, this needs to be broken into two phases...
             construction_specs
                 .component_handlers
@@ -329,6 +352,8 @@ pub struct YoleckManaged {
     /// This is the entity's data. The [`YoleckTypeHandler`] is responsible for manipulating
     /// it, using the systems registered to it.
     pub data: BoxedAny,
+
+    pub components_data: HashMap<&'static str, serde_json::Value>,
 }
 
 #[derive(Default, Resource)]
@@ -449,7 +474,8 @@ struct YoleckComponentHandler {
     pub key: &'static str,
     #[allow(clippy::type_complexity)]
     pub insert_to_command:
-        Box<dyn Sync + Send + Fn(&mut EntityCommands, Option<serde_json::Value>)>,
+        Box<dyn Send + Sync + Fn(&mut EntityCommands, Option<serde_json::Value>)>,
+    pub build_in_bevy_app: Box<dyn Send + Sync + Fn(&mut App)>,
 }
 
 impl YoleckComponentHandler {
@@ -482,6 +508,24 @@ impl YoleckComponentHandler {
                 };
                 cmd.insert(component);
             }),
+            build_in_bevy_app: Box::new(|app| {
+                if let Some(schedule) =
+                    app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents)
+                {
+                    schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
+                        for (mut entry, component) in query.iter_mut() {
+                            let data = serde_json::to_value(&*component)
+                                .expect("Data must be serializable");
+                            entry.components_data.insert(T::KEY, data);
+                        }
+                    });
+                }
+            }),
         }
     }
+}
+
+#[derive(ScheduleLabel, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum YoleckSchedule {
+    UpdateRawDataFromComponents,
 }

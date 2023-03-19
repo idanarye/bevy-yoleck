@@ -59,6 +59,7 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
         let mut commands_queue = CommandQueue::default();
         let mut raw_entries_query = world.query::<(Entity, &YoleckRawEntry)>();
         let mut commands = Commands::new(&mut commands_queue, world);
+        let construction_specs = world.resource::<YoleckEntityConstructionSpecs>();
         for (entity, raw_entry) in raw_entries_query.iter(world) {
             entities_by_type
                 .entry(raw_entry.header.type_name.clone())
@@ -71,10 +72,28 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                 .get(&raw_entry.header.type_name)
                 .unwrap();
             let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
+
+            let mut components_data = HashMap::new();
+
+            if let Some(component_handlers) =
+                construction_specs.component_handlers_for(&raw_entry.header.type_name)
+            {
+                for handler in component_handlers {
+                    let raw_component_data = raw_entry.data.get(handler.key);
+                    (handler.insert_to_command)(&mut cmd, raw_component_data.cloned());
+                    if let Some(raw_component_data) = raw_component_data {
+                        components_data.insert(handler.key, raw_component_data.clone());
+                    }
+                }
+            } else {
+                error!("Entity type {:?} is not registered", raw_entry.header.name);
+            }
+
             cmd.insert(YoleckManaged {
                 name: raw_entry.header.name.to_owned(),
                 type_name: raw_entry.header.type_name.to_owned(),
                 data: concrete,
+                components_data,
             });
         }
         commands_queue.apply(world);
@@ -88,6 +107,7 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                     is_in_editor,
                     entities,
                 };
+            // TODO: after I get rid of this, I can make `yoleck_process_raw_entries` a normal system
             handler.run_populate_systems(world);
         }
         *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
@@ -175,7 +195,7 @@ pub struct YoleckRawLevelHeader {
 impl YoleckRawLevel {
     pub fn new(entries: impl IntoIterator<Item = YoleckRawEntry>) -> Self {
         Self(
-            YoleckRawLevelHeader { format_version: 1 },
+            YoleckRawLevelHeader { format_version: 2 },
             serde_json::Value::Object(Default::default()),
             entries.into_iter().collect(),
         )
