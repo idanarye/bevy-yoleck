@@ -3,12 +3,14 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+use bevy::ecs::query::WorldQuery;
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 use serde::{Deserialize, Serialize};
 
+use crate::entity_management::EntitiesToPopulate;
 use crate::knobs::{KnobFromCache, YoleckKnobsCache};
 use crate::{BoxedArc, YoleckComponentHandler, YoleckManaged};
 
@@ -498,3 +500,24 @@ impl YoleckEntityType {
 // TODO: remove the NewStyle suffix after removing the old YoleckEdit
 #[derive(Component)]
 pub struct YoleckEditNewStyle {}
+
+#[derive(SystemParam)]
+pub struct YoleckPopulateNewStyle<'w, 's, Q: 'static + WorldQuery> {
+    entities_to_populate: Res<'w, EntitiesToPopulate>,
+    query: Query<'w, 's, Q>,
+    commands: Commands<'w, 's>,
+}
+
+impl<Q: 'static + WorldQuery> YoleckPopulateNewStyle<'_, '_, Q> {
+    pub fn populate(
+        &mut self,
+        mut dlg: impl FnMut((), EntityCommands, <Q as WorldQuery>::Item<'_>),
+    ) {
+        for entity in self.entities_to_populate.0.iter() {
+            if let Ok(data) = self.query.get_mut(*entity) {
+                let cmd = self.commands.entity(*entity);
+                dlg((), cmd, data);
+            }
+        }
+    }
+}

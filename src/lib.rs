@@ -191,12 +191,13 @@ use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditNewStyle, YoleckEditorEvent,
     YoleckEditorState, YoleckEntityType, YoleckKnobHandle, YoleckPopulate, YoleckPopulateContext,
-    YoleckSyncWithEditorState, YoleckUi,
+    YoleckPopulateNewStyle, YoleckSyncWithEditorState, YoleckUi,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
+use self::entity_management::EntitiesToPopulate;
 pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
@@ -213,6 +214,7 @@ pub struct YoleckPluginForEditor;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
 enum YoleckSystemSet {
     ProcessRawEntities,
+    RunPopulateSchedule,
 }
 
 impl Plugin for YoleckPluginBase {
@@ -224,11 +226,38 @@ impl Plugin for YoleckPluginBase {
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.add_asset::<YoleckLevelIndex>();
         app.add_asset_loader(level_index::YoleckLevelIndexLoader);
+
+        app.configure_sets(
+            (
+                YoleckSystemSet::ProcessRawEntities,
+                YoleckSystemSet::RunPopulateSchedule,
+            )
+                .chain(),
+        );
+
         app.add_system(
             entity_management::yoleck_process_raw_entries
                 .in_set(YoleckSystemSet::ProcessRawEntities),
         );
+        app.insert_resource(EntitiesToPopulate(Default::default()));
+        app.add_systems(
+            (
+                entity_management::yoleck_prepare_populate_schedule,
+                entity_management::yoleck_run_populate_schedule.run_if(
+                    |entities_to_populate: Res<EntitiesToPopulate>| {
+                        !entities_to_populate.0.is_empty()
+                    },
+                ),
+            )
+                .chain()
+                .in_set(YoleckSystemSet::RunPopulateSchedule),
+        );
         app.add_system(entity_management::yoleck_process_loading_command);
+        app.add_schedule(YoleckSchedule::Populate, {
+            let mut schedule = Schedule::new();
+            schedule.set_default_base_set(YoleckPopulateBaseSet::RunPopulateSystems);
+            schedule
+        });
     }
 }
 
@@ -272,6 +301,7 @@ pub trait YoleckExtForApp {
     /// TODO: document
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType);
+    fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule;
 }
 
 impl YoleckExtForApp for App {
@@ -335,6 +365,12 @@ impl YoleckExtForApp for App {
                 .insert(handler.component_type, handler);
         }
     }
+
+    fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule {
+        self
+            .get_schedule_mut(YoleckSchedule::Populate)
+            .expect("Yoleck's populate schedule was not created. Please use a YoleckPluginForGame or YoleckPluginForEditor")
+    }
 }
 
 type BoxedArc = Arc<dyn Send + Sync + Any>;
@@ -352,6 +388,8 @@ pub struct YoleckManaged {
     /// This is the entity's data. The [`YoleckTypeHandler`] is responsible for manipulating
     /// it, using the systems registered to it.
     pub data: BoxedAny,
+
+    pub needs_to_be_populated: bool,
 
     pub components_data: HashMap<&'static str, serde_json::Value>,
 }
@@ -513,10 +551,23 @@ impl YoleckComponentHandler {
                     app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents)
                 {
                     schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
-                        for (mut entry, component) in query.iter_mut() {
+                        for (mut yoleck_managed, component) in query.iter_mut() {
                             let data = serde_json::to_value(&*component)
                                 .expect("Data must be serializable");
-                            entry.components_data.insert(T::KEY, data);
+                            let yoleck_managed = yoleck_managed.as_mut();
+                            match yoleck_managed.components_data.entry(T::KEY) {
+                                bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
+                                    yoleck_managed.needs_to_be_populated = true;
+                                    entry.insert(data);
+                                }
+                                bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
+                                    if entry.get() != &data {
+                                        yoleck_managed.needs_to_be_populated = true;
+                                        entry.insert(data);
+                                    }
+                                }
+                            }
+                            // yoleck_managed.components_data.insert(T::KEY, data);
                         }
                     });
                 }
@@ -526,6 +577,14 @@ impl YoleckComponentHandler {
 }
 
 #[derive(ScheduleLabel, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum YoleckSchedule {
+pub(crate) enum YoleckSchedule {
     UpdateRawDataFromComponents,
+    Populate,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
+#[system_set(base)]
+pub enum YoleckPopulateBaseSet {
+    RunPopulateSystems,
+    AddTransform,
 }

@@ -12,7 +12,7 @@ use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
     YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType, YoleckExtForApp,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
-    YoleckTypeHandler, YoleckUi,
+    YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -76,8 +76,10 @@ fn main() {
             }))
             .edit_with(edit_fruit)
     });
-    app.add_yoleck_edit_system(edit_fruit_type);
     app.add_yoleck_entity_type(YoleckEntityType::new("Fruit").with::<Fruit>());
+    app.add_yoleck_edit_system(edit_fruit_type);
+    app.yoleck_populate_schedule_mut()
+        .add_system(populate_fruit_type);
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")
@@ -376,6 +378,32 @@ fn edit_fruit_type(
                 */
             }
         }
+    });
+}
+
+fn populate_fruit_type(mut populate: YoleckPopulateNewStyle<&mut Fruit>, assets: Res<GameAssets>) {
+    info!("Running populate_fruit_type");
+    populate.populate(|_ctx, mut cmd, fruit| {
+        info!("Fruit index {}", fruit.fruit_index);
+        cmd.despawn_descendants();
+        cmd.insert((
+            SpatialBundle::from_transform(Transform::from_translation(fruit.position.extend(0.0))),
+            VpeolWillContainClickableChildren,
+            IsFruit,
+        ));
+        // Could have placed them on the main entity, but with this the children picking feature
+        // can be tested and demonstrated.
+        cmd.with_children(|commands| {
+            commands.spawn(SpriteSheetBundle {
+                sprite: TextureAtlasSprite {
+                    index: fruit.fruit_index,
+                    custom_size: Some(Vec2::new(100.0, 100.0)),
+                    ..Default::default()
+                },
+                texture_atlas: assets.fruits_sprite_sheet.clone(),
+                ..Default::default()
+            });
+        });
     });
 }
 

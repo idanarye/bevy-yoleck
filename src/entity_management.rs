@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::YoleckUserSystemContext;
 use crate::level_files_upgrading::upgrade_level_file;
-use crate::{YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckTypeHandlers};
+use crate::{
+    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule,
+    YoleckTypeHandlers,
+};
 
 /// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -93,6 +96,7 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                 name: raw_entry.header.name.to_owned(),
                 type_name: raw_entry.header.type_name.to_owned(),
                 data: concrete,
+                needs_to_be_populated: true,
                 components_data,
             });
         }
@@ -113,6 +117,26 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
         *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
     });
 }
+
+pub(crate) fn yoleck_prepare_populate_schedule(
+    mut query: Query<(Entity, &mut YoleckManaged)>,
+    mut entities_to_populate: ResMut<EntitiesToPopulate>,
+) {
+    entities_to_populate.0.clear();
+    for (entity, mut yoleck_managed) in query.iter_mut() {
+        if yoleck_managed.needs_to_be_populated {
+            entities_to_populate.0.push(entity);
+            yoleck_managed.needs_to_be_populated = false;
+        }
+    }
+}
+
+pub(crate) fn yoleck_run_populate_schedule(world: &mut World) {
+    world.run_schedule(YoleckSchedule::Populate);
+}
+
+#[derive(Resource)]
+pub(crate) struct EntitiesToPopulate(pub Vec<Entity>);
 
 pub(crate) fn yoleck_process_loading_command(
     mut commands: Commands,
