@@ -169,6 +169,7 @@ mod dynamic_source_handling;
 mod editor;
 mod editor_window;
 mod entity_management;
+mod entity_upgrading;
 mod knobs;
 mod level_files_manager;
 pub mod level_files_upgrading;

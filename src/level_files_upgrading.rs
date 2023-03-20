@@ -26,9 +26,16 @@ pub fn upgrade_level_file(mut level: serde_json::Value) -> anyhow::Result<serde_
 }
 
 fn upgrade_level_file_1_to_2(parts: &mut [serde_json::Value]) -> anyhow::Result<()> {
+    let header = parts
+        .get_mut(0)
+        .ok_or_else(|| anyhow::anyhow!("Level file must have header as first element"))?
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("Header must be object"))?;
+    header.insert("app_format_version".to_owned(), 0.into());
+
     let entities = parts
         .get_mut(2)
-        .ok_or_else(|| anyhow::anyhow!("Level file must have entites list as third element"))?
+        .ok_or_else(|| anyhow::anyhow!("Level file must have entities list as third element"))?
         .as_array_mut()
         .ok_or_else(|| anyhow::anyhow!("Entity list must be array"))?;
 

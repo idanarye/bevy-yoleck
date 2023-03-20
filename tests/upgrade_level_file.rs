@@ -25,6 +25,7 @@ fn test_upgrade_v1_to_v2() {
         serde_json::json!([
             {
                 "format_version": 2,
+                "app_format_version": 0,
             },
             {},
             [

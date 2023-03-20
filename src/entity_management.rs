@@ -214,12 +214,19 @@ pub struct YoleckRawLevel(
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct YoleckRawLevelHeader {
     format_version: usize,
+    app_format_version: usize,
 }
 
 impl YoleckRawLevel {
-    pub fn new(entries: impl IntoIterator<Item = YoleckRawEntry>) -> Self {
+    pub fn new(
+        app_format_version: usize,
+        entries: impl IntoIterator<Item = YoleckRawEntry>,
+    ) -> Self {
         Self(
-            YoleckRawLevelHeader { format_version: 2 },
+            YoleckRawLevelHeader {
+                format_version: 2,
+                app_format_version,
+            },
             serde_json::Value::Object(Default::default()),
             entries.into_iter().collect(),
         )

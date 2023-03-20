@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_egui::egui;
 
+use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
@@ -44,6 +45,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
         ResMut<YoleckLoadingCommand>,
+        Option<Res<YoleckEntityUpgrading>>,
     )>::new(world);
 
     let mut should_list_files = true;
@@ -70,10 +72,16 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut next_editor_state,
             mut knobs_cache,
             mut loading_command,
+            entity_upgrading,
         ) = system_state.get_mut(world);
 
         let gen_raw_level_file = || {
-            YoleckRawLevel::new({
+            let app_format_version = if let Some(entity_upgrading) = &entity_upgrading {
+                entity_upgrading.app_format_version
+            } else {
+                0
+            };
+            YoleckRawLevel::new(app_format_version, {
                 yoleck_managed_query
                     .iter()
                     .map(|(_entity, yoleck_managed)| {
