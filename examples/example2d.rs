@@ -20,12 +20,17 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     let level = std::env::args().nth(1);
     if let Some(level) = level {
+        // The egui plugin is not needed for the game itself, but GameAssets won't load without it
+        // because it needs `EguiContexts` which cannot be `Option` because it's a custom
+        // `SystemParam`.
+        app.add_plugin(EguiPlugin);
+
         app.add_plugin(YoleckPluginForGame);
         app.add_startup_system(
             move |asset_server: Res<AssetServer>,
                   mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
                 *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
-                    asset_server.load(Path::new("levels").join(&level)),
+                    asset_server.load(Path::new("levels2d").join(&level)),
                 );
             },
         );
