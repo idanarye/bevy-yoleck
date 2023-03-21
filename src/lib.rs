@@ -204,7 +204,7 @@ pub use self::entity_management::{
 };
 use self::entity_upgrading::YoleckEntityUpgrading;
 pub use self::entity_upgrading::YoleckEntityUpgradingPlugin;
-pub use self::knobs::{YoleckKnob, YoleckKnobsCache};
+pub use self::knobs::{YoleckKnobData, YoleckKnobsCache};
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
 pub use bevy_egui;

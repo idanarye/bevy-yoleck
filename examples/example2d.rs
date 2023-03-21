@@ -75,9 +75,7 @@ fn main() {
             .edit_with(edit_player)
     });
 
-    app.add_yoleck_handler({
-        YoleckTypeHandler::<Fruit>::new("Fruit")
-    });
+    app.add_yoleck_handler({ YoleckTypeHandler::<Fruit>::new("Fruit") });
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
             .with::<Fruit>()

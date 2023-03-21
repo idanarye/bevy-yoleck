@@ -7,7 +7,7 @@ use bevy::utils::HashMap;
 
 /// Marks an entity as a knob - a temporary helper entity used for editing another entity.
 #[derive(Component)]
-pub struct YoleckKnob;
+pub struct YoleckKnobData;
 
 #[doc(hidden)]
 #[derive(Default, Resource)]
@@ -44,7 +44,7 @@ impl YoleckKnobsCache {
                 }
             }
         }
-        let cmd = commands.spawn(YoleckKnob);
+        let cmd = commands.spawn(YoleckKnobData);
         entries.push(CachedKnob {
             key: Box::new(key),
             entity: cmd.id(),

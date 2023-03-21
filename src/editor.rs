@@ -132,13 +132,13 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 /// The UI part for creating new entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
-        Res<YoleckTypeHandlers>,
+        Res<YoleckEntityConstructionSpecs>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
     )>::new(world);
 
     move |world, ui| {
-        let (yoleck_type_handlers, editor_state, mut writer) = system_state.get_mut(world);
+        let (construction_specs, editor_state, mut writer) = system_state.get_mut(world);
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
@@ -151,10 +151,10 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         }
 
         egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
-            for type_name in yoleck_type_handlers.type_handler_names.iter() {
-                if ui.button(type_name).clicked() {
+            for entity_type in construction_specs.entity_types.iter() {
+                if ui.button(&entity_type.name).clicked() {
                     writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
-                        type_name: type_name.clone(),
+                        type_name: entity_type.name.clone(),
                         data: serde_json::Value::Object(Default::default()),
                         select_created_entity: true,
                     }));

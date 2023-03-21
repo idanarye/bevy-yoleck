@@ -12,7 +12,7 @@ use bevy::utils::HashMap;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
-use crate::{YoleckDirective, YoleckEditorState, YoleckKnob, YoleckState};
+use crate::{YoleckDirective, YoleckEditorState, YoleckKnobData, YoleckState};
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
@@ -143,7 +143,7 @@ impl VpeolCameraState {
 
 fn prepare_camera_state(
     mut query: Query<&mut VpeolCameraState>,
-    knob_query: Query<Entity, With<YoleckKnob>>,
+    knob_query: Query<Entity, With<YoleckKnobData>>,
 ) {
     for mut camera_state in query.iter_mut() {
         camera_state.entity_under_cursor = None;
@@ -179,7 +179,7 @@ fn handle_camera_state(
     window_getter: WindowGetter,
     buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
-    knob_query: Query<Entity, With<YoleckKnob>>,
+    knob_query: Query<Entity, With<YoleckKnobData>>,
     mut directives_writer: EventWriter<YoleckDirective>,
 ) {
     enum MouseButtonOp {
