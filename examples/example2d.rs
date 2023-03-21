@@ -69,7 +69,7 @@ fn main() {
         YoleckEntityType::new("Player")
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dRotatation>()
-            .insert_on_init(IsPlayer)
+            .insert_on_init(|| IsPlayer)
     });
     app.add_yoleck_edit_system(edit_player);
     app.yoleck_populate_schedule_mut()
@@ -200,7 +200,7 @@ impl FromWorld for GameAssets {
     }
 }
 
-#[derive(Clone, Component)]
+#[derive(Component)]
 struct IsPlayer;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]

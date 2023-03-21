@@ -481,7 +481,8 @@ pub struct YoleckEntityType {
     pub name: String,
     pub(crate) components: Vec<YoleckComponentHandler>,
     #[allow(clippy::type_complexity)]
-    pub(crate) on_init: Vec<Box<dyn 'static + Sync + Send + Fn(&mut EntityCommands)>>,
+    pub(crate) on_init:
+        Vec<Box<dyn 'static + Sync + Send + Fn(YoleckEditorState, &mut EntityCommands)>>,
 }
 
 impl YoleckEntityType {
@@ -498,9 +499,36 @@ impl YoleckEntityType {
         self
     }
 
-    pub fn insert_on_init(mut self, bundle: impl Clone + Bundle) -> Self {
-        self.on_init.push(Box::new(move |cmd| {
-            cmd.insert(bundle.clone());
+    pub fn insert_on_init<T: Bundle>(
+        mut self,
+        bundle_maker: impl 'static + Sync + Send + Fn() -> T,
+    ) -> Self {
+        self.on_init.push(Box::new(move |_, cmd| {
+            cmd.insert(bundle_maker());
+        }));
+        self
+    }
+
+    pub fn insert_on_init_during_editor<T: Bundle>(
+        mut self,
+        bundle_maker: impl 'static + Sync + Send + Fn() -> T,
+    ) -> Self {
+        self.on_init.push(Box::new(move |editor_state, cmd| {
+            if matches!(editor_state, YoleckEditorState::EditorActive) {
+                cmd.insert(bundle_maker());
+            }
+        }));
+        self
+    }
+
+    pub fn insert_on_init_during_game<T: Bundle>(
+        mut self,
+        bundle_maker: impl 'static + Sync + Send + Fn() -> T,
+    ) -> Self {
+        self.on_init.push(Box::new(move |editor_state, cmd| {
+            if matches!(editor_state, YoleckEditorState::GameActive) {
+                cmd.insert(bundle_maker());
+            }
         }));
         self
     }

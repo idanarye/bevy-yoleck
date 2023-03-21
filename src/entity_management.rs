@@ -54,7 +54,8 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
 }
 
 pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
-    let is_in_editor = match world.resource::<State<YoleckEditorState>>().0 {
+    let editor_state = world.resource::<State<YoleckEditorState>>().0;
+    let is_in_editor = match editor_state {
         YoleckEditorState::EditorActive => true,
         YoleckEditorState::GameActive => false,
     };
@@ -94,7 +95,7 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                     }
                 }
                 for dlg in entity_type_info.on_init.iter() {
-                    dlg(&mut cmd);
+                    dlg(editor_state, &mut cmd);
                 }
             } else {
                 error!("Entity type {:?} is not registered", raw_entry.header.name);

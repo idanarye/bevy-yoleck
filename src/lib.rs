@@ -474,7 +474,8 @@ pub struct YoleckEntityTypeInfo {
     pub name: String,
     pub components: Vec<TypeId>,
     #[allow(clippy::type_complexity)]
-    pub(crate) on_init: Vec<Box<dyn 'static + Sync + Send + Fn(&mut EntityCommands)>>,
+    pub(crate) on_init:
+        Vec<Box<dyn 'static + Sync + Send + Fn(YoleckEditorState, &mut EntityCommands)>>,
 }
 
 #[derive(Default, Resource)]
