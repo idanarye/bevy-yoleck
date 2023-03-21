@@ -6,7 +6,8 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
-    vpeol_position_edit_adapter, Vpeol2dCameraControl, Vpeol2dPosition, VpeolTransform2dProjection,
+    vpeol_position_edit_adapter, Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dScale,
+    VpeolTransform2dProjection,
 };
 use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
@@ -36,6 +37,7 @@ fn main() {
                 );
             },
         );
+        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
     } else {
         app.add_plugin(EguiPlugin);
         app.add_plugin(YoleckPluginForEditor);
@@ -45,7 +47,7 @@ fn main() {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPlugin);
+        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor);
         app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
@@ -78,8 +80,8 @@ fn main() {
     app.add_yoleck_handler(YoleckTypeHandler::<FruitType>::new("Fruit"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
-            .with::<FruitType>()
             .with::<Vpeol2dPosition>()
+            .with::<FruitType>()
     });
     app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
@@ -91,23 +93,40 @@ fn main() {
         }
 
         let mut old_data = data.as_object_mut().unwrap().remove("Fruit").unwrap();
+        data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
         data["FruitType"] = serde_json::json!({
             "index": old_data.get_mut("fruit_index").unwrap().take(),
         });
-        data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
-    app.add_yoleck_handler({
-        YoleckTypeHandler::<FloatingText>::new("FloatingText")
-            .populate_with(populate_text)
-            .with(vpeol_position_edit_adapter(
-                |floating_text: &mut FloatingText| {
-                    bevy_yoleck::vpeol_2d::VpeolTransform2dProjection {
-                        translation: &mut floating_text.position,
-                    }
-                },
-            ))
-            .edit_with(edit_text)
+    app.add_yoleck_handler(YoleckTypeHandler::<TextContent>::new("FloatingText"));
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("FloatingText")
+            .with::<Vpeol2dPosition>()
+            .with::<Vpeol2dScale>()
+            .with::<TextContent>()
+    });
+    app.add_yoleck_edit_system(edit_text);
+    app.yoleck_populate_schedule_mut().add_system(populate_text);
+    app.add_yoleck_entity_upgrade(1, |type_name, data| {
+        if type_name != "FloatingText" {
+            return;
+        }
+
+        let mut old_data = data
+            .as_object_mut()
+            .unwrap()
+            .remove("FloatingText")
+            .unwrap();
+        data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
+        data["TextContent"] = serde_json::json!({
+            "text": old_data.get_mut("text").unwrap().take(),
+        });
+        data["Vpeol2dScale"] = serde_json::to_value(
+            Vec2::ONE * old_data.get_mut("scale").unwrap().take().as_f64().unwrap() as f32,
+        )
+        .unwrap();
+        info!("{:?}", data);
     });
 
     app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
@@ -376,26 +395,22 @@ fn eat_fruits(
     }
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-pub struct FloatingText {
-    #[serde(default)]
-    position: Vec2,
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+pub struct TextContent {
     #[serde(default)]
     text: String,
-    #[serde(default = "default_scale")]
-    scale: f32,
 }
 
-fn default_scale() -> f32 {
-    1.0
+impl YoleckComponent for TextContent {
+    const KEY: &'static str = "TextContent";
 }
 
-fn populate_text(mut populate: YoleckPopulate<FloatingText>, assets: Res<GameAssets>) {
-    populate.populate(|_ctx, data, mut cmd| {
+fn populate_text(mut populate: YoleckPopulateNewStyle<&TextContent>, assets: Res<GameAssets>) {
+    populate.populate(|_ctx, mut cmd, content| {
         cmd.insert(Text2dBundle {
             text: {
                 Text::from_section(
-                    data.text.clone(),
+                    content.text.clone(),
                     TextStyle {
                         font: assets.font.clone(),
                         font_size: 72.0,
@@ -403,19 +418,18 @@ fn populate_text(mut populate: YoleckPopulate<FloatingText>, assets: Res<GameAss
                     },
                 )
             },
-            transform: Transform {
-                translation: data.position.extend(10.0),
-                rotation: Default::default(),
-                scale: Vec3::new(data.scale, data.scale, 1.0),
-            },
             ..Default::default()
         });
     });
 }
 
-fn edit_text(mut edit: YoleckEdit<FloatingText>) {
-    edit.edit(|_ctx, data, ui| {
-        ui.text_edit_multiline(&mut data.text);
-        ui.add(egui::Slider::new(&mut data.scale, 0.5..=5.0).logarithmic(true));
-    });
+fn edit_text(
+    mut ui: ResMut<YoleckUi>,
+    mut query: Query<(&mut TextContent, &mut Vpeol2dScale), With<YoleckEditNewStyle>>,
+) {
+    let Ok((mut content, mut scale)) = query.get_single_mut() else { return };
+    ui.text_edit_multiline(&mut content.text);
+    // TODO: do this in vpeol_2d?
+    ui.add(egui::Slider::new(&mut scale.0.x, 0.5..=5.0).logarithmic(true));
+    scale.0.y = scale.0.x;
 }

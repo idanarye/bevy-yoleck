@@ -89,17 +89,29 @@ use crate::{
     YoleckPopulateBaseSet, YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
 };
 
+/// Add the systems required for loading levels that use vpeol_2d components
+pub struct Vpeol2dPluginForGame;
+
+impl Plugin for Vpeol2dPluginForGame {
+    fn build(&self, app: &mut App) {
+        app.yoleck_populate_schedule_mut().add_system(
+            vpeol_2d_populate_position.in_base_set(YoleckPopulateBaseSet::AddTransform),
+        );
+    }
+}
+
 /// Add the systems required for 2D editing.
 ///
 /// * 2D camera zoom/pan
 /// * Entity selection.
 /// * Entity dragging.
 /// * Connecting nested entities.
-pub struct Vpeol2dPlugin;
+pub struct Vpeol2dPluginForEditor;
 
-impl Plugin for Vpeol2dPlugin {
+impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugin(VpeolBasePlugin);
+        app.add_plugin(Vpeol2dPluginForGame);
         app.add_system(update_camera_world_position.in_set(VpeolSystemSet::PrepareCameraState));
 
         app.add_systems(
@@ -130,9 +142,6 @@ impl Plugin for Vpeol2dPlugin {
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_2d_edit_position);
-        app.yoleck_populate_schedule_mut().add_system(
-            vpeol_2d_populate_position.in_base_set(YoleckPopulateBaseSet::AddTransform),
-        );
     }
 }
 
@@ -513,6 +522,20 @@ impl YoleckComponent for Vpeol2dPosition {
     const KEY: &'static str = "Vpeol2dPosition";
 }
 
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
+#[serde(transparent)]
+pub struct Vpeol2dScale(pub Vec2);
+
+impl Default for Vpeol2dScale {
+    fn default() -> Self {
+        Self(Vec2::ONE)
+    }
+}
+
+impl YoleckComponent for Vpeol2dScale {
+    const KEY: &'static str = "Vpeol2dScale";
+}
+
 fn vpeol_2d_edit_position(
     mut ui: ResMut<YoleckUi>,
     mut query: Query<(&YoleckEditNewStyle, &mut Vpeol2dPosition)>,
@@ -527,9 +550,14 @@ fn vpeol_2d_edit_position(
     });
 }
 
-fn vpeol_2d_populate_position(mut populate: YoleckPopulateNewStyle<&Vpeol2dPosition>) {
-    populate.populate(|_ctx, mut cmd, position| {
-        let transform = Transform::from_translation(position.0.extend(0.0));
+fn vpeol_2d_populate_position(
+    mut populate: YoleckPopulateNewStyle<(&Vpeol2dPosition, Option<&Vpeol2dScale>)>,
+) {
+    populate.populate(|_ctx, mut cmd, (position, scale)| {
+        let mut transform = Transform::from_translation(position.0.extend(0.0));
+        if let Some(Vpeol2dScale(scale)) = scale {
+            transform = transform.with_scale(scale.extend(1.0));
+        }
         cmd.insert(TransformBundle {
             local: transform,
             global: transform.into(),
