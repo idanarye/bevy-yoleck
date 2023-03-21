@@ -129,94 +129,6 @@ impl<'a> YoleckPopulateContext<'a> {
     }
 }
 
-/// A context for [`YoleckEdit::edit`].
-pub struct YoleckEditContext<'a> {
-    entity: Entity,
-    pub(crate) passed: &'a mut HashMap<Entity, HashMap<TypeId, BoxedArc>>,
-    knobs_cache: &'a mut YoleckKnobsCache,
-}
-
-impl<'a> YoleckEditContext<'a> {
-    /// Get data sent to the entity from external systems (usually from (usually a [ViewPort Editing OverLay](crate::vpeol))
-    ///
-    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui};
-    /// # struct Example {
-    /// #     position: Vec2,
-    /// # }
-    /// fn edit_example(mut edit: YoleckEdit<Example>) {
-    ///     edit.edit(|ctx, data, _ui| {
-    ///         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
-    ///             data.position = pos.truncate();
-    ///         }
-    ///     });
-    /// }
-    /// ```
-    pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
-        if let Some(dynamic) = self
-            .passed
-            .get(&self.entity)
-            .and_then(|m| m.get(&TypeId::of::<T>()))
-        {
-            dynamic.downcast_ref()
-        } else {
-            None
-        }
-    }
-
-    /// Create a knob - an helper entity the level editor can use to edit the entity.
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui};
-    /// # struct KidWithBalloon {
-    /// #     position: Vec2,
-    /// #     baloon_offset: Vec2,
-    /// # }
-    /// # #[derive(Resource)]
-    /// # struct MyAssets {
-    /// #     baloon_sprite: Handle<Image>,
-    /// # }
-    /// fn edit_kid_with_balloon(mut edit: YoleckEdit<KidWithBalloon>, mut commands: Commands, assets: Res<MyAssets>) {
-    ///     edit.edit(|ctx, data, _ui| {
-    ///         let mut balloon_knob = ctx.knob(&mut commands, "balloon");
-    ///         let knob_position = data.position + data.baloon_offset;
-    ///         balloon_knob.cmd.insert(SpriteBundle {
-    ///             transform: Transform::from_translation(knob_position.extend(1.0)),
-    ///             texture: assets.baloon_sprite.clone(),
-    ///             ..Default::default()
-    ///         });
-    ///         if let Some(new_baloon_pos) = balloon_knob.get_passed_data::<Vec3>() {
-    ///             data.baloon_offset = new_baloon_pos.truncate() - data.position;
-    ///         }
-    ///     });
-    /// }
-    /// ```
-    pub fn knob<'b, 'w, 's, K>(
-        &mut self,
-        commands: &'b mut Commands<'w, 's>,
-        key: K,
-    ) -> YoleckKnobHandle<'w, 's, 'b>
-    where
-        K: 'static + Send + Sync + Hash + Eq,
-    {
-        let KnobFromCache { cmd, is_new } = self.knobs_cache.access(key, commands);
-        let passed = self.passed.remove(&cmd.id()).unwrap_or_default();
-        YoleckKnobHandle {
-            cmd,
-            is_new,
-            passed,
-        }
-    }
-}
-
-#[doc(hidden)]
-#[derive(Resource)]
-pub struct YoleckUiForEditSystem(pub egui::Ui);
-
 /// An handle for intearcing with a knob from an [edit system](YoleckEdit::edit).
 pub struct YoleckKnobHandle<'w, 's, 'a> {
     /// The command of the knob entity.
@@ -228,7 +140,7 @@ pub struct YoleckKnobHandle<'w, 's, 'a> {
 
 impl YoleckKnobHandle<'_, '_, '_> {
     /// Get data sent to the knob from external systems (usually interaciton from the level
-    /// editor). See [`YoleckEditContext::get_passed_data`].
+    /// editor). See [`YoleckEdit::get_passed_data`].
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
             dynamic.downcast_ref()
@@ -334,6 +246,24 @@ pub struct YoleckEdit {
 }
 
 impl YoleckEdit {
+    /// Get data sent to the entity from external systems (usually from (usually a [ViewPort Editing OverLay](crate::vpeol))
+    ///
+    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::{YoleckEdit, egui};
+    /// # struct Example {
+    /// #     position: Vec2,
+    /// # }
+    /// fn edit_example(mut edit: YoleckEdit<Example>) {
+    ///     edit.edit(|ctx, data, _ui| {
+    ///         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
+    ///             data.position = pos.truncate();
+    ///         }
+    ///     });
+    /// }
+    /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         self.passed_data.get(&TypeId::of::<T>())?.downcast_ref()
     }
