@@ -6,14 +6,12 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
-    vpeol_position_edit_adapter, Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dScale,
-    VpeolTransform2dProjection,
+    Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dRotatation, Vpeol2dScale,
 };
 use bevy_yoleck::{
-    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
-    YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType,
-    YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs, YoleckLoadingCommand,
-    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckPopulateNewStyle,
+    YoleckComponent, YoleckDirective, YoleckEditNewStyle, YoleckEditorLevelsDirectoryPath,
+    YoleckEditorState, YoleckEntityType, YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs,
+    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulateNewStyle,
     YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
@@ -66,20 +64,19 @@ fn main() {
 
     app.add_startup_system(setup_camera);
 
-    app.add_yoleck_handler({
-        YoleckTypeHandler::<Player>::new("Player")
-            .populate_with(populate_player)
-            .with(vpeol_position_edit_adapter(|data: &mut Player| {
-                VpeolTransform2dProjection {
-                    translation: &mut data.position,
-                }
-            }))
-            .edit_with(edit_player)
-    });
+    app.add_yoleck_handler(YoleckTypeHandler::<Player>::new("Player"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Player")
             .with::<Vpeol2dPosition>()
+            .with::<Vpeol2dRotatation>()
             .insert_on_init(IsPlayer)
+    });
+    app.add_yoleck_edit_system(edit_player);
+    app.yoleck_populate_schedule_mut()
+        .add_system(populate_player);
+    app.add_yoleck_entity_upgrade_for(1, "Player", |data| {
+        let mut old_data = data.as_object_mut().unwrap().remove("Player").unwrap();
+        data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
     app.add_yoleck_handler(YoleckTypeHandler::<FruitType>::new("Fruit"));
@@ -131,7 +128,6 @@ fn main() {
             Vec2::ONE * old_data.get_mut("scale").unwrap().take().as_f64().unwrap() as f32,
         )
         .unwrap();
-        info!("{:?}", data);
     });
 
     app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
@@ -215,46 +211,46 @@ struct Player {
     rotation: f32,
 }
 
-fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>) {
-    populate.populate(|_ctx, data, mut cmd| {
-        cmd.insert((
-            SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(100.0, 100.0)),
-                    ..Default::default()
-                },
-                transform: Transform::from_translation(data.position.extend(0.0))
-                    .with_rotation(Quat::from_rotation_z(data.rotation)),
-                texture: assets.player_sprite.clone(),
+fn populate_player(mut populate: YoleckPopulateNewStyle<&IsPlayer>, assets: Res<GameAssets>) {
+    populate.populate(|_ctx, mut cmd, _| {
+        cmd.insert((SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            // IsPlayer,
-        ));
+            texture: assets.player_sprite.clone(),
+            ..Default::default()
+        },));
     });
 }
 
-fn edit_player(mut edit: YoleckEdit<Player>, mut commands: Commands) {
-    edit.edit(|ctx, data, ui| {
-        use std::f32::consts::PI;
-        ui.add(egui::Slider::new(&mut data.rotation, PI..=-PI).prefix("Angle: "));
-
-        let mut rotate_knob = ctx.knob(&mut commands, "rotate");
-        let knob_position =
-            data.position.extend(1.0) + Quat::from_rotation_z(data.rotation) * (50.0 * Vec3::Y);
-        rotate_knob.cmd.insert(SpriteBundle {
-            sprite: Sprite {
-                color: Color::PURPLE,
-                custom_size: Some(Vec2::new(30.0, 30.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_translation(knob_position),
-            global_transform: Transform::from_translation(knob_position).into(),
+fn edit_player(
+    mut ui: ResMut<YoleckUi>,
+    mut query: Query<
+        (&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation),
+        With<YoleckEditNewStyle>,
+    >,
+    mut knobs: YoleckKnobs,
+) {
+    let Ok((_, Vpeol2dPosition(position), mut rotation)) = query.get_single_mut() else { return };
+    use std::f32::consts::PI;
+    ui.add(egui::Slider::new(&mut rotation.0, PI..=-PI).prefix("Angle: "));
+    // TODO: do this in vpeol_2d?
+    let mut rotate_knob = knobs.knob("rotate");
+    let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (50.0 * Vec3::Y);
+    rotate_knob.cmd.insert(SpriteBundle {
+        sprite: Sprite {
+            color: Color::PURPLE,
+            custom_size: Some(Vec2::new(30.0, 30.0)),
             ..Default::default()
-        });
-        if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec3>() {
-            data.rotation = Vec2::Y.angle_between(rotate_to.truncate() - data.position);
-        }
+        },
+        transform: Transform::from_translation(knob_position),
+        global_transform: Transform::from_translation(knob_position).into(),
+        ..Default::default()
     });
+    if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec3>() {
+        rotation.0 = Vec2::Y.angle_between(rotate_to.truncate() - *position);
+    }
 }
 
 fn control_player(

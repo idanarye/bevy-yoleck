@@ -8,11 +8,11 @@
 //! # use bevy::prelude::*;
 //! # use bevy_yoleck::bevy_egui::EguiPlugin;
 //! # use bevy_yoleck::YoleckPluginForEditor;
-//! # use bevy_yoleck::vpeol_2d::Vpeol2dPlugin;
+//! # use bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor;
 //! # let mut app = App::new();
 //! app.add_plugin(EguiPlugin);
 //! app.add_plugin(YoleckPluginForEditor);
-//! app.add_plugin(Vpeol2dPlugin);
+//! app.add_plugin(Vpeol2dPluginForEditor); // use Vpeol2dPluginForGame when setting up for game
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -95,7 +95,7 @@ pub struct Vpeol2dPluginForGame;
 impl Plugin for Vpeol2dPluginForGame {
     fn build(&self, app: &mut App) {
         app.yoleck_populate_schedule_mut().add_system(
-            vpeol_2d_populate_position.in_base_set(YoleckPopulateBaseSet::AddTransform),
+            vpeol_2d_populate_transform.in_base_set(YoleckPopulateBaseSet::AddTransform),
         );
     }
 }
@@ -522,6 +522,14 @@ impl YoleckComponent for Vpeol2dPosition {
     const KEY: &'static str = "Vpeol2dPosition";
 }
 
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+#[serde(transparent)]
+pub struct Vpeol2dRotatation(pub f32);
+
+impl YoleckComponent for Vpeol2dRotatation {
+    const KEY: &'static str = "Vpeol2dRotatation";
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
 #[serde(transparent)]
 pub struct Vpeol2dScale(pub Vec2);
@@ -550,11 +558,18 @@ fn vpeol_2d_edit_position(
     });
 }
 
-fn vpeol_2d_populate_position(
-    mut populate: YoleckPopulateNewStyle<(&Vpeol2dPosition, Option<&Vpeol2dScale>)>,
+fn vpeol_2d_populate_transform(
+    mut populate: YoleckPopulateNewStyle<(
+        &Vpeol2dPosition,
+        Option<&Vpeol2dRotatation>,
+        Option<&Vpeol2dScale>,
+    )>,
 ) {
-    populate.populate(|_ctx, mut cmd, (position, scale)| {
+    populate.populate(|_ctx, mut cmd, (position, rotation, scale)| {
         let mut transform = Transform::from_translation(position.0.extend(0.0));
+        if let Some(Vpeol2dRotatation(rotation)) = rotation {
+            transform = transform.with_rotation(Quat::from_rotation_z(*rotation));
+        }
         if let Some(Vpeol2dScale(scale)) = scale {
             transform = transform.with_scale(scale.extend(1.0));
         }

@@ -311,6 +311,20 @@ pub trait YoleckExtForApp {
         to_version: usize,
         upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
     );
+
+    fn add_yoleck_entity_upgrade_for(
+        &mut self,
+        to_version: usize,
+        for_type_name: impl ToString,
+        upgrade_dlg: impl 'static + Send + Sync + Fn(&mut serde_json::Value),
+    ) {
+        let for_type_name = for_type_name.to_string();
+        self.add_yoleck_entity_upgrade(to_version, move |type_name, data| {
+            if type_name == for_type_name {
+                upgrade_dlg(data);
+            }
+        });
+    }
 }
 
 impl YoleckExtForApp for App {
