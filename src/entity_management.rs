@@ -6,6 +6,7 @@ use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::api::YoleckUserSystemContext;
+use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::{
     YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule,
@@ -143,6 +144,7 @@ pub(crate) fn yoleck_process_loading_command(
     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
     raw_levels_assets: Res<Assets<YoleckRawLevel>>,
     specs: Res<YoleckEntityConstructionSpecs>,
+    entity_upgrading: Option<Res<YoleckEntityUpgrading>>,
 ) {
     let mut process_entry = |entry: YoleckRawEntry| {
         let component_handlers = specs.component_handlers_for(&entry.header.type_name);
@@ -173,7 +175,10 @@ pub(crate) fn yoleck_process_loading_command(
                 }
             }
         }
-        YoleckLoadingCommand::FromData(level) => {
+        YoleckLoadingCommand::FromData(mut level) => {
+            if let Some(entity_upgrading) = entity_upgrading {
+                entity_upgrading.upgrade_raw_level_file(&mut level);
+            }
             for entry in level.into_entries() {
                 process_entry(entry);
             }
@@ -205,16 +210,16 @@ pub(crate) struct YoleckLevelAssetLoader;
 #[derive(TypeUuid, Debug, Serialize, Deserialize, Clone)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
 pub struct YoleckRawLevel(
-    YoleckRawLevelHeader,
+    pub(crate) YoleckRawLevelHeader,
     serde_json::Value, // level data
-    Vec<YoleckRawEntry>,
+    pub(crate) Vec<YoleckRawEntry>,
 );
 
 /// Internal Yoleck metadata for a level file.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct YoleckRawLevelHeader {
     format_version: usize,
-    app_format_version: usize,
+    pub app_format_version: usize,
 }
 
 impl YoleckRawLevel {

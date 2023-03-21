@@ -10,9 +10,9 @@ use bevy_yoleck::vpeol_2d::{
 };
 use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
-    YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType, YoleckExtForApp,
-    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate,
-    YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
+    YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType,
+    YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
+    YoleckPluginForGame, YoleckPopulate, YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,10 @@ fn main() {
     }
     app.init_resource::<GameAssets>();
 
+    app.add_plugin(YoleckEntityUpgradingPlugin {
+        app_format_version: 1,
+    });
+
     app.add_startup_system(setup_camera);
 
     app.add_yoleck_handler({
@@ -80,6 +84,12 @@ fn main() {
     app.add_yoleck_edit_system(edit_fruit_type);
     app.yoleck_populate_schedule_mut()
         .add_system(populate_fruit_type);
+    app.add_yoleck_entity_upgrade(1, |_, data| {
+        // TODO: something better than that
+        if let Some(fruit_index) = data.pointer_mut("/Fruit/fruit_index") {
+            *fruit_index = (fruit_index.as_u64().unwrap() - 1).into();
+        }
+    });
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<FloatingText>::new("FloatingText")

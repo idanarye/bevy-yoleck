@@ -94,9 +94,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                 type_name: yoleck_managed.type_name.clone(),
                                 name: yoleck_managed.name.clone(),
                             },
-                            data: serde_json::to_value(&yoleck_managed.components_data).expect(
-                                "Converting a HashMap of JSON values to JSON should always work",
-                            ),
+                            data: yoleck_managed
+                                .components_data
+                                .iter()
+                                .map(|(k, v)| (k.to_string(), v.to_owned()))
+                                .collect(),
                         }
                     })
             })

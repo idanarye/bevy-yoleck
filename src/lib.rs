@@ -202,6 +202,8 @@ use self::entity_management::EntitiesToPopulate;
 pub use self::entity_management::{
     YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
 };
+use self::entity_upgrading::YoleckEntityUpgrading;
+pub use self::entity_upgrading::YoleckEntityUpgradingPlugin;
 pub use self::knobs::{YoleckKnob, YoleckKnobsCache};
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
@@ -303,6 +305,12 @@ pub trait YoleckExtForApp {
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType);
     fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule;
+
+    fn add_yoleck_entity_upgrade(
+        &mut self,
+        to_version: usize,
+        upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
+    );
 }
 
 impl YoleckExtForApp for App {
@@ -371,6 +379,23 @@ impl YoleckExtForApp for App {
         self
             .get_schedule_mut(YoleckSchedule::Populate)
             .expect("Yoleck's populate schedule was not created. Please use a YoleckPluginForGame or YoleckPluginForEditor")
+    }
+
+    fn add_yoleck_entity_upgrade(
+        &mut self,
+        to_version: usize,
+        upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
+    ) {
+        let mut entity_upgrading = self.world.get_resource_mut::<YoleckEntityUpgrading>()
+            .expect("add_yoleck_entity_upgrade can only be called after the YoleckEntityUpgrading plugin was added");
+        if entity_upgrading.app_format_version < to_version {
+            panic!("Cannot create an upgrade system to version {} when YoleckEntityUpgrading set the version to {}", to_version, entity_upgrading.app_format_version);
+        }
+        entity_upgrading
+            .upgrade_functions
+            .entry(to_version)
+            .or_default()
+            .push(Box::new(upgrade_dlg));
     }
 }
 
