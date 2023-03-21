@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use bevy::ecs::query::WorldQuery;
+use bevy::ecs::query::{ReadOnlyWorldQuery, WorldQuery};
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -519,13 +519,20 @@ impl YoleckEditNewStyle {
 }
 
 #[derive(SystemParam)]
-pub struct YoleckPopulateNewStyle<'w, 's, Q: 'static + WorldQuery> {
+pub struct YoleckPopulateNewStyle<
+    'w,
+    's,
+    Q: 'static + WorldQuery,
+    F: 'static + ReadOnlyWorldQuery = (),
+> {
     entities_to_populate: Res<'w, EntitiesToPopulate>,
-    query: Query<'w, 's, Q>,
+    query: Query<'w, 's, Q, F>,
     commands: Commands<'w, 's>,
 }
 
-impl<Q: 'static + WorldQuery> YoleckPopulateNewStyle<'_, '_, Q> {
+impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery>
+    YoleckPopulateNewStyle<'_, '_, Q, F>
+{
     pub fn populate(
         &mut self,
         mut dlg: impl FnMut((), EntityCommands, <Q as WorldQuery>::Item<'_>),

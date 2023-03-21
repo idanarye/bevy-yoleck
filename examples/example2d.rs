@@ -211,8 +211,11 @@ struct Player {
     rotation: f32,
 }
 
-fn populate_player(mut populate: YoleckPopulateNewStyle<&IsPlayer>, assets: Res<GameAssets>) {
-    populate.populate(|_ctx, mut cmd, _| {
+fn populate_player(
+    mut populate: YoleckPopulateNewStyle<(), With<IsPlayer>>,
+    assets: Res<GameAssets>,
+) {
+    populate.populate(|_ctx, mut cmd, ()| {
         cmd.insert((SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(100.0, 100.0)),
