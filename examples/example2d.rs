@@ -6,7 +6,7 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
 use bevy_yoleck::vpeol_2d::{
-    vpeol_position_edit_adapter, Vpeol2dCameraControl, VpeolTransform2dProjection,
+    vpeol_position_edit_adapter, Vpeol2dCameraControl, Vpeol2dPosition, VpeolTransform2dProjection,
 };
 use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
@@ -76,24 +76,32 @@ fn main() {
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<Fruit>::new("Fruit")
-            .populate_with(populate_fruit)
+            // .populate_with(populate_fruit)
             .edit_with(duplicate_fruit)
-            .with(vpeol_position_edit_adapter(|data: &mut Fruit| {
-                VpeolTransform2dProjection {
-                    translation: &mut data.position,
-                }
-            }))
+            // .with(vpeol_position_edit_adapter(|data: &mut Fruit| {
+            // VpeolTransform2dProjection {
+            // translation: &mut data.position,
+            // }
+            // }))
             .edit_with(edit_fruit)
     });
-    app.add_yoleck_entity_type(YoleckEntityType::new("Fruit").with::<Fruit>());
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("Fruit")
+            .with::<Fruit>()
+            .with::<Vpeol2dPosition>()
+    });
     app.add_yoleck_edit_system(edit_fruit_type);
     app.yoleck_populate_schedule_mut()
         .add_system(populate_fruit_type);
-    app.add_yoleck_entity_upgrade(1, |_, data| {
-        // TODO: something better than that
-        if let Some(fruit_index) = data.pointer_mut("/Fruit/fruit_index") {
-            *fruit_index = (fruit_index.as_u64().unwrap() - 1).into();
+    app.add_yoleck_entity_upgrade(1, |type_name, data| {
+        if type_name != "Fruit" {
+            return;
         }
+
+        let fruit = data.get_mut("Fruit").unwrap().as_object_mut().unwrap();
+        data["Vpeol2dPosition"] = fruit.remove("position").unwrap();
+
+        info!("Result {:#?}", data);
     });
 
     app.add_yoleck_handler({
@@ -259,7 +267,7 @@ fn control_player(
 #[derive(Component)]
 struct IsFruit;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
 struct Fruit {
     #[serde(default)]
     position: Vec2,
@@ -271,7 +279,7 @@ impl YoleckComponent for Fruit {
     const KEY: &'static str = "Fruit";
 }
 
-fn populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
+fn _populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, data, mut cmd| {
         cmd.despawn_descendants();
         cmd.insert((
@@ -400,7 +408,7 @@ fn populate_fruit_type(mut populate: YoleckPopulateNewStyle<&mut Fruit>, assets:
     info!("Running populate_fruit_type");
     populate.populate(|_ctx, mut cmd, fruit| {
         info!("Fruit index {}", fruit.fruit_index);
-        cmd.despawn_descendants();
+        cmd.despawn_descendants(); // TODO: This is bad! Replace it!
         cmd.insert((
             SpatialBundle::from_transform(Transform::from_translation(fruit.position.extend(0.0))),
             VpeolWillContainClickableChildren,

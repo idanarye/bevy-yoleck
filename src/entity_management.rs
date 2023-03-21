@@ -142,7 +142,7 @@ pub(crate) struct EntitiesToPopulate(pub Vec<Entity>);
 pub(crate) fn yoleck_process_loading_command(
     mut commands: Commands,
     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
-    raw_levels_assets: Res<Assets<YoleckRawLevel>>,
+    mut raw_levels_assets: ResMut<Assets<YoleckRawLevel>>,
     specs: Res<YoleckEntityConstructionSpecs>,
     entity_upgrading: Option<Res<YoleckEntityUpgrading>>,
 ) {
@@ -169,8 +169,11 @@ pub(crate) fn yoleck_process_loading_command(
     ) {
         YoleckLoadingCommand::NoCommand => {}
         YoleckLoadingCommand::FromAsset(handle) => {
-            if let Some(asset) = raw_levels_assets.get(&handle) {
-                for entry in asset.entries() {
+            if let Some(level) = raw_levels_assets.get_mut(&handle) {
+                if let Some(entity_upgrading) = entity_upgrading {
+                    entity_upgrading.upgrade_raw_level_file(level);
+                }
+                for entry in level.entries() {
                     process_entry(entry.clone());
                 }
             }
@@ -257,7 +260,7 @@ impl AssetLoader for YoleckLevelAssetLoader {
             let level: serde_json::Value = serde_json::from_str(json)?;
             let level = upgrade_level_file(level)?;
             let level: YoleckRawLevel = serde_json::from_value(level)?;
-            load_context.set_default_asset(LoadedAsset::new(dbg!(level)));
+            load_context.set_default_asset(LoadedAsset::new(level));
             Ok(())
         })
     }

@@ -556,19 +556,8 @@ impl YoleckComponentHandler {
                             return;
                         }
                     }
-                } else if let Ok(component) = serde_json::from_value(serde_json::Value::Null) {
-                    component
-                } else if let Ok(component) =
-                    serde_json::from_value(serde_json::Value::Object(Default::default()))
-                {
-                    component
-                } else if let Ok(component) =
-                    serde_json::from_value(serde_json::Value::Array(Default::default()))
-                {
-                    component
                 } else {
-                    error!("{:?} cannot be initialized from empty data", T::KEY);
-                    return;
+                    Default::default()
                 };
                 cmd.insert(component);
             }),

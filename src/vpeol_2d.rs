@@ -82,8 +82,12 @@ use bevy::render::camera::RenderTarget;
 use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
+use serde::{Deserialize, Serialize};
 
-use crate::{YoleckEdit, YoleckEditorState, YoleckTypeHandler};
+use crate::{
+    YoleckComponent, YoleckEdit, YoleckEditNewStyle, YoleckEditorState, YoleckExtForApp,
+    YoleckPopulateBaseSet, YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
+};
 
 /// Add the systems required for 2D editing.
 ///
@@ -124,6 +128,10 @@ impl Plugin for Vpeol2dPlugin {
             )
                 .chain()
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+        );
+        app.add_yoleck_edit_system(vpeol_2d_edit_position);
+        app.yoleck_populate_schedule_mut().add_system(
+            vpeol_2d_populate_position.in_base_set(YoleckPopulateBaseSet::AddTransform),
         );
     }
 }
@@ -495,4 +503,33 @@ pub fn vpeol_position_edit_adapter<T: 'static>(
             });
         })
     }
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+#[serde(transparent)]
+pub struct Vpeol2dPosition(pub Vec2);
+
+impl YoleckComponent for Vpeol2dPosition {
+    const KEY: &'static str = "Vpeol2dPosition";
+}
+
+fn vpeol_2d_edit_position(
+    mut ui: ResMut<YoleckUi>,
+    mut query: Query<(&YoleckEditNewStyle, &mut Vpeol2dPosition)>,
+) {
+    let Ok((_edit, mut position)) = query.get_single_mut() else { return };
+    ui.horizontal(|ui| {
+        ui.add(egui::DragValue::new(&mut position.0.x).prefix("X:"));
+        ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
+    });
+}
+
+fn vpeol_2d_populate_position(mut populate: YoleckPopulateNewStyle<&Vpeol2dPosition>) {
+    populate.populate(|_ctx, mut cmd, position| {
+        let transform = Transform::from_translation(position.0.extend(0.0));
+        cmd.insert(TransformBundle {
+            local: transform,
+            global: transform.into(),
+        });
+    })
 }

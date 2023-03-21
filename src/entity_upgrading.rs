@@ -29,7 +29,7 @@ impl YoleckEntityUpgrading {
     pub fn upgrade_raw_level_file(&self, levels_file: &mut YoleckRawLevel) {
         let first_target_version = levels_file.0.app_format_version + 1;
         for (target_version, upgrade_functions) in
-            self.upgrade_functions.range(dbg!(first_target_version)..)
+            self.upgrade_functions.range(first_target_version..)
         {
             for entity in levels_file.2.iter_mut() {
                 for function in upgrade_functions.iter() {

@@ -473,9 +473,8 @@ impl DerefMut for YoleckUi {
     }
 }
 
-pub trait YoleckComponent: Component + Serialize + for<'a> Deserialize<'a> {
+pub trait YoleckComponent: Default + Component + Serialize + for<'a> Deserialize<'a> {
     const KEY: &'static str;
-    const VERSION: usize = 1;
 }
 
 pub struct YoleckEntityType {
