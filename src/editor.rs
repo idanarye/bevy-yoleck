@@ -207,6 +207,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Query<(Entity, &mut YoleckManaged)>,
         Query<Entity, With<YoleckEditNewStyle>>,
         EventReader<YoleckDirective>,
+        Query<(Entity, &mut YoleckEditNewStyle)>,
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
@@ -228,6 +229,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 mut yoleck_managed_query,
                 yoleck_edited_query,
                 mut directives_reader,
+                mut data_passing_query,
                 mut commands,
                 editor_state,
                 mut writer,
@@ -265,7 +267,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                 }
                             }
                             if !already_selected {
-                                commands.entity(*entity).insert(YoleckEditNewStyle {});
+                                commands.entity(*entity).insert(YoleckEditNewStyle {
+                                    passed_data: Default::default(),
+                                });
                                 writer.send(YoleckEditorEvent::EntitySelected(*entity));
                             }
                         } else {
@@ -314,7 +318,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         if *select_created_entity {
                             yoleck.entity_being_edited = Some(cmd.id());
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
-                            cmd.insert(YoleckEditNewStyle {});
+                            cmd.insert(YoleckEditNewStyle {
+                                passed_data: Default::default(),
+                            });
                             for entity_to_deselect in yoleck_edited_query.iter() {
                                 commands
                                     .entity(entity_to_deselect)
@@ -326,6 +332,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         yoleck.level_needs_saving = true;
                     }
                 }
+            }
+
+            for (entity, mut edit) in data_passing_query.iter_mut() {
+                edit.passed_data = data_passed_to_entities
+                    .get(&entity)
+                    .cloned()
+                    .unwrap_or_default();
             }
 
             if let Some((entity, mut yoleck_managed)) = yoleck

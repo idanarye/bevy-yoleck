@@ -405,9 +405,7 @@ fn edit_fruit_type(
 }
 
 fn populate_fruit_type(mut populate: YoleckPopulateNewStyle<&mut Fruit>, assets: Res<GameAssets>) {
-    info!("Running populate_fruit_type");
     populate.populate(|_ctx, mut cmd, fruit| {
-        info!("Fruit index {}", fruit.fruit_index);
         cmd.despawn_descendants(); // TODO: This is bad! Replace it!
         cmd.insert((
             SpatialBundle::from_transform(Transform::from_translation(fruit.position.extend(0.0))),

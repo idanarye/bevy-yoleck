@@ -517,7 +517,10 @@ fn vpeol_2d_edit_position(
     mut ui: ResMut<YoleckUi>,
     mut query: Query<(&YoleckEditNewStyle, &mut Vpeol2dPosition)>,
 ) {
-    let Ok((_edit, mut position)) = query.get_single_mut() else { return };
+    let Ok((edit, mut position)) = query.get_single_mut() else { return };
+    if let Some(pos) = edit.get_passed_data::<Vec3>() {
+        position.0 = pos.truncate();
+    }
     ui.horizontal(|ui| {
         ui.add(egui::DragValue::new(&mut position.0.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
