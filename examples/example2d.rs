@@ -77,14 +77,13 @@ fn main() {
 
     app.add_yoleck_handler({
         YoleckTypeHandler::<Fruit>::new("Fruit")
-            // .populate_with(populate_fruit)
-            .edit_with(duplicate_fruit)
     });
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
             .with::<Fruit>()
             .with::<Vpeol2dPosition>()
     });
+    app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
     app.yoleck_populate_schedule_mut()
         .add_system(populate_fruit_type);
@@ -298,19 +297,25 @@ fn _populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>)
     });
 }
 
-fn duplicate_fruit(mut edit: YoleckEdit<Fruit>, mut writer: EventWriter<YoleckDirective>) {
-    edit.edit(|_ctx, data, ui| {
-        if ui.button("Duplicate").clicked() {
-            writer.send(YoleckDirective::spawn_entity(
-                "Fruit",
-                Fruit {
-                    position: data.position - 100.0 * Vec2::Y,
-                    fruit_index: data.fruit_index,
-                },
-                true, // select_created_entity
-            ));
-        }
-    });
+fn duplicate_fruit(
+    mut ui: ResMut<YoleckUi>,
+    query: Query<(&Fruit, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
+    mut writer: EventWriter<YoleckDirective>,
+) {
+    let Ok((fruit, Vpeol2dPosition(position))) = query.get_single() else { return };
+    if ui.button("Duplicate").clicked() {
+        writer.send(
+            YoleckDirective::spawn_entity(
+                "Fruit", true, // select_created_entity
+            )
+            .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
+            .with(Fruit {
+                position: *position - 100.0 * Vec2::Y,
+                fruit_index: fruit.fruit_index,
+            })
+            .into(),
+        );
+    }
 }
 
 fn edit_fruit_type(

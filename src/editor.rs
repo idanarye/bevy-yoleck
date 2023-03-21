@@ -5,14 +5,13 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
-use serde::Serialize;
 
 use crate::api::{YoleckKnobData, YoleckUserSystemContext};
 use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
-    BoxedArc, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
-    YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache, YoleckManaged,
-    YoleckRawEntry, YoleckSchedule, YoleckState, YoleckTypeHandlers, YoleckUi,
+    BoxedArc, YoleckComponent, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent,
+    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache,
+    YoleckManaged, YoleckRawEntry, YoleckSchedule, YoleckState, YoleckTypeHandlers, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -54,37 +53,67 @@ impl YoleckDirective {
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckDirective};
-    /// # #[derive(Serialize)]
+    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckDirective, YoleckComponent};
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
     /// # struct Example {
     /// #     position: Vec2,
+    /// # }
+    /// # impl YoleckComponent for Example {
+    /// #     const KEY: &'static str = "Example";
     /// # }
     /// fn duplicate_example(mut edit: YoleckEdit<Example>, mut writer: EventWriter<YoleckDirective>) {
     ///     edit.edit(|_ctx, data, ui| {
     ///         if ui.button("Duplicate").clicked() {
-    ///             writer.send(YoleckDirective::spawn_entity(
-    ///                 "Example",
-    ///                 Example {
+    ///             writer.send(
+    ///                 YoleckDirective::spawn_entity(
+    ///                     "Example",
+    ///                     // Automatically select the newly created entity:
+    ///                     true,
+    ///                 )
+    ///                 .with(Example {
     ///                     // Create the new example entity 100 units below the current one:
     ///                     position: data.position - 100.0 * Vec2::Y,
-    ///                 },
-    ///                 // Automatically select the newly created entity:
-    ///                 true,
-    ///             ));
+    ///                 })
+    ///                 .into(),
+    ///             );
     ///         }
     ///     });
     /// }
     /// ```
     pub fn spawn_entity(
         type_name: impl ToString,
-        data: impl Serialize,
         select_created_entity: bool,
-    ) -> Self {
-        Self(YoleckDirectiveInner::SpawnEntity {
+    ) -> SpawnEntityBuilder {
+        SpawnEntityBuilder {
             type_name: type_name.to_string(),
-            data: serde_json::to_value(data)
-                .expect("Serialization of Yoleck values must always work"),
             select_created_entity,
+            data: Default::default(),
+        }
+    }
+}
+
+pub struct SpawnEntityBuilder {
+    type_name: String,
+    select_created_entity: bool,
+    data: HashMap<&'static str, serde_json::Value>,
+}
+
+impl SpawnEntityBuilder {
+    pub fn with<T: YoleckComponent>(mut self, component: T) -> Self {
+        self.data.insert(
+            T::KEY,
+            serde_json::to_value(component).expect("should always work"),
+        );
+        self
+    }
+}
+
+impl From<SpawnEntityBuilder> for YoleckDirective {
+    fn from(value: SpawnEntityBuilder) -> Self {
+        YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+            type_name: value.type_name,
+            data: serde_json::to_value(value.data).expect("should always worl"),
+            select_created_entity: value.select_created_entity,
         })
     }
 }
