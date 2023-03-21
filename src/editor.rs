@@ -6,12 +6,11 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
-use crate::api::{YoleckKnobData, YoleckUserSystemContext};
-use crate::dynamic_source_handling::YoleckEditingResult;
+use crate::api::YoleckKnobData;
 use crate::{
     BoxedArc, YoleckComponent, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent,
     YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache,
-    YoleckManaged, YoleckRawEntry, YoleckSchedule, YoleckState, YoleckTypeHandlers, YoleckUi,
+    YoleckManaged, YoleckRawEntry, YoleckSchedule, YoleckState, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -174,14 +173,14 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
 
     let mut system_state = SystemState::<(
         Res<YoleckState>,
-        Res<YoleckTypeHandlers>,
+        Res<YoleckEntityConstructionSpecs>,
         Query<(Entity, &YoleckManaged)>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
     )>::new(world);
 
     move |world, ui| {
-        let (yoleck, yoleck_type_handlers, yoleck_managed_query, editor_state, mut writer) =
+        let (yoleck, construction_specs, yoleck_managed_query, editor_state, mut writer) =
             system_state.get_mut(world);
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -194,13 +193,13 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                     ui.label("By Name:");
                     ui.text_edit_singleline(&mut filter_custom_name);
                 });
-                for type_name in yoleck_type_handlers.type_handler_names.iter() {
-                    let mut should_show = filter_types.contains(type_name);
-                    if ui.checkbox(&mut should_show, type_name).changed() {
+                for entity_type in construction_specs.entity_types.iter() {
+                    let mut should_show = filter_types.contains(&entity_type.name);
+                    if ui.checkbox(&mut should_show, &entity_type.name).changed() {
                         if should_show {
-                            filter_types.insert(type_name.clone());
+                            filter_types.insert(entity_type.name.clone());
                         } else {
-                            filter_types.remove(type_name);
+                            filter_types.remove(&entity_type.name);
                         }
                     }
                 }
@@ -232,7 +231,6 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
 pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
-        ResMut<YoleckUserSystemContext>,
         Query<(Entity, &mut YoleckManaged)>,
         Query<Entity, With<YoleckEditNewStyle>>,
         EventReader<YoleckDirective>,
@@ -247,17 +245,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         ResMut<YoleckKnobsCache>,
     )>::new(world);
 
-    let mut writer_state = SystemState::<EventWriter<YoleckEditorEvent>>::new(world);
-
-    let mut comparison_cache = None;
     let mut previously_edited_entity: Option<Entity> = None;
 
     move |world, ui| {
-        let mut handler_to_run = None;
         {
             let (
                 mut yoleck,
-                mut yoleck_user_system_context,
                 mut yoleck_managed_query,
                 yoleck_edited_query,
                 mut directives_reader,
@@ -393,17 +386,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     ui.label("Custom Name:");
                     ui.text_edit_singleline(&mut yoleck_managed.name);
                 });
-
-                // `entity_being_edited` will be `None` if we deleted the entity - in which case we
-                // don't want to call `on_editor` which will attempt to run more commands on it and
-                // panic.
-                if yoleck.entity_being_edited.is_some() {
-                    handler_to_run = Some(yoleck_managed.type_name.clone());
-                    *yoleck_user_system_context = YoleckUserSystemContext::Edit {
-                        entity,
-                        passed: data_passed_to_entities,
-                    };
-                }
             }
 
             if previously_edited_entity != yoleck.entity_being_edited() {
@@ -437,29 +419,5 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
 
         // Some systems may have edited the entries, so we need to update them
         world.run_schedule(YoleckSchedule::UpdateRawDataFromComponents);
-
-        // TODO: This part should be removed
-        if let Some(type_name) = handler_to_run {
-            world.resource_scope(|world, mut yoleck_type_handlers: Mut<YoleckTypeHandlers>| {
-                let entity = world
-                    .resource::<YoleckUserSystemContext>()
-                    .get_edit_entity();
-                let handler = yoleck_type_handlers
-                    .type_handlers
-                    .get_mut(&type_name)
-                    .unwrap();
-                let edit_result =
-                    handler.run_edit_systems(world, ui, entity, &mut comparison_cache);
-                if matches!(edit_result, YoleckEditingResult::Changed) {
-                    world.resource_mut::<YoleckState>().level_needs_saving = true;
-                    *world.resource_mut::<YoleckUserSystemContext>() =
-                        YoleckUserSystemContext::PopulateEdited(entity);
-                    handler.run_populate_systems(world);
-                    let mut writer = writer_state.get_mut(world);
-                    writer.send(YoleckEditorEvent::EditedEntityPopulated(entity));
-                }
-            });
-            *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
-        }
     }
 }

@@ -5,13 +5,9 @@ use bevy::reflect::TypeUuid;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::api::YoleckUserSystemContext;
 use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
-use crate::{
-    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule,
-    YoleckTypeHandlers,
-};
+use crate::{YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule};
 
 /// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -55,76 +51,53 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
 
 pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
     let editor_state = world.resource::<State<YoleckEditorState>>().0;
-    let is_in_editor = match editor_state {
-        YoleckEditorState::EditorActive => true,
-        YoleckEditorState::GameActive => false,
-    };
-    world.resource_scope(|world, mut yoleck_type_handlers: Mut<YoleckTypeHandlers>| {
-        let mut entities_by_type = HashMap::<String, Vec<Entity>>::new();
-        let mut commands_queue = CommandQueue::default();
-        let mut raw_entries_query = world.query::<(Entity, &YoleckRawEntry)>();
-        let mut commands = Commands::new(&mut commands_queue, world);
-        let construction_specs = world.resource::<YoleckEntityConstructionSpecs>();
-        for (entity, raw_entry) in raw_entries_query.iter(world) {
-            entities_by_type
-                .entry(raw_entry.header.type_name.clone())
-                .or_default()
-                .push(entity);
-            let mut cmd = commands.entity(entity);
-            cmd.remove::<YoleckRawEntry>();
-            let handler = yoleck_type_handlers
-                .type_handlers
-                .get(&raw_entry.header.type_name)
-                .unwrap();
-            let concrete = handler.make_concrete(raw_entry.data.clone()).unwrap();
+    let mut entities_by_type = HashMap::<String, Vec<Entity>>::new();
+    let mut commands_queue = CommandQueue::default();
+    let mut raw_entries_query = world.query::<(Entity, &YoleckRawEntry)>();
+    let mut commands = Commands::new(&mut commands_queue, world);
+    let construction_specs = world.resource::<YoleckEntityConstructionSpecs>();
+    for (entity, raw_entry) in raw_entries_query.iter(world) {
+        entities_by_type
+            .entry(raw_entry.header.type_name.clone())
+            .or_default()
+            .push(entity);
+        let mut cmd = commands.entity(entity);
+        cmd.remove::<YoleckRawEntry>();
 
-            let mut components_data = HashMap::new();
+        let mut components_data = HashMap::new();
 
-            if let Some(entity_type_info) = construction_specs.get_entity_type_info(&raw_entry.header.type_name) {
-                // construction_specs.component_handlers_for(&raw_entry.header.type_name)
+        if let Some(entity_type_info) =
+            construction_specs.get_entity_type_info(&raw_entry.header.type_name)
+        {
+            // construction_specs.component_handlers_for(&raw_entry.header.type_name)
             // {
-                for component_name in entity_type_info.components.iter() {
-                    let Some(handler) = construction_specs.component_handlers.get(component_name) else {
+            for component_name in entity_type_info.components.iter() {
+                let Some(handler) = construction_specs.component_handlers.get(component_name) else {
                         error!("Component type {:?} is not registered", component_name);
                         continue;
                     };
-                    let raw_component_data = raw_entry.data.get(handler.key);
-                    (handler.insert_to_command)(&mut cmd, raw_component_data.cloned());
-                    if let Some(raw_component_data) = raw_component_data {
-                        components_data.insert(handler.key, raw_component_data.clone());
-                    }
+                let raw_component_data = raw_entry.data.get(handler.key);
+                (handler.insert_to_command)(&mut cmd, raw_component_data.cloned());
+                if let Some(raw_component_data) = raw_component_data {
+                    components_data.insert(handler.key, raw_component_data.clone());
                 }
-                for dlg in entity_type_info.on_init.iter() {
-                    dlg(editor_state, &mut cmd);
-                }
-            } else {
-                error!("Entity type {:?} is not registered", raw_entry.header.name);
             }
+            for dlg in entity_type_info.on_init.iter() {
+                dlg(editor_state, &mut cmd);
+            }
+        } else {
+            error!("Entity type {:?} is not registered", raw_entry.header.name);
+        }
 
-            cmd.insert(YoleckManaged {
-                name: raw_entry.header.name.to_owned(),
-                type_name: raw_entry.header.type_name.to_owned(),
-                data: concrete,
-                needs_to_be_populated: true,
-                components_data,
-            });
-        }
-        commands_queue.apply(world);
-        for (type_name, entities) in entities_by_type {
-            let handler = yoleck_type_handlers
-                .type_handlers
-                .get_mut(&type_name)
-                .unwrap();
-            *world.resource_mut::<YoleckUserSystemContext>() =
-                YoleckUserSystemContext::PopulateInitiated {
-                    is_in_editor,
-                    entities,
-                };
-            // TODO: after I get rid of this, I can make `yoleck_process_raw_entries` a normal system
-            handler.run_populate_systems(world);
-        }
-        *world.resource_mut::<YoleckUserSystemContext>() = YoleckUserSystemContext::Nope;
-    });
+        cmd.insert(YoleckManaged {
+            name: raw_entry.header.name.to_owned(),
+            type_name: raw_entry.header.type_name.to_owned(),
+            needs_to_be_populated: true,
+            components_data,
+        });
+    }
+    commands_queue.apply(world); // is this still needed?
+                                 // TODO: try making `yoleck_process_raw_entries` a normal system
 }
 
 pub(crate) fn yoleck_prepare_populate_schedule(

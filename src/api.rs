@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::entity_management::EntitiesToPopulate;
 use crate::knobs::{KnobFromCache, YoleckKnobsCache};
-use crate::{BoxedArc, YoleckComponentHandler, YoleckManaged};
+use crate::{BoxedArc, YoleckComponentHandler};
 
 /// Whether or not the Yoleck editor is active.
 #[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -93,6 +93,7 @@ where
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy)]
 pub(crate) enum PopulateReason {
     EditorInit,
@@ -216,80 +217,6 @@ impl<'a> YoleckEditContext<'a> {
 #[derive(Resource)]
 pub struct YoleckUiForEditSystem(pub egui::Ui);
 
-/// Parameter for systems that edit entities. See [`YoleckEdit::edit`].
-#[derive(SystemParam)]
-pub struct YoleckEdit<'w, 's, T: 'static> {
-    #[allow(dead_code)]
-    query: Query<'w, 's, &'static mut YoleckManaged>,
-    #[allow(dead_code)]
-    context: ResMut<'w, YoleckUserSystemContext>,
-    ui: ResMut<'w, YoleckUiForEditSystem>,
-    knobs_cache: ResMut<'w, YoleckKnobsCache>,
-    #[system_param(ignore)]
-    _phantom_data: PhantomData<fn() -> T>,
-}
-
-impl<'w, 's, T: 'static> YoleckEdit<'w, 's, T> {
-    /// Implement entity editing.
-    ///
-    /// A system that uses [`YoleckEdit`] needs to be added to an handler using
-    /// [`edit_with`](crate::YoleckTypeHandler::edit_with). These systems usually only need to
-    /// call this method with a closure that accepts three arguments:
-    ///
-    /// * A context
-    /// * The data to be edited.
-    /// * An egui UI handler.
-    ///
-    /// The closure is then responsible for allowing the user to edit the data using the UI and
-    /// using [data passed from other systems](YoleckEditContext::get_passed_data).
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckTypeHandler, YoleckExtForApp};
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
-    /// # struct Example {
-    /// #     number: u32,
-    /// # }
-    /// # let mut app = App::new();
-    /// app.add_yoleck_handler({
-    ///     YoleckTypeHandler::<Example>::new("Example")
-    ///         .edit_with(edit_example)
-    /// });
-    ///
-    /// fn edit_example(mut edit: YoleckEdit<Example>) {
-    ///     edit.edit(|_ctx, data, ui| {
-    ///         ui.add(egui::Slider::new(&mut data.number, 0..=10));
-    ///     });
-    /// }
-    /// ```
-    pub fn edit(&mut self, mut dlg: impl FnMut(&mut YoleckEditContext, &mut T, &mut egui::Ui)) {
-        match &mut *self.context {
-            YoleckUserSystemContext::Nope
-            | YoleckUserSystemContext::PopulateEdited(_)
-            | YoleckUserSystemContext::PopulateInitiated { .. } => {
-                panic!("Wrong state");
-            }
-            YoleckUserSystemContext::Edit { entity, passed } => {
-                let mut edit_context = YoleckEditContext {
-                    entity: *entity,
-                    passed,
-                    knobs_cache: &mut self.knobs_cache,
-                };
-                let mut yoleck_managed = self
-                    .query
-                    .get_mut(*entity)
-                    .expect("Edited entity does not exist");
-                let data = yoleck_managed
-                    .data
-                    .downcast_mut::<T>()
-                    .expect("Edited data is of wrong type");
-                dlg(&mut edit_context, data, &mut self.ui.0);
-            }
-        }
-    }
-}
-
 /// An handle for intearcing with a knob from an [edit system](YoleckEdit::edit).
 pub struct YoleckKnobHandle<'w, 's, 'a> {
     /// The command of the knob entity.
@@ -307,139 +234,6 @@ impl YoleckKnobHandle<'_, '_, '_> {
             dynamic.downcast_ref()
         } else {
             None
-        }
-    }
-}
-
-/// Parameter for systems that populate entities. See [`YoleckPopulate::populate`].
-#[derive(SystemParam)]
-pub struct YoleckPopulate<'w, 's, T: 'static> {
-    query: Query<'w, 's, &'static mut YoleckManaged>,
-    context: Res<'w, YoleckUserSystemContext>,
-    commands: Commands<'w, 's>,
-    #[system_param(ignore)]
-    _phantom_data: PhantomData<fn() -> T>,
-}
-
-impl<'w, 's, T: 'static> YoleckPopulate<'w, 's, T> {
-    /// Implement entity populating.
-    ///
-    /// A system that uses [`YoleckPopulate`] needs to be added to an handler using
-    /// [`populate_with`](crate::YoleckTypeHandler::populate_with). These systems usually only
-    /// need to call this method with a closure that accepts three arguments:
-    ///
-    /// * A context
-    /// * The data to be used for populating.
-    /// * A Bevy command.
-    ///
-    /// The closure is then responsible for adding components to the command based on data from the
-    /// entity. The closure may also add children - but since this method may be called to
-    /// re-populate an already populated entity that already has children, if it does so it should
-    /// use `despawn_descendants` to remove existing children.
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckPopulate, YoleckTypeHandler, YoleckExtForApp};
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
-    /// # struct Example {
-    /// #     position: Vec2,
-    /// # }
-    /// # #[derive(Resource)]
-    /// # struct GameAssets {
-    /// #     example_sprite: Handle<Image>,
-    /// # }
-    /// # let mut app = App::new();
-    /// app.add_yoleck_handler({
-    ///     YoleckTypeHandler::<Example>::new("Example")
-    ///         .populate_with(populate_example)
-    /// });
-    ///
-    /// fn populate_example(mut populate: YoleckPopulate<Example>, assets: Res<GameAssets>) {
-    ///     populate.populate(|_ctx, data, mut cmd| {
-    ///         cmd.insert(SpriteBundle {
-    ///             sprite: Sprite {
-    ///                 custom_size: Some(Vec2::new(100.0, 100.0)),
-    ///                 ..Default::default()
-    ///             },
-    ///             transform: Transform::from_translation(data.position.extend(0.0)),
-    ///             texture: assets.example_sprite.clone(),
-    ///             ..Default::default()
-    ///         });
-    ///     });
-    /// }
-    /// ```
-    pub fn populate(
-        &mut self,
-        mut dlg: impl FnMut(&YoleckPopulateContext, &mut T, EntityCommands),
-    ) {
-        match &*self.context {
-            YoleckUserSystemContext::Nope | YoleckUserSystemContext::Edit { .. } => {
-                panic!("Wrong state");
-            }
-            YoleckUserSystemContext::PopulateEdited(entity) => {
-                let populate_context = YoleckPopulateContext {
-                    reason: PopulateReason::EditorUpdate,
-                    _phantom_data: Default::default(),
-                };
-                let mut yoleck_managed = self
-                    .query
-                    .get_mut(*entity)
-                    .expect("Edited entity does not exist");
-                let data = yoleck_managed
-                    .data
-                    .downcast_mut::<T>()
-                    .expect("Edited data is of wrong type");
-                dlg(&populate_context, data, self.commands.entity(*entity));
-            }
-            YoleckUserSystemContext::PopulateInitiated {
-                is_in_editor,
-                entities,
-            } => {
-                let populate_context = YoleckPopulateContext {
-                    reason: if *is_in_editor {
-                        PopulateReason::EditorInit
-                    } else {
-                        PopulateReason::RealGame
-                    },
-                    _phantom_data: Default::default(),
-                };
-                for entity in entities {
-                    let mut yoleck_managed = self
-                        .query
-                        .get_mut(*entity)
-                        .expect("Edited entity does not exist");
-                    let data = yoleck_managed
-                        .data
-                        .downcast_mut::<T>()
-                        .expect("Edited data is of wrong type");
-                    dlg(&populate_context, data, self.commands.entity(*entity));
-                }
-            }
-        }
-    }
-}
-
-#[derive(Resource)]
-pub enum YoleckUserSystemContext {
-    Nope,
-    Edit {
-        entity: Entity,
-        passed: HashMap<Entity, HashMap<TypeId, BoxedArc>>,
-    },
-    PopulateEdited(Entity),
-    PopulateInitiated {
-        is_in_editor: bool,
-        entities: Vec<Entity>,
-    },
-}
-
-impl YoleckUserSystemContext {
-    pub(crate) fn get_edit_entity(&self) -> Entity {
-        if let Self::Edit { entity, .. } = self {
-            *entity
-        } else {
-            panic!("Wrong state");
         }
     }
 }

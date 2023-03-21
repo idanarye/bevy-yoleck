@@ -12,7 +12,7 @@ use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEditNewStyle, YoleckEditorLevelsDirectoryPath,
     YoleckEditorState, YoleckEntityType, YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs,
     YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulateNewStyle,
-    YoleckTypeHandler, YoleckUi,
+    YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +64,6 @@ fn main() {
 
     app.add_startup_system(setup_camera);
 
-    app.add_yoleck_handler(YoleckTypeHandler::<Player>::new("Player"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Player")
             .with::<Vpeol2dPosition>()
@@ -79,7 +78,6 @@ fn main() {
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
-    app.add_yoleck_handler(YoleckTypeHandler::<FruitType>::new("Fruit"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
             .with::<Vpeol2dPosition>()
@@ -101,7 +99,6 @@ fn main() {
         });
     });
 
-    app.add_yoleck_handler(YoleckTypeHandler::<TextContent>::new("FloatingText"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("FloatingText")
             .with::<Vpeol2dPosition>()

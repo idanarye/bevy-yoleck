@@ -165,7 +165,6 @@
 //! ```
 
 mod api;
-mod dynamic_source_handling;
 mod editor;
 mod editor_window;
 mod entity_management;
@@ -188,14 +187,11 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use self::api::YoleckUserSystemContext;
 pub use self::api::{
-    YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditNewStyle, YoleckEditorEvent,
-    YoleckEditorState, YoleckEntityType, YoleckKnobHandle, YoleckKnobs, YoleckPopulate,
-    YoleckPopulateContext, YoleckPopulateNewStyle, YoleckSyncWithEditorState, YoleckUi,
+    YoleckComponent, YoleckEditContext, YoleckEditNewStyle, YoleckEditorEvent, YoleckEditorState,
+    YoleckEntityType, YoleckKnobHandle, YoleckKnobs, YoleckPopulateContext, YoleckPopulateNewStyle,
+    YoleckSyncWithEditorState, YoleckUi,
 };
-pub use self::dynamic_source_handling::YoleckTypeHandler;
-use self::dynamic_source_handling::YoleckTypeHandlerTrait;
 pub use self::editor::YoleckDirective;
 pub use self::editor_window::YoleckEditorSection;
 use self::entity_management::EntitiesToPopulate;
@@ -222,9 +218,7 @@ enum YoleckSystemSet {
 
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
-        app.insert_resource(YoleckUserSystemContext::Nope);
         app.insert_resource(YoleckLoadingCommand::NoCommand);
-        app.init_resource::<YoleckTypeHandlers>();
         app.add_asset::<YoleckRawLevel>();
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.add_asset::<YoleckLevelIndex>();
@@ -298,9 +292,6 @@ impl Plugin for YoleckPluginForEditor {
 }
 
 pub trait YoleckExtForApp {
-    /// Register a [`YoleckTypeHandler`] to describe a type of entity that can be edited with Yoleck.
-    fn add_yoleck_handler(&mut self, handler: impl 'static + YoleckTypeHandlerTrait);
-
     /// TODO: document
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType);
@@ -328,14 +319,6 @@ pub trait YoleckExtForApp {
 }
 
 impl YoleckExtForApp for App {
-    fn add_yoleck_handler(&mut self, mut handler: impl 'static + YoleckTypeHandlerTrait) {
-        handler.initialize_systems(&mut self.world);
-        let mut handlers = self
-            .world
-            .get_resource_or_insert_with(YoleckTypeHandlers::default);
-        handlers.add_handler(Box::new(handler));
-    }
-
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>) {
         let mut system = IntoSystem::into_system(system);
         system.initialize(&mut self.world);
@@ -415,7 +398,6 @@ impl YoleckExtForApp for App {
 }
 
 type BoxedArc = Arc<dyn Send + Sync + Any>;
-type BoxedAny = Box<dyn Send + Sync + Any>;
 
 /// A component that describes how Yoleck manages an entity under its control.
 #[derive(Component)]
@@ -426,34 +408,10 @@ pub struct YoleckManaged {
     pub name: String,
     /// This is the name passed to [`YoleckTypeHandler`](YoleckTypeHandler::new).
     pub type_name: String,
-    /// This is the entity's data. The [`YoleckTypeHandler`] is responsible for manipulating
-    /// it, using the systems registered to it.
-    pub data: BoxedAny,
 
     pub needs_to_be_populated: bool,
 
     pub components_data: HashMap<&'static str, serde_json::Value>,
-}
-
-#[derive(Default, Resource)]
-struct YoleckTypeHandlers {
-    type_handler_names: Vec<String>,
-    type_handlers: HashMap<String, Box<dyn YoleckTypeHandlerTrait>>,
-}
-
-impl YoleckTypeHandlers {
-    fn add_handler(&mut self, handler: Box<dyn YoleckTypeHandlerTrait>) {
-        let type_name = handler.type_name().to_owned();
-        match self.type_handlers.entry(type_name.clone()) {
-            bevy::utils::hashbrown::hash_map::Entry::Occupied(_) => {
-                panic!("Handler for {:?} already exists", type_name);
-            }
-            bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
-                entry.insert(handler);
-            }
-        }
-        self.type_handler_names.push(type_name);
-    }
 }
 
 #[derive(Default, Resource)]

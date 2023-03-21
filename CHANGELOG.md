@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+[**BREAKING**] - this entire release is a huge breaking change
+### Changed
+- `YoleckTypeHandler` -> `YoleckEntityType`. The change is semantic as well
+
+### Removed
+- `vpeol_position_edit_adapter` and `VpeolTransform2dProjection`. Use `Vpeol2dPosition` instead.
 
 ## 0.8.0 - 2023-03-14
 ### Changed

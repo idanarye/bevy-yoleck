@@ -85,8 +85,8 @@ use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    YoleckComponent, YoleckEdit, YoleckEditNewStyle, YoleckEditorState, YoleckExtForApp,
-    YoleckPopulateBaseSet, YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
+    YoleckComponent, YoleckEditNewStyle, YoleckEditorState, YoleckExtForApp, YoleckPopulateBaseSet,
+    YoleckPopulateNewStyle, YoleckUi,
 };
 
 /// Add the systems required for loading levels that use vpeol_2d components
@@ -452,66 +452,6 @@ fn screen_pos_to_world_pos(
 /// See [`vpeol_position_edit_adapter`].
 pub struct VpeolTransform2dProjection<'a> {
     pub translation: &'a mut Vec2,
-}
-
-/// Edit a `Vec2` position field of an entity with drag&drop.
-///
-/// Note that this does not populate the `Transform` component - this needs be done with a manually
-/// written populate system.
-///
-/// ```no_run
-/// # use bevy::prelude::*;
-/// # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckPopulate};
-/// # use bevy_yoleck::vpeol_2d::{vpeol_position_edit_adapter, VpeolTransform2dProjection};
-/// # use serde::{Deserialize, Serialize};
-/// # #[derive(Clone, PartialEq, Serialize, Deserialize)]
-/// # struct Example {
-/// #     position: Vec2,
-/// # }
-/// # let mut app = App::new();
-/// app.add_yoleck_handler({
-///     YoleckTypeHandler::<Example>::new("Example")
-///         .with(vpeol_position_edit_adapter(
-///             |data: &mut Example| {
-///                 VpeolTransform2dProjection {
-///                     translation: &mut data.position,
-///                 }
-///             }
-///         ))
-///         .populate_with(populate_example)
-/// });
-///
-/// fn populate_example(mut populate: YoleckPopulate<Example>) {
-///     populate.populate(|_ctx, data, mut cmd| {
-///         cmd.insert(SpriteBundle {
-///             transform: Transform::from_translation(data.position.extend(0.0)),
-///             // Actual sprite components
-///             ..Default::default()
-///         });
-///     });
-/// }
-/// ```
-pub fn vpeol_position_edit_adapter<T: 'static>(
-    projection: impl 'static
-        + Clone
-        + Send
-        + Sync
-        + for<'a> Fn(&'a mut T) -> VpeolTransform2dProjection<'a>,
-) -> impl FnOnce(YoleckTypeHandler<T>) -> YoleckTypeHandler<T> {
-    move |handler| {
-        handler.edit_with(move |mut edit: YoleckEdit<T>| {
-            edit.edit(|ctx, data, ui| {
-                let VpeolTransform2dProjection { translation } = projection(data);
-                if let Some(pos) = ctx.get_passed_data::<Vec3>() {
-                    *translation = pos.truncate();
-                }
-                ui.horizontal(|ui| {
-                    ui.add(egui::DragValue::new(&mut translation.x).prefix("X:"));
-                    ui.add(egui::DragValue::new(&mut translation.y).prefix("Y:"));
-                });
-            });
-        })
-    }
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
