@@ -191,8 +191,8 @@ use bevy::utils::HashMap;
 use self::api::YoleckUserSystemContext;
 pub use self::api::{
     YoleckComponent, YoleckEdit, YoleckEditContext, YoleckEditNewStyle, YoleckEditorEvent,
-    YoleckEditorState, YoleckEntityType, YoleckKnobHandle, YoleckPopulate, YoleckPopulateContext,
-    YoleckPopulateNewStyle, YoleckSyncWithEditorState, YoleckUi,
+    YoleckEditorState, YoleckEntityType, YoleckKnobHandle, YoleckKnobs, YoleckPopulate,
+    YoleckPopulateContext, YoleckPopulateNewStyle, YoleckSyncWithEditorState, YoleckUi,
 };
 pub use self::dynamic_source_handling::YoleckTypeHandler;
 use self::dynamic_source_handling::YoleckTypeHandlerTrait;
@@ -450,6 +450,7 @@ impl YoleckEditSystems {
     pub(crate) fn run_systems(&mut self, world: &mut World) {
         for system in self.edit_systems.iter_mut() {
             system.run((), world);
+            system.apply_buffers(world);
         }
     }
 }

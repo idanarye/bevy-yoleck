@@ -7,7 +7,7 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 use serde::Serialize;
 
-use crate::api::YoleckUserSystemContext;
+use crate::api::{YoleckKnobData, YoleckUserSystemContext};
 use crate::dynamic_source_handling::YoleckEditingResult;
 use crate::{
     BoxedArc, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
@@ -207,7 +207,11 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Query<(Entity, &mut YoleckManaged)>,
         Query<Entity, With<YoleckEditNewStyle>>,
         EventReader<YoleckDirective>,
-        Query<(Entity, &mut YoleckEditNewStyle)>,
+        Query<(
+            Entity,
+            Option<&mut YoleckEditNewStyle>,
+            Option<&mut YoleckKnobData>,
+        )>,
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
@@ -334,11 +338,19 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 }
             }
 
-            for (entity, mut edit) in data_passing_query.iter_mut() {
-                edit.passed_data = data_passed_to_entities
-                    .get(&entity)
-                    .cloned()
-                    .unwrap_or_default();
+            for (entity, edit, knob_data) in data_passing_query.iter_mut() {
+                if let Some(mut edit) = edit {
+                    edit.passed_data = data_passed_to_entities
+                        .get(&entity)
+                        .cloned()
+                        .unwrap_or_default();
+                }
+                if let Some(mut knob_data) = knob_data {
+                    knob_data.passed_data = data_passed_to_entities
+                        .get(&entity)
+                        .cloned()
+                        .unwrap_or_default();
+                }
             }
 
             if let Some((entity, mut yoleck_managed)) = yoleck

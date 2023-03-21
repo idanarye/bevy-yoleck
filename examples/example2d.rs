@@ -11,8 +11,9 @@ use bevy_yoleck::vpeol_2d::{
 use bevy_yoleck::{
     YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditNewStyle,
     YoleckEditorLevelsDirectoryPath, YoleckEditorState, YoleckEntityType,
-    YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckLoadingCommand, YoleckPluginForEditor,
-    YoleckPluginForGame, YoleckPopulate, YoleckPopulateNewStyle, YoleckTypeHandler, YoleckUi,
+    YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs, YoleckLoadingCommand,
+    YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckPopulateNewStyle,
+    YoleckTypeHandler, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -78,12 +79,6 @@ fn main() {
         YoleckTypeHandler::<Fruit>::new("Fruit")
             // .populate_with(populate_fruit)
             .edit_with(duplicate_fruit)
-            // .with(vpeol_position_edit_adapter(|data: &mut Fruit| {
-            // VpeolTransform2dProjection {
-            // translation: &mut data.position,
-            // }
-            // }))
-            .edit_with(edit_fruit)
     });
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
@@ -318,52 +313,13 @@ fn duplicate_fruit(mut edit: YoleckEdit<Fruit>, mut writer: EventWriter<YoleckDi
     });
 }
 
-fn edit_fruit(mut edit: YoleckEdit<Fruit>, assets: Res<GameAssets>, mut commands: Commands) {
-    edit.edit(|ctx, data, ui| {
-        ui.horizontal(|ui| {
-            ui.label(format!("Old Style:\n#{} chosen", data.fruit_index));
-            let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
-            for (index, rect) in rects.iter().enumerate() {
-                if ui
-                    .add_enabled(
-                        index != data.fruit_index,
-                        egui::ImageButton::new(*texture_id, [100.0, 100.0]).uv(*rect),
-                    )
-                    .clicked()
-                {
-                    data.fruit_index = index;
-                }
-
-                if index != data.fruit_index {
-                    let mut knob = ctx.knob(&mut commands, ("select", index));
-                    let knob_position =
-                        (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
-                    knob.cmd.insert(SpriteSheetBundle {
-                        sprite: TextureAtlasSprite {
-                            index,
-                            custom_size: Some(Vec2::new(20.0, 20.0)),
-                            ..Default::default()
-                        },
-                        texture_atlas: assets.fruits_sprite_sheet.clone(),
-                        transform: Transform::from_translation(knob_position),
-                        global_transform: Transform::from_translation(knob_position).into(),
-                        ..Default::default()
-                    });
-                    if knob.get_passed_data::<YoleckKnobClick>().is_some() {
-                        data.fruit_index = index;
-                    }
-                }
-            }
-        });
-    });
-}
-
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<&mut Fruit, With<YoleckEditNewStyle>>,
+    mut query: Query<(&mut Fruit, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
     assets: Res<GameAssets>,
+    mut knobs: YoleckKnobs,
 ) {
-    let Ok(mut fruit) = query.get_single_mut() else { return };
+    let Ok((mut fruit, Vpeol2dPosition(position))) = query.get_single_mut() else { return };
     ui.horizontal(|ui| {
         ui.label(format!("New Style:\n#{} chosen", fruit.fruit_index));
         let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
@@ -379,11 +335,9 @@ fn edit_fruit_type(
             }
 
             if index != fruit.fruit_index {
-                // TODO: knobs
-                /*
-                let mut knob = ctx.knob(&mut commands, ("select", index));
+                let mut knob = knobs.knob(("select2", index));
                 let knob_position =
-                    (data.position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
+                    (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
                 knob.cmd.insert(SpriteSheetBundle {
                     sprite: TextureAtlasSprite {
                         index,
@@ -396,9 +350,8 @@ fn edit_fruit_type(
                     ..Default::default()
                 });
                 if knob.get_passed_data::<YoleckKnobClick>().is_some() {
-                    data.fruit_index = index;
+                    fruit.fruit_index = index;
                 }
-                */
             }
         }
     });

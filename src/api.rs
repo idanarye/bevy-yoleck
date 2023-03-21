@@ -528,3 +528,40 @@ impl<Q: 'static + WorldQuery> YoleckPopulateNewStyle<'_, '_, Q> {
         }
     }
 }
+
+#[derive(SystemParam)]
+pub struct YoleckKnobs<'w, 's> {
+    knobs_cache: ResMut<'w, YoleckKnobsCache>,
+    commands: Commands<'w, 's>,
+    knobs_query: Query<'w, 's, &'static YoleckKnobData>,
+}
+
+impl<'w, 's> YoleckKnobs<'w, 's> {
+    pub fn knob<'a, K>(&'a mut self, key: K) -> YoleckKnobHandle<'w, 's, 'a>
+    where
+        K: 'static + Send + Sync + Hash + Eq,
+    {
+        let KnobFromCache { mut cmd, is_new } = self.knobs_cache.access(key, &mut self.commands);
+        let passed;
+        if is_new {
+            cmd.insert(YoleckKnobData {
+                passed_data: Default::default(),
+            });
+            passed = Default::default();
+        } else if let Ok(knob_data) = self.knobs_query.get(cmd.id()) {
+            passed = knob_data.passed_data.clone();
+        } else {
+            passed = Default::default();
+        }
+        YoleckKnobHandle {
+            cmd,
+            is_new,
+            passed,
+        }
+    }
+}
+
+#[derive(Component)]
+pub(crate) struct YoleckKnobData {
+    pub(crate) passed_data: HashMap<TypeId, BoxedArc>,
+}
