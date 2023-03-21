@@ -355,6 +355,7 @@ impl YoleckExtForApp for App {
         let new_entry = YoleckEntityTypeInfo {
             name: entity_type.name.clone(),
             components: component_type_ids,
+            on_init: entity_type.on_init,
         };
 
         let mut construction_specs = self
@@ -458,27 +459,20 @@ impl YoleckEditSystems {
 pub struct YoleckEntityTypeInfo {
     pub name: String,
     pub components: Vec<TypeId>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) on_init: Vec<Box<dyn 'static + Sync + Send + Fn(&mut EntityCommands)>>,
 }
 
 #[derive(Default, Resource)]
 pub(crate) struct YoleckEntityConstructionSpecs {
-    entity_types: Vec<YoleckEntityTypeInfo>,
-    entity_types_index: HashMap<String, usize>,
-    component_handlers: HashMap<TypeId, YoleckComponentHandler>,
+    pub entity_types: Vec<YoleckEntityTypeInfo>,
+    pub entity_types_index: HashMap<String, usize>,
+    pub component_handlers: HashMap<TypeId, YoleckComponentHandler>,
 }
 
 impl YoleckEntityConstructionSpecs {
-    pub fn component_handlers_for(
-        &self,
-        entity_type: &str,
-    ) -> Option<impl Iterator<Item = &YoleckComponentHandler>> {
-        let entity_type_index = self.entity_types_index.get(entity_type)?;
-        Some(
-            self.entity_types[*entity_type_index]
-                .components
-                .iter()
-                .map(|component_type| &self.component_handlers[component_type]),
-        )
+    pub fn get_entity_type_info(&self, entity_type: &str) -> Option<&YoleckEntityTypeInfo> {
+        Some(&self.entity_types[*self.entity_types_index.get(entity_type)?])
     }
 }
 

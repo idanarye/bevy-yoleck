@@ -480,6 +480,8 @@ pub trait YoleckComponent: Default + Component + Serialize + for<'a> Deserialize
 pub struct YoleckEntityType {
     pub name: String,
     pub(crate) components: Vec<YoleckComponentHandler>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) on_init: Vec<Box<dyn 'static + Sync + Send + Fn(&mut EntityCommands)>>,
 }
 
 impl YoleckEntityType {
@@ -487,11 +489,19 @@ impl YoleckEntityType {
         Self {
             name: name.to_string(),
             components: Default::default(),
+            on_init: Default::default(),
         }
     }
 
     pub fn with<T: YoleckComponent>(mut self) -> Self {
         self.components.push(YoleckComponentHandler::new::<T>());
+        self
+    }
+
+    pub fn insert_on_init(mut self, bundle: impl Clone + Bundle) -> Self {
+        self.on_init.push(Box::new(move |cmd| {
+            cmd.insert(bundle.clone());
+        }));
         self
     }
 }

@@ -79,15 +79,22 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
 
             let mut components_data = HashMap::new();
 
-            if let Some(component_handlers) =
-                construction_specs.component_handlers_for(&raw_entry.header.type_name)
-            {
-                for handler in component_handlers {
+            if let Some(entity_type_info) = construction_specs.get_entity_type_info(&raw_entry.header.type_name) {
+                // construction_specs.component_handlers_for(&raw_entry.header.type_name)
+            // {
+                for component_name in entity_type_info.components.iter() {
+                    let Some(handler) = construction_specs.component_handlers.get(component_name) else {
+                        error!("Component type {:?} is not registered", component_name);
+                        continue;
+                    };
                     let raw_component_data = raw_entry.data.get(handler.key);
                     (handler.insert_to_command)(&mut cmd, raw_component_data.cloned());
                     if let Some(raw_component_data) = raw_component_data {
                         components_data.insert(handler.key, raw_component_data.clone());
                     }
+                }
+                for dlg in entity_type_info.on_init.iter() {
+                    dlg(&mut cmd);
                 }
             } else {
                 error!("Entity type {:?} is not registered", raw_entry.header.name);
@@ -143,26 +150,8 @@ pub(crate) fn yoleck_process_loading_command(
     mut commands: Commands,
     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
     mut raw_levels_assets: ResMut<Assets<YoleckRawLevel>>,
-    specs: Res<YoleckEntityConstructionSpecs>,
     entity_upgrading: Option<Res<YoleckEntityUpgrading>>,
 ) {
-    let mut process_entry = |entry: YoleckRawEntry| {
-        let component_handlers = specs.component_handlers_for(&entry.header.type_name);
-        if let Some(component_handlers) = component_handlers {
-            let mut data = entry.data.clone();
-            let Some(data) = data.as_object_mut() else {
-                warn!("Entity data is not an object");
-                return;
-            };
-            let mut cmd = commands.spawn(entry);
-            for handler in component_handlers {
-                (handler.insert_to_command)(&mut cmd, data.remove(handler.key));
-            }
-        } else {
-            warn!("Entity type {:?} is not registered", entry.header.type_name);
-        }
-    };
-
     match core::mem::replace(
         yoleck_loading_command.as_mut(),
         YoleckLoadingCommand::NoCommand,
@@ -174,7 +163,7 @@ pub(crate) fn yoleck_process_loading_command(
                     entity_upgrading.upgrade_raw_level_file(level);
                 }
                 for entry in level.entries() {
-                    process_entry(entry.clone());
+                    commands.spawn(entry.clone());
                 }
             }
         }
@@ -183,7 +172,7 @@ pub(crate) fn yoleck_process_loading_command(
                 entity_upgrading.upgrade_raw_level_file(&mut level);
             }
             for entry in level.into_entries() {
-                process_entry(entry);
+                commands.spawn(entry);
             }
         }
     }

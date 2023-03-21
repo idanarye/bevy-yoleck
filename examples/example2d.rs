@@ -76,6 +76,11 @@ fn main() {
             }))
             .edit_with(edit_player)
     });
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("Player")
+            .with::<Vpeol2dPosition>()
+            .insert_on_init(IsPlayer)
+    });
 
     app.add_yoleck_handler(YoleckTypeHandler::<FruitType>::new("Fruit"));
     app.add_yoleck_entity_type({
@@ -199,7 +204,7 @@ impl FromWorld for GameAssets {
     }
 }
 
-#[derive(Component)]
+#[derive(Clone, Component)]
 struct IsPlayer;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
@@ -223,7 +228,7 @@ fn populate_player(mut populate: YoleckPopulate<Player>, assets: Res<GameAssets>
                 texture: assets.player_sprite.clone(),
                 ..Default::default()
             },
-            IsPlayer,
+            // IsPlayer,
         ));
     });
 }

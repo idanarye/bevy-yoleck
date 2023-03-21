@@ -245,7 +245,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
         ResMut<YoleckKnobsCache>,
-        Res<YoleckEntityConstructionSpecs>,
     )>::new(world);
 
     let mut writer_state = SystemState::<EventWriter<YoleckEditorEvent>>::new(world);
@@ -267,7 +266,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 editor_state,
                 mut writer,
                 mut knobs_cache,
-                construction_specs,
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -334,10 +332,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         data,
                         select_created_entity,
                     } => {
-                        let Some(component_handlers) = construction_specs.component_handlers_for(type_name) else {
-                            error!("Entity type {:?} is not registered", type_name);
-                            break;
-                        };
                         let mut cmd = commands.spawn(YoleckRawEntry {
                             header: YoleckEntryHeader {
                                 type_name: type_name.clone(),
@@ -345,9 +339,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             },
                             data: data.clone(),
                         });
-                        for handler in component_handlers {
-                            (handler.insert_to_command)(&mut cmd, None);
-                        }
                         if *select_created_entity {
                             yoleck.entity_being_edited = Some(cmd.id());
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
