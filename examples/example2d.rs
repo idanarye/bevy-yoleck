@@ -9,10 +9,9 @@ use bevy_yoleck::vpeol_2d::{
     Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dRotatation, Vpeol2dScale,
 };
 use bevy_yoleck::{
-    YoleckComponent, YoleckDirective, YoleckEditNewStyle, YoleckEditorLevelsDirectoryPath,
+    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath,
     YoleckEditorState, YoleckEntityType, YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs,
-    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulateNewStyle,
-    YoleckUi,
+    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckUi,
 };
 use serde::{Deserialize, Serialize};
 
@@ -208,10 +207,7 @@ struct Player {
     rotation: f32,
 }
 
-fn populate_player(
-    mut populate: YoleckPopulateNewStyle<(), With<IsPlayer>>,
-    assets: Res<GameAssets>,
-) {
+fn populate_player(mut populate: YoleckPopulate<(), With<IsPlayer>>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, mut cmd, ()| {
         cmd.insert((SpriteBundle {
             sprite: Sprite {
@@ -226,10 +222,7 @@ fn populate_player(
 
 fn edit_player(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<
-        (&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation),
-        With<YoleckEditNewStyle>,
-    >,
+    mut query: Query<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation), With<YoleckEdit>>,
     mut knobs: YoleckKnobs,
 ) {
     let Ok((_, Vpeol2dPosition(position), mut rotation)) = query.get_single_mut() else { return };
@@ -292,7 +285,7 @@ impl YoleckComponent for FruitType {
 
 fn duplicate_fruit(
     mut ui: ResMut<YoleckUi>,
-    query: Query<(&FruitType, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
+    query: Query<(&FruitType, &Vpeol2dPosition), With<YoleckEdit>>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
     let Ok((fruit_type, Vpeol2dPosition(position))) = query.get_single() else { return };
@@ -312,7 +305,7 @@ fn duplicate_fruit(
 
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(&mut FruitType, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
+    mut query: Query<(&mut FruitType, &Vpeol2dPosition), With<YoleckEdit>>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
 ) {
@@ -354,7 +347,7 @@ fn edit_fruit_type(
     });
 }
 
-fn populate_fruit(mut populate: YoleckPopulateNewStyle<&mut FruitType>, assets: Res<GameAssets>) {
+fn populate_fruit(mut populate: YoleckPopulate<&mut FruitType>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, mut cmd, fruit| {
         cmd.despawn_descendants(); // TODO: This is bad! Replace it!
         cmd.insert((
@@ -406,7 +399,7 @@ impl YoleckComponent for TextContent {
     const KEY: &'static str = "TextContent";
 }
 
-fn populate_text(mut populate: YoleckPopulateNewStyle<&TextContent>, assets: Res<GameAssets>) {
+fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, mut cmd, content| {
         cmd.insert(Text2dBundle {
             text: {
@@ -426,7 +419,7 @@ fn populate_text(mut populate: YoleckPopulateNewStyle<&TextContent>, assets: Res
 
 fn edit_text(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(&mut TextContent, &mut Vpeol2dScale), With<YoleckEditNewStyle>>,
+    mut query: Query<(&mut TextContent, &mut Vpeol2dScale), With<YoleckEdit>>,
 ) {
     let Ok((mut content, mut scale)) = query.get_single_mut() else { return };
     ui.text_edit_multiline(&mut content.text);

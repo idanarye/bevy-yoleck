@@ -8,9 +8,9 @@ use bevy_egui::egui;
 
 use crate::api::YoleckKnobData;
 use crate::{
-    BoxedArc, YoleckComponent, YoleckEditNewStyle, YoleckEditSystems, YoleckEditorEvent,
-    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache,
-    YoleckManaged, YoleckRawEntry, YoleckSchedule, YoleckState, YoleckUi,
+    BoxedArc, YoleckComponent, YoleckEdit, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
+    YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache, YoleckManaged,
+    YoleckRawEntry, YoleckSchedule, YoleckState, YoleckUi,
 };
 
 #[derive(Debug)]
@@ -232,13 +232,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         Query<(Entity, &mut YoleckManaged)>,
-        Query<Entity, With<YoleckEditNewStyle>>,
+        Query<Entity, With<YoleckEdit>>,
         EventReader<YoleckDirective>,
-        Query<(
-            Entity,
-            Option<&mut YoleckEditNewStyle>,
-            Option<&mut YoleckKnobData>,
-        )>,
+        Query<(Entity, Option<&mut YoleckEdit>, Option<&mut YoleckKnobData>)>,
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
@@ -282,25 +278,21 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                 if entity_to_deselect == *entity {
                                     already_selected = true;
                                 } else {
-                                    commands
-                                        .entity(entity_to_deselect)
-                                        .remove::<YoleckEditNewStyle>();
+                                    commands.entity(entity_to_deselect).remove::<YoleckEdit>();
                                     writer.send(YoleckEditorEvent::EntityDeselected(
                                         entity_to_deselect,
                                     ));
                                 }
                             }
                             if !already_selected {
-                                commands.entity(*entity).insert(YoleckEditNewStyle {
+                                commands.entity(*entity).insert(YoleckEdit {
                                     passed_data: Default::default(),
                                 });
                                 writer.send(YoleckEditorEvent::EntitySelected(*entity));
                             }
                         } else {
                             for entity_to_deselect in yoleck_edited_query.iter() {
-                                commands
-                                    .entity(entity_to_deselect)
-                                    .remove::<YoleckEditNewStyle>();
+                                commands.entity(entity_to_deselect).remove::<YoleckEdit>();
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
@@ -335,13 +327,11 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         if *select_created_entity {
                             yoleck.entity_being_edited = Some(cmd.id());
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
-                            cmd.insert(YoleckEditNewStyle {
+                            cmd.insert(YoleckEdit {
                                 passed_data: Default::default(),
                             });
                             for entity_to_deselect in yoleck_edited_query.iter() {
-                                commands
-                                    .entity(entity_to_deselect)
-                                    .remove::<YoleckEditNewStyle>();
+                                commands.entity(entity_to_deselect).remove::<YoleckEdit>();
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }

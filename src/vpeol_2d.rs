@@ -85,8 +85,8 @@ use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    YoleckComponent, YoleckEditNewStyle, YoleckEditorState, YoleckExtForApp, YoleckPopulateBaseSet,
-    YoleckPopulateNewStyle, YoleckUi,
+    YoleckComponent, YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckPopulate,
+    YoleckPopulateBaseSet, YoleckUi,
 };
 
 /// Add the systems required for loading levels that use vpeol_2d components
@@ -486,7 +486,7 @@ impl YoleckComponent for Vpeol2dScale {
 
 fn vpeol_2d_edit_position(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(&YoleckEditNewStyle, &mut Vpeol2dPosition)>,
+    mut query: Query<(&YoleckEdit, &mut Vpeol2dPosition)>,
 ) {
     let Ok((edit, mut position)) = query.get_single_mut() else { return };
     if let Some(pos) = edit.get_passed_data::<Vec3>() {
@@ -499,7 +499,7 @@ fn vpeol_2d_edit_position(
 }
 
 fn vpeol_2d_populate_transform(
-    mut populate: YoleckPopulateNewStyle<(
+    mut populate: YoleckPopulate<(
         &Vpeol2dPosition,
         Option<&Vpeol2dRotatation>,
         Option<&Vpeol2dScale>,

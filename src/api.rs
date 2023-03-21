@@ -328,33 +328,25 @@ impl YoleckEntityType {
     }
 }
 
-// TODO: remove the NewStyle suffix after removing the old YoleckEdit
 #[derive(Component)]
-pub struct YoleckEditNewStyle {
+pub struct YoleckEdit {
     pub(crate) passed_data: HashMap<TypeId, BoxedArc>,
 }
 
-impl YoleckEditNewStyle {
+impl YoleckEdit {
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         self.passed_data.get(&TypeId::of::<T>())?.downcast_ref()
     }
 }
 
 #[derive(SystemParam)]
-pub struct YoleckPopulateNewStyle<
-    'w,
-    's,
-    Q: 'static + WorldQuery,
-    F: 'static + ReadOnlyWorldQuery = (),
-> {
+pub struct YoleckPopulate<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
     entities_to_populate: Res<'w, EntitiesToPopulate>,
     query: Query<'w, 's, Q, F>,
     commands: Commands<'w, 's>,
 }
 
-impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery>
-    YoleckPopulateNewStyle<'_, '_, Q, F>
-{
+impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckPopulate<'_, '_, Q, F> {
     pub fn populate(
         &mut self,
         mut dlg: impl FnMut((), EntityCommands, <Q as WorldQuery>::Item<'_>),
