@@ -75,25 +75,26 @@ fn main() {
             .edit_with(edit_player)
     });
 
-    app.add_yoleck_handler({ YoleckTypeHandler::<Fruit>::new("Fruit") });
+    app.add_yoleck_handler(YoleckTypeHandler::<FruitType>::new("Fruit"));
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
-            .with::<Fruit>()
+            .with::<FruitType>()
             .with::<Vpeol2dPosition>()
     });
     app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_fruit_type);
+        .add_system(populate_fruit);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "Fruit" {
             return;
         }
 
-        let fruit = data.get_mut("Fruit").unwrap().as_object_mut().unwrap();
-        data["Vpeol2dPosition"] = fruit.remove("position").unwrap();
-
-        info!("Result {:#?}", data);
+        let mut old_data = data.as_object_mut().unwrap().remove("Fruit").unwrap();
+        data["FruitType"] = serde_json::json!({
+            "index": old_data.get_mut("fruit_index").unwrap().take(),
+        });
+        data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
     app.add_yoleck_handler({
@@ -260,56 +261,29 @@ fn control_player(
 struct IsFruit;
 
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
-struct Fruit {
+struct FruitType {
     #[serde(default)]
-    position: Vec2,
-    #[serde(default)]
-    fruit_index: usize,
+    index: usize,
 }
 
-impl YoleckComponent for Fruit {
-    const KEY: &'static str = "Fruit";
-}
-
-fn _populate_fruit(mut populate: YoleckPopulate<Fruit>, assets: Res<GameAssets>) {
-    populate.populate(|_ctx, data, mut cmd| {
-        cmd.despawn_descendants();
-        cmd.insert((
-            SpatialBundle::from_transform(Transform::from_translation(data.position.extend(0.0))),
-            VpeolWillContainClickableChildren,
-            IsFruit,
-        ));
-        // Could have placed them on the main entity, but with this the children picking feature
-        // can be tested and demonstrated.
-        cmd.with_children(|commands| {
-            commands.spawn(SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
-                    index: data.fruit_index,
-                    custom_size: Some(Vec2::new(100.0, 100.0)),
-                    ..Default::default()
-                },
-                texture_atlas: assets.fruits_sprite_sheet.clone(),
-                ..Default::default()
-            });
-        });
-    });
+impl YoleckComponent for FruitType {
+    const KEY: &'static str = "FruitType";
 }
 
 fn duplicate_fruit(
     mut ui: ResMut<YoleckUi>,
-    query: Query<(&Fruit, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
+    query: Query<(&FruitType, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((fruit, Vpeol2dPosition(position))) = query.get_single() else { return };
+    let Ok((fruit_type, Vpeol2dPosition(position))) = query.get_single() else { return };
     if ui.button("Duplicate").clicked() {
         writer.send(
             YoleckDirective::spawn_entity(
                 "Fruit", true, // select_created_entity
             )
             .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
-            .with(Fruit {
-                position: *position - 100.0 * Vec2::Y,
-                fruit_index: fruit.fruit_index,
+            .with(FruitType {
+                index: fruit_type.index,
             })
             .into(),
         );
@@ -318,26 +292,26 @@ fn duplicate_fruit(
 
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(&mut Fruit, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
+    mut query: Query<(&mut FruitType, &Vpeol2dPosition), With<YoleckEditNewStyle>>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((mut fruit, Vpeol2dPosition(position))) = query.get_single_mut() else { return };
+    let Ok((mut fruit_type, Vpeol2dPosition(position))) = query.get_single_mut() else { return };
     ui.horizontal(|ui| {
-        ui.label(format!("New Style:\n#{} chosen", fruit.fruit_index));
+        ui.label(format!("New Style:\n#{} chosen", fruit_type.index));
         let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
         for (index, rect) in rects.iter().enumerate() {
             if ui
                 .add_enabled(
-                    index != fruit.fruit_index,
+                    index != fruit_type.index,
                     egui::ImageButton::new(*texture_id, [100.0, 100.0]).uv(*rect),
                 )
                 .clicked()
             {
-                fruit.fruit_index = index;
+                fruit_type.index = index;
             }
 
-            if index != fruit.fruit_index {
+            if index != fruit_type.index {
                 let mut knob = knobs.knob(("select2", index));
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
@@ -353,18 +327,18 @@ fn edit_fruit_type(
                     ..Default::default()
                 });
                 if knob.get_passed_data::<YoleckKnobClick>().is_some() {
-                    fruit.fruit_index = index;
+                    fruit_type.index = index;
                 }
             }
         }
     });
 }
 
-fn populate_fruit_type(mut populate: YoleckPopulateNewStyle<&mut Fruit>, assets: Res<GameAssets>) {
+fn populate_fruit(mut populate: YoleckPopulateNewStyle<&mut FruitType>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, mut cmd, fruit| {
         cmd.despawn_descendants(); // TODO: This is bad! Replace it!
         cmd.insert((
-            SpatialBundle::from_transform(Transform::from_translation(fruit.position.extend(0.0))),
+            VisibilityBundle::default(),
             VpeolWillContainClickableChildren,
             IsFruit,
         ));
@@ -373,7 +347,7 @@ fn populate_fruit_type(mut populate: YoleckPopulateNewStyle<&mut Fruit>, assets:
         cmd.with_children(|commands| {
             commands.spawn(SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
-                    index: fruit.fruit_index,
+                    index: fruit.index,
                     custom_size: Some(Vec2::new(100.0, 100.0)),
                     ..Default::default()
                 },
