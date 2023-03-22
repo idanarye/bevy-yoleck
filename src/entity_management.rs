@@ -1,5 +1,4 @@
 use bevy::asset::{AssetLoader, LoadedAsset};
-use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
 use bevy::reflect::TypeUuid;
 use bevy::utils::HashMap;
@@ -52,14 +51,14 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
     }
 }
 
-pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
-    let editor_state = world.resource::<State<YoleckEditorState>>().0;
+pub(crate) fn yoleck_process_raw_entries(
+    editor_state: Res<State<YoleckEditorState>>,
+    mut commands: Commands,
+    mut raw_entries_query: Query<(Entity, &mut YoleckRawEntry)>,
+    construction_specs: Res<YoleckEntityConstructionSpecs>,
+) {
     let mut entities_by_type = HashMap::<String, Vec<Entity>>::new();
-    let mut commands_queue = CommandQueue::default();
-    let mut raw_entries_query = world.query::<(Entity, &YoleckRawEntry)>();
-    let mut commands = Commands::new(&mut commands_queue, world);
-    let construction_specs = world.resource::<YoleckEntityConstructionSpecs>();
-    for (entity, raw_entry) in raw_entries_query.iter(world) {
+    for (entity, mut raw_entry) in raw_entries_query.iter_mut() {
         entities_by_type
             .entry(raw_entry.header.type_name.clone())
             .or_default()
@@ -77,13 +76,14 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                         error!("Component type {:?} is not registered", component_name);
                         continue;
                     };
-                // TODO: use `.map(|component_data| component_data.take())` instead, since the raw
-                // entry is going to be deleted anyway
-                let raw_component_data = raw_entry.data.get(handler.key()).cloned();
+                let raw_component_data = raw_entry
+                    .data
+                    .get_mut(handler.key())
+                    .map(|component_data| component_data.take());
                 handler.init_in_entity(raw_component_data, &mut cmd, &mut components_data);
             }
             for dlg in entity_type_info.on_init.iter() {
-                dlg(editor_state, &mut cmd);
+                dlg(editor_state.0, &mut cmd);
             }
         } else {
             error!("Entity type {:?} is not registered", raw_entry.header.name);
@@ -96,8 +96,6 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
             components_data,
         });
     }
-    commands_queue.apply(world); // is this still needed?
-                                 // TODO: try making `yoleck_process_raw_entries` a normal system
 }
 
 pub(crate) fn yoleck_prepare_populate_schedule(

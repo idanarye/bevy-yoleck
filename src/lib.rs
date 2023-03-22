@@ -233,8 +233,12 @@ impl Plugin for YoleckPluginBase {
                 .chain(),
         );
 
-        app.add_system(
-            entity_management::yoleck_process_raw_entries
+        app.add_systems(
+            (
+                entity_management::yoleck_process_raw_entries,
+                apply_system_buffers,
+            )
+                .chain()
                 .in_set(YoleckSystemSet::ProcessRawEntities),
         );
         app.insert_resource(EntitiesToPopulate(Default::default()));
