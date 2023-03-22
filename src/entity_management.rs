@@ -4,6 +4,7 @@ use bevy::reflect::TypeUuid;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
+use crate::api::PopulateReason;
 use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::{
@@ -101,21 +102,34 @@ pub(crate) fn yoleck_process_raw_entries(
 pub(crate) fn yoleck_prepare_populate_schedule(
     mut query: Query<(Entity, &mut YoleckManaged)>,
     mut entities_to_populate: ResMut<EntitiesToPopulate>,
-    mut yoleck_state: ResMut<YoleckState>,
+    mut yoleck_state: Option<ResMut<YoleckState>>,
+    editor_state: Res<State<YoleckEditorState>>,
 ) {
     entities_to_populate.0.clear();
+    let mut level_needs_saving = false;
     for (entity, mut yoleck_managed) in query.iter_mut() {
         match yoleck_managed.lifecycle_status {
             YoleckEntityLifecycleStatus::Synchronized => {}
             YoleckEntityLifecycleStatus::JustCreated => {
-                entities_to_populate.0.push(entity);
+                let populate_reason = match editor_state.0 {
+                    YoleckEditorState::EditorActive => PopulateReason::EditorInit,
+                    YoleckEditorState::GameActive => PopulateReason::RealGame,
+                };
+                entities_to_populate.0.push((entity, populate_reason));
             }
             YoleckEntityLifecycleStatus::JustChanged => {
-                entities_to_populate.0.push(entity);
-                yoleck_state.level_needs_saving = true;
+                entities_to_populate
+                    .0
+                    .push((entity, PopulateReason::EditorUpdate));
+                level_needs_saving = true;
             }
         }
         yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::Synchronized;
+    }
+    if level_needs_saving {
+        if let Some(yoleck_state) = yoleck_state.as_mut() {
+            yoleck_state.level_needs_saving = true;
+        }
     }
 }
 
@@ -124,7 +138,7 @@ pub(crate) fn yoleck_run_populate_schedule(world: &mut World) {
 }
 
 #[derive(Resource)]
-pub(crate) struct EntitiesToPopulate(pub Vec<Entity>);
+pub(crate) struct EntitiesToPopulate(pub Vec<(Entity, PopulateReason)>);
 
 pub(crate) fn yoleck_process_loading_command(
     mut commands: Commands,

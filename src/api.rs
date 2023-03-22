@@ -1,6 +1,5 @@
 use std::any::TypeId;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
 use bevy::ecs::query::{ReadOnlyWorldQuery, WorldQuery};
@@ -102,13 +101,11 @@ pub(crate) enum PopulateReason {
 }
 
 /// A context for [`YoleckPopulate::populate`].
-pub struct YoleckPopulateContext<'a> {
+pub struct YoleckPopulateContext {
     pub(crate) reason: PopulateReason,
-    // I may add stuff that need 'a later, and I don't want to change the signature
-    pub(crate) _phantom_data: PhantomData<&'a ()>,
 }
 
-impl<'a> YoleckPopulateContext<'a> {
+impl YoleckPopulateContext {
     /// `true` if the entity is created in editor mode, `false` if created in playtest or actual game.
     pub fn is_in_editor(&self) -> bool {
         match self.reason {
@@ -282,12 +279,15 @@ pub struct YoleckPopulate<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnly
 impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckPopulate<'_, '_, Q, F> {
     pub fn populate(
         &mut self,
-        mut dlg: impl FnMut((), EntityCommands, <Q as WorldQuery>::Item<'_>),
+        mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as WorldQuery>::Item<'_>),
     ) {
-        for entity in self.entities_to_populate.0.iter() {
+        for (entity, populate_reason) in self.entities_to_populate.0.iter() {
             if let Ok(data) = self.query.get_mut(*entity) {
                 let cmd = self.commands.entity(*entity);
-                dlg((), cmd, data);
+                let context = YoleckPopulateContext {
+                    reason: *populate_reason,
+                };
+                dlg(context, cmd, data);
             }
         }
     }
