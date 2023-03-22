@@ -122,30 +122,10 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
     }
 
     fn build_in_bevy_app(&self, app: &mut App) {
-        if let Some(schedule) = app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents) {
-            schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
-                for (mut yoleck_managed, component) in query.iter_mut() {
-                    let yoleck_managed = yoleck_managed.as_mut();
-                    match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
-                        bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
-                            yoleck_managed.lifecycle_status =
-                                YoleckEntityLifecycleStatus::JustChanged;
-                            entry.insert(Box::<T>::new(component.clone()));
-                        }
-                        bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
-                            let existing: &T = entry
-                                .get()
-                                .downcast_ref()
-                                .expect("Component data is of wrong type");
-                            if existing != component.as_ref() {
-                                yoleck_managed.lifecycle_status =
-                                    YoleckEntityLifecycleStatus::JustChanged;
-                                entry.insert(Box::<T>::new(component.as_ref().clone()));
-                            }
-                        }
-                    }
-                }
-            });
+        if let Some(schedule) =
+            app.get_schedule_mut(YoleckSchedule::UpdateManagedDataFromComponents)
+        {
+            schedule.add_system(Self::update_data_from_components);
         }
     }
 
@@ -154,5 +134,29 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
             .downcast_ref::<T>()
             .expect("Serialize must be called with the correct type");
         serde_json::to_value(concrete).expect("Component must always be serializable")
+    }
+}
+
+impl<T: YoleckComponent> YoleckComponentHandlerImpl<T> {
+    fn update_data_from_components(mut query: Query<(&mut YoleckManaged, &mut T)>) {
+        for (mut yoleck_managed, component) in query.iter_mut() {
+            let yoleck_managed = yoleck_managed.as_mut();
+            match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
+                bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
+                    yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::JustChanged;
+                    entry.insert(Box::<T>::new(component.clone()));
+                }
+                bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
+                    let existing: &mut T = entry
+                        .get_mut()
+                        .downcast_mut()
+                        .expect("Component data is of wrong type");
+                    if existing != component.as_ref() {
+                        yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::JustChanged;
+                        *existing = component.clone();
+                    }
+                }
+            }
+        }
     }
 }

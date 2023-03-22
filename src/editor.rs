@@ -499,6 +499,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         prepared.end(ui);
 
         // Some systems may have edited the entries, so we need to update them
-        world.run_schedule(YoleckSchedule::UpdateRawDataFromComponents);
+        world.run_schedule(YoleckSchedule::UpdateManagedDataFromComponents);
     }
 }

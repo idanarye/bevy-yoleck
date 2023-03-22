@@ -301,7 +301,10 @@ impl Plugin for YoleckPluginForEditor {
             editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
         );
 
-        app.add_schedule(YoleckSchedule::UpdateRawDataFromComponents, Schedule::new());
+        app.add_schedule(
+            YoleckSchedule::UpdateManagedDataFromComponents,
+            Schedule::new(),
+        );
     }
 }
 
@@ -523,7 +526,7 @@ impl Default for YoleckEditorSections {
 
 #[derive(ScheduleLabel, Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum YoleckSchedule {
-    UpdateRawDataFromComponents,
+    UpdateManagedDataFromComponents,
     Populate,
 }
 
