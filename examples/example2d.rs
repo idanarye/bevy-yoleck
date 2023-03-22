@@ -8,11 +8,7 @@ use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, Yo
 use bevy_yoleck::vpeol_2d::{
     Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dRotatation, Vpeol2dScale,
 };
-use bevy_yoleck::{
-    YoleckComponent, YoleckDirective, YoleckEdit, YoleckEditorLevelsDirectoryPath,
-    YoleckEditorState, YoleckEntityType, YoleckEntityUpgradingPlugin, YoleckExtForApp, YoleckKnobs,
-    YoleckLoadingCommand, YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckUi,
-};
+use bevy_yoleck::{prelude::*, YoleckDirective};
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -41,7 +37,7 @@ fn main() {
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
         // example3d in the same repository so we use different directories.
-        app.insert_resource(YoleckEditorLevelsDirectoryPath(
+        app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
         app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor);

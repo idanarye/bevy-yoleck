@@ -12,7 +12,9 @@ use bevy::utils::HashMap;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
-use crate::{YoleckDirective, YoleckEditorState, YoleckKnobData, YoleckState};
+use crate::knobs::YoleckKnobData;
+use crate::prelude::YoleckEditorState;
+use crate::{YoleckDirective, YoleckState};
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]

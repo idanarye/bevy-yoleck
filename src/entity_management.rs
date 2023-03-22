@@ -4,12 +4,13 @@ use bevy::reflect::TypeUuid;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::api::PopulateReason;
+use crate::editor::YoleckEditorState;
 use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
+use crate::populating::PopulateReason;
 use crate::{
-    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus, YoleckManaged,
-    YoleckSchedule, YoleckState,
+    YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus, YoleckManaged, YoleckSchedule,
+    YoleckState,
 };
 
 /// Used by Yoleck to determine how to handle the entity.

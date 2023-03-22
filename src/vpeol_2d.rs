@@ -84,10 +84,7 @@ use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    YoleckComponent, YoleckEdit, YoleckEditorState, YoleckExtForApp, YoleckPopulate,
-    YoleckPopulateBaseSet, YoleckUi,
-};
+use crate::{prelude::*, YoleckPopulateBaseSet};
 
 /// Add the systems required for loading levels that use vpeol_2d components
 pub struct Vpeol2dPluginForGame;

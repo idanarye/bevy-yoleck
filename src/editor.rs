@@ -6,12 +6,103 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
-use crate::api::YoleckKnobData;
+use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+use crate::knobs::{YoleckKnobData, YoleckKnobsCache};
+use crate::prelude::{YoleckComponent, YoleckEdit, YoleckUi};
 use crate::{
-    BoxedArc, YoleckComponent, YoleckEdit, YoleckEditSystems, YoleckEditorEvent, YoleckEditorState,
-    YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache, YoleckManaged,
-    YoleckRawEntry, YoleckSchedule, YoleckState, YoleckUi,
+    BoxedArc, YoleckEditSystems, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule,
+    YoleckState,
 };
+
+/// Whether or not the Yoleck editor is active.
+#[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum YoleckEditorState {
+    /// Editor mode. The editor is active and can be used to edit entities.
+    #[default]
+    EditorActive,
+    /// Game mode. Either the actual game or playtest from the editor mode.
+    GameActive,
+}
+
+/// Sync the game's state back and forth when the level editor enters and exits playtest mode.
+///
+/// Add this as a plugin. When using it, there is no need to initialize the state with `add_state`
+/// - `YoleckSyncWithEditorState` will initialize it and set its initial value to `when_editor`.
+/// This means that the state's default value should be it's initial value for non-editor mode
+/// (which is not necessarily `when_game`, because the game may start in a menu state or a loading
+/// state)
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::{YoleckSyncWithEditorState, YoleckPluginForEditor, YoleckPluginForGame};
+/// # use bevy_yoleck::bevy_egui::EguiPlugin;
+/// #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+/// enum GameState {
+///     #[default]
+///     Loading,
+///     Game,
+///     Editor,
+/// }
+///
+/// # let mut app = App::new();
+/// # let executable_started_in_editor_mode = true;
+/// if executable_started_in_editor_mode {
+///     // These two plugins are needed for editor mode:
+///     app.add_plugin(EguiPlugin);
+///     app.add_plugin(YoleckPluginForEditor);
+///
+///     app.add_plugin(YoleckSyncWithEditorState {
+///         when_editor: GameState::Editor,
+///         when_game: GameState::Game,
+///     });
+/// } else {
+///     // This plugin is needed for game mode:
+///     app.add_plugin(YoleckPluginForGame);
+///
+///     app.add_state::<GameState>();
+/// }
+pub struct YoleckSyncWithEditorState<T>
+where
+    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+{
+    pub when_editor: T,
+    pub when_game: T,
+}
+
+impl<T> Plugin for YoleckSyncWithEditorState<T>
+where
+    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+{
+    fn build(&self, app: &mut App) {
+        app.add_state::<T>();
+        let initial_state = self.when_editor.clone();
+        app.add_startup_system(move |mut game_state: ResMut<NextState<T>>| {
+            game_state.set(initial_state.clone());
+        });
+        let when_editor = self.when_editor.clone();
+        let when_game = self.when_game.clone();
+        app.add_system(
+            move |editor_state: Res<State<YoleckEditorState>>,
+                  mut game_state: ResMut<NextState<T>>| {
+                game_state.set(match editor_state.0 {
+                    YoleckEditorState::EditorActive => when_editor.clone(),
+                    YoleckEditorState::GameActive => when_game.clone(),
+                });
+            },
+        );
+    }
+}
+
+/// Events emitted by the Yoleck editor.
+///
+/// Modules that provide editing overlays over the viewport (like [vpeol](crate::vpeol)) can
+/// use these events to update their status to match with the editor.
+#[derive(Debug)]
+pub enum YoleckEditorEvent {
+    EntitySelected(Entity),
+    EntityDeselected(Entity),
+    EditedEntityPopulated(Entity),
+}
 
 #[derive(Debug)]
 enum YoleckDirectiveInner {

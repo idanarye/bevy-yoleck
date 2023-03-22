@@ -164,22 +164,23 @@
 //! }
 //! ```
 
-mod api;
+mod editing;
 mod editor;
 mod editor_window;
 mod entity_management;
 mod entity_upgrading;
-mod knobs;
+pub mod knobs;
 mod level_files_manager;
 pub mod level_files_upgrading;
 mod level_index;
+mod populating;
+mod specs_registration;
 #[cfg(feature = "vpeol")]
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
 
 use std::any::{Any, TypeId};
-use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -188,22 +189,30 @@ use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-pub use self::api::{
-    YoleckComponent, YoleckEdit, YoleckEditorEvent, YoleckEditorState, YoleckEntityType,
-    YoleckKnobHandle, YoleckKnobs, YoleckPopulate, YoleckPopulateContext,
-    YoleckSyncWithEditorState, YoleckUi,
-};
+pub mod prelude {
+    pub use crate::editing::{YoleckEdit, YoleckUi};
+    pub use crate::editor::{YoleckEditorState, YoleckSyncWithEditorState};
+    pub use crate::entity_management::YoleckLoadingCommand;
+    pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
+    pub use crate::knobs::YoleckKnobs;
+    pub use crate::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
+    pub use crate::populating::YoleckPopulate;
+    pub use crate::specs_registration::{YoleckComponent, YoleckEntityType};
+    pub use crate::{YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame};
+}
+
 pub use self::editor::YoleckDirective;
+pub use self::editor::YoleckEditorEvent;
+use self::editor::YoleckEditorState;
 pub use self::editor_window::YoleckEditorSection;
-use self::entity_management::EntitiesToPopulate;
-pub use self::entity_management::{
-    YoleckEntryHeader, YoleckLoadingCommand, YoleckRawEntry, YoleckRawLevel,
-};
+
+use self::entity_management::{EntitiesToPopulate, YoleckLoadingCommand, YoleckRawLevel};
 use self::entity_upgrading::YoleckEntityUpgrading;
-pub use self::entity_upgrading::YoleckEntityUpgradingPlugin;
-pub use self::knobs::{YoleckKnobData, YoleckKnobsCache};
+use self::knobs::YoleckKnobsCache;
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
-pub use self::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
+use self::level_index::YoleckLevelIndex;
+pub use self::populating::YoleckPopulateContext;
+use self::specs_registration::{YoleckComponentHandler, YoleckEntityType};
 pub use bevy_egui;
 pub use bevy_egui::egui;
 
@@ -509,90 +518,6 @@ impl Default for YoleckEditorSections {
             editor::entity_selection_section.into(),
             editor::entity_editing_section.into(),
         ])
-    }
-}
-
-trait YoleckComponentHandler: 'static + Sync + Send {
-    fn component_type(&self) -> TypeId;
-    fn key(&self) -> &'static str;
-    fn init_in_entity(
-        &self,
-        data: Option<serde_json::Value>,
-        cmd: &mut EntityCommands,
-        components_data: &mut HashMap<TypeId, BoxedAny>,
-    );
-    fn build_in_bevy_app(&self, app: &mut App);
-    fn serialize(&self, component: &dyn Any) -> serde_json::Value;
-}
-
-#[derive(Default)]
-struct YoleckComponentHandlerImpl<T: YoleckComponent> {
-    _phantom_data: PhantomData<T>,
-}
-
-impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T> {
-    fn component_type(&self) -> TypeId {
-        TypeId::of::<T>()
-    }
-
-    fn key(&self) -> &'static str {
-        T::KEY
-    }
-
-    fn init_in_entity(
-        &self,
-        data: Option<serde_json::Value>,
-        cmd: &mut EntityCommands,
-        components_data: &mut HashMap<TypeId, BoxedAny>,
-    ) {
-        let component: T = if let Some(data) = data {
-            match serde_json::from_value(data) {
-                Ok(component) => component,
-                Err(err) => {
-                    error!("Cannot load {:?}: {:?}", T::KEY, err);
-                    return;
-                }
-            }
-        } else {
-            Default::default()
-        };
-        components_data.insert(self.component_type(), Box::new(component.clone()));
-        cmd.insert(component);
-    }
-
-    fn build_in_bevy_app(&self, app: &mut App) {
-        if let Some(schedule) = app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents) {
-            schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
-                for (mut yoleck_managed, component) in query.iter_mut() {
-                    let yoleck_managed = yoleck_managed.as_mut();
-                    match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
-                        bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
-                            yoleck_managed.lifecycle_status =
-                                YoleckEntityLifecycleStatus::JustChanged;
-                            entry.insert(Box::<T>::new(component.clone()));
-                        }
-                        bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
-                            let existing: &T = entry
-                                .get()
-                                .downcast_ref()
-                                .expect("Component data is of wrong type");
-                            if existing != component.as_ref() {
-                                yoleck_managed.lifecycle_status =
-                                    YoleckEntityLifecycleStatus::JustChanged;
-                                entry.insert(Box::<T>::new(component.as_ref().clone()));
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    fn serialize(&self, component: &dyn Any) -> serde_json::Value {
-        let concrete = component
-            .downcast_ref::<T>()
-            .expect("Serialize must be called with the correct type");
-        serde_json::to_value(concrete).expect("Component must always be serializable")
     }
 }
 

@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 [**BREAKING**] - this entire release is a huge breaking change
 ### Changed
-- `YoleckTypeHandler` -> `YoleckEntityType`. The change is semantic as well
+- [**BREAKING**] `YoleckTypeHandler` -> `YoleckEntityType`. The change is semantic as well.
+- [**BREAKING**] Change import paths - most of the commonly used stuff is now in a prelude module.
 
 ### Removed
 - `vpeol_position_edit_adapter` and `VpeolTransform2dProjection`. Use `Vpeol2dPosition` instead.
