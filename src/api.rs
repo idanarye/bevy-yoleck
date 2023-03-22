@@ -179,7 +179,9 @@ impl DerefMut for YoleckUi {
     }
 }
 
-pub trait YoleckComponent: Default + Component + Serialize + for<'a> Deserialize<'a> {
+pub trait YoleckComponent:
+    Default + Clone + PartialEq + Component + Serialize + for<'a> Deserialize<'a>
+{
     const KEY: &'static str;
 }
 

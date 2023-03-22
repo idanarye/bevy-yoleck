@@ -399,6 +399,7 @@ impl YoleckExtForApp for App {
 }
 
 type BoxedArc = Arc<dyn Send + Sync + Any>;
+type BoxedAny = Box<dyn Send + Sync + Any>;
 
 /// A component that describes how Yoleck manages an entity under its control.
 #[derive(Component)]
@@ -412,7 +413,7 @@ pub struct YoleckManaged {
 
     pub needs_to_be_populated: bool,
 
-    pub components_data: HashMap<&'static str, serde_json::Value>,
+    pub components_data: HashMap<TypeId, BoxedAny>,
 }
 
 #[derive(Default, Resource)]
@@ -506,6 +507,8 @@ trait YoleckComponentHandler: 'static + Sync + Send {
     fn key(&self) -> &'static str;
     fn insert_to_command(&self, cmd: &mut EntityCommands, data: Option<serde_json::Value>);
     fn build_in_bevy_app(&self, app: &mut App);
+    fn parse(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
+    fn serialize(&self, component: &dyn Any) -> serde_json::Value;
 }
 
 #[derive(Default)]
@@ -541,25 +544,38 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
         if let Some(schedule) = app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents) {
             schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
                 for (mut yoleck_managed, component) in query.iter_mut() {
-                    let data =
-                        serde_json::to_value(&*component).expect("Data must be serializable");
                     let yoleck_managed = yoleck_managed.as_mut();
-                    match yoleck_managed.components_data.entry(T::KEY) {
+                    match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
                         bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
                             yoleck_managed.needs_to_be_populated = true;
-                            entry.insert(data);
+                            entry.insert(Box::<T>::new(component.clone()));
                         }
                         bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
-                            if entry.get() != &data {
+                            let existing: &T = entry
+                                .get()
+                                .downcast_ref()
+                                .expect("Component data is of wrong type");
+                            if existing != component.as_ref() {
                                 yoleck_managed.needs_to_be_populated = true;
-                                entry.insert(data);
+                                entry.insert(Box::<T>::new(component.as_ref().clone()));
                             }
                         }
                     }
-                    // yoleck_managed.components_data.insert(T::KEY, data);
                 }
             });
         }
+    }
+
+    fn parse(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny> {
+        let component: T = serde_json::from_value(data)?;
+        Ok(Box::new(component))
+    }
+
+    fn serialize(&self, component: &dyn Any) -> serde_json::Value {
+        let concrete = component
+            .downcast_ref::<T>()
+            .expect("Serialize must be called with the correct type");
+        serde_json::to_value(concrete).expect("Component must always be serializable")
     }
 }
 

@@ -10,8 +10,9 @@ use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::{
-    YoleckEditorState, YoleckEntryHeader, YoleckKnobsCache, YoleckLevelIndex, YoleckLoadingCommand,
-    YoleckManaged, YoleckRawEntry, YoleckRawLevel, YoleckState,
+    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntryHeader, YoleckKnobsCache,
+    YoleckLevelIndex, YoleckLoadingCommand, YoleckManaged, YoleckRawEntry, YoleckRawLevel,
+    YoleckState,
 };
 
 const EXTENSION: &str = ".yol";
@@ -39,6 +40,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         Commands,
         ResMut<YoleckState>,
         ResMut<YoleckEditorLevelsDirectoryPath>,
+        Res<YoleckEntityConstructionSpecs>,
         Query<(Entity, &YoleckManaged)>,
         Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
@@ -65,6 +67,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut commands,
             mut yoleck,
             mut levels_directory,
+            construction_specs,
             yoleck_managed_query,
             editor_state,
             mut next_editor_state,
@@ -87,11 +90,32 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                             type_name: yoleck_managed.type_name.clone(),
                             name: yoleck_managed.name.clone(),
                         },
-                        data: yoleck_managed
-                            .components_data
-                            .iter()
-                            .map(|(k, v)| (k.to_string(), v.to_owned()))
-                            .collect(),
+                        data: {
+                            if let Some(entity_type_info) =
+                                construction_specs.get_entity_type_info(&yoleck_managed.type_name)
+                            {
+                                entity_type_info
+                                    .components
+                                    .iter()
+                                    .filter_map(|component| {
+                                        let component_data =
+                                            yoleck_managed.components_data.get(component)?;
+                                        let handler =
+                                            &construction_specs.component_handlers[component];
+                                        Some((
+                                            handler.key(),
+                                            handler.serialize(component_data.as_ref()),
+                                        ))
+                                    })
+                                    .collect()
+                            } else {
+                                error!(
+                                    "Entity type {:?} is not registered",
+                                    yoleck_managed.type_name
+                                );
+                                Default::default()
+                            }
+                        },
                     })
             })
         };

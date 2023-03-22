@@ -79,7 +79,11 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                 let raw_component_data = raw_entry.data.get(handler.key());
                 handler.insert_to_command(&mut cmd, raw_component_data.cloned());
                 if let Some(raw_component_data) = raw_component_data {
-                    components_data.insert(handler.key(), raw_component_data.clone());
+                    // TODO - maybe I don't need them here anymore?
+                    components_data.insert(
+                        handler.component_type(),
+                        handler.parse(raw_component_data.clone()).unwrap(),
+                    );
                 }
             }
             for dlg in entity_type_info.on_init.iter() {
