@@ -411,9 +411,15 @@ pub struct YoleckManaged {
     /// This is the name passed to [`YoleckTypeHandler`](YoleckTypeHandler::new).
     pub type_name: String,
 
-    pub needs_to_be_populated: bool,
+    pub lifecycle_status: YoleckEntityLifecycleStatus,
 
     pub components_data: HashMap<TypeId, BoxedAny>,
+}
+
+pub enum YoleckEntityLifecycleStatus {
+    Synchronized,
+    JustCreated,
+    JustChanged,
 }
 
 #[derive(Default, Resource)]
@@ -505,9 +511,13 @@ impl Default for YoleckEditorSections {
 trait YoleckComponentHandler: 'static + Sync + Send {
     fn component_type(&self) -> TypeId;
     fn key(&self) -> &'static str;
-    fn insert_to_command(&self, cmd: &mut EntityCommands, data: Option<serde_json::Value>);
+    fn init_in_entity(
+        &self,
+        data: Option<serde_json::Value>,
+        cmd: &mut EntityCommands,
+        components_data: &mut HashMap<TypeId, BoxedAny>,
+    );
     fn build_in_bevy_app(&self, app: &mut App);
-    fn parse(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny>;
     fn serialize(&self, component: &dyn Any) -> serde_json::Value;
 }
 
@@ -525,7 +535,12 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
         T::KEY
     }
 
-    fn insert_to_command(&self, cmd: &mut EntityCommands, data: Option<serde_json::Value>) {
+    fn init_in_entity(
+        &self,
+        data: Option<serde_json::Value>,
+        cmd: &mut EntityCommands,
+        components_data: &mut HashMap<TypeId, BoxedAny>,
+    ) {
         let component: T = if let Some(data) = data {
             match serde_json::from_value(data) {
                 Ok(component) => component,
@@ -537,6 +552,7 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
         } else {
             Default::default()
         };
+        components_data.insert(self.component_type(), Box::new(component.clone()));
         cmd.insert(component);
     }
 
@@ -547,7 +563,8 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
                     let yoleck_managed = yoleck_managed.as_mut();
                     match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
                         bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
-                            yoleck_managed.needs_to_be_populated = true;
+                            yoleck_managed.lifecycle_status =
+                                YoleckEntityLifecycleStatus::JustChanged;
                             entry.insert(Box::<T>::new(component.clone()));
                         }
                         bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
@@ -556,7 +573,8 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
                                 .downcast_ref()
                                 .expect("Component data is of wrong type");
                             if existing != component.as_ref() {
-                                yoleck_managed.needs_to_be_populated = true;
+                                yoleck_managed.lifecycle_status =
+                                    YoleckEntityLifecycleStatus::JustChanged;
                                 entry.insert(Box::<T>::new(component.as_ref().clone()));
                             }
                         }
@@ -564,11 +582,6 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
                 }
             });
         }
-    }
-
-    fn parse(&self, data: serde_json::Value) -> serde_json::Result<BoxedAny> {
-        let component: T = serde_json::from_value(data)?;
-        Ok(Box::new(component))
     }
 
     fn serialize(&self, component: &dyn Any) -> serde_json::Value {

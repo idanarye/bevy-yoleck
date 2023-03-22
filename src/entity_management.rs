@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
-use crate::{YoleckEditorState, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule};
+use crate::{
+    YoleckEditorState, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus, YoleckManaged,
+    YoleckSchedule, YoleckState,
+};
 
 /// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -69,22 +72,15 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
         if let Some(entity_type_info) =
             construction_specs.get_entity_type_info(&raw_entry.header.type_name)
         {
-            // construction_specs.component_handlers_for(&raw_entry.header.type_name)
-            // {
             for component_name in entity_type_info.components.iter() {
                 let Some(handler) = construction_specs.component_handlers.get(component_name) else {
                         error!("Component type {:?} is not registered", component_name);
                         continue;
                     };
-                let raw_component_data = raw_entry.data.get(handler.key());
-                handler.insert_to_command(&mut cmd, raw_component_data.cloned());
-                if let Some(raw_component_data) = raw_component_data {
-                    // TODO - maybe I don't need them here anymore?
-                    components_data.insert(
-                        handler.component_type(),
-                        handler.parse(raw_component_data.clone()).unwrap(),
-                    );
-                }
+                // TODO: use `.map(|component_data| component_data.take())` instead, since the raw
+                // entry is going to be deleted anyway
+                let raw_component_data = raw_entry.data.get(handler.key()).cloned();
+                handler.init_in_entity(raw_component_data, &mut cmd, &mut components_data);
             }
             for dlg in entity_type_info.on_init.iter() {
                 dlg(editor_state, &mut cmd);
@@ -96,7 +92,7 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
         cmd.insert(YoleckManaged {
             name: raw_entry.header.name.to_owned(),
             type_name: raw_entry.header.type_name.to_owned(),
-            needs_to_be_populated: true,
+            lifecycle_status: YoleckEntityLifecycleStatus::JustCreated,
             components_data,
         });
     }
@@ -107,13 +103,21 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
 pub(crate) fn yoleck_prepare_populate_schedule(
     mut query: Query<(Entity, &mut YoleckManaged)>,
     mut entities_to_populate: ResMut<EntitiesToPopulate>,
+    mut yoleck_state: ResMut<YoleckState>,
 ) {
     entities_to_populate.0.clear();
     for (entity, mut yoleck_managed) in query.iter_mut() {
-        if yoleck_managed.needs_to_be_populated {
-            entities_to_populate.0.push(entity);
-            yoleck_managed.needs_to_be_populated = false;
+        match yoleck_managed.lifecycle_status {
+            YoleckEntityLifecycleStatus::Synchronized => {}
+            YoleckEntityLifecycleStatus::JustCreated => {
+                entities_to_populate.0.push(entity);
+            }
+            YoleckEntityLifecycleStatus::JustChanged => {
+                entities_to_populate.0.push(entity);
+                yoleck_state.level_needs_saving = true;
+            }
         }
+        yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::Synchronized;
     }
 }
 
