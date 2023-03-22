@@ -179,6 +179,7 @@ pub mod vpeol;
 pub mod vpeol_2d;
 
 use std::any::{Any, TypeId};
+use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -336,17 +337,17 @@ impl YoleckExtForApp for App {
         let mut component_type_ids = Vec::with_capacity(entity_type.components.len());
         let mut component_handlers_to_register = Vec::new();
         for handler in entity_type.components.into_iter() {
-            component_type_ids.push(handler.component_type);
+            component_type_ids.push(handler.component_type());
             if !construction_specs
                 .component_handlers
-                .contains_key(&handler.component_type)
+                .contains_key(&handler.component_type())
             {
                 component_handlers_to_register.push(handler);
             }
         }
 
         for handler in component_handlers_to_register.iter() {
-            (handler.build_in_bevy_app)(self);
+            handler.build_in_bevy_app(self);
         }
 
         let new_entry = YoleckEntityTypeInfo {
@@ -369,7 +370,7 @@ impl YoleckExtForApp for App {
             // Can handlers can register systems? If so, this needs to be broken into two phases...
             construction_specs
                 .component_handlers
-                .insert(handler.component_type, handler);
+                .insert(handler.component_type(), handler);
         }
     }
 
@@ -440,7 +441,7 @@ pub struct YoleckEntityTypeInfo {
 pub(crate) struct YoleckEntityConstructionSpecs {
     pub entity_types: Vec<YoleckEntityTypeInfo>,
     pub entity_types_index: HashMap<String, usize>,
-    pub component_handlers: HashMap<TypeId, YoleckComponentHandler>,
+    pub component_handlers: HashMap<TypeId, Box<dyn YoleckComponentHandler>>,
 }
 
 impl YoleckEntityConstructionSpecs {
@@ -500,61 +501,64 @@ impl Default for YoleckEditorSections {
     }
 }
 
-#[allow(dead_code)]
-struct YoleckComponentHandler {
-    pub component_type: TypeId,
-    pub key: &'static str,
-    #[allow(clippy::type_complexity)]
-    pub insert_to_command:
-        Box<dyn Send + Sync + Fn(&mut EntityCommands, Option<serde_json::Value>)>,
-    pub build_in_bevy_app: Box<dyn Send + Sync + Fn(&mut App)>,
+trait YoleckComponentHandler: 'static + Sync + Send {
+    fn component_type(&self) -> TypeId;
+    fn key(&self) -> &'static str;
+    fn insert_to_command(&self, cmd: &mut EntityCommands, data: Option<serde_json::Value>);
+    fn build_in_bevy_app(&self, app: &mut App);
 }
 
-impl YoleckComponentHandler {
-    pub fn new<T: YoleckComponent>() -> Self {
-        Self {
-            component_type: TypeId::of::<T>(),
-            key: T::KEY,
-            insert_to_command: Box::new(|cmd, data| {
-                let component: T = if let Some(data) = data {
-                    match serde_json::from_value(data) {
-                        Ok(component) => component,
-                        Err(err) => {
-                            error!("Cannot load {:?}: {:?}", T::KEY, err);
-                            return;
+#[derive(Default)]
+struct YoleckComponentHandlerImpl<T: YoleckComponent> {
+    _phantom_data: PhantomData<T>,
+}
+
+impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T> {
+    fn component_type(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+
+    fn key(&self) -> &'static str {
+        T::KEY
+    }
+
+    fn insert_to_command(&self, cmd: &mut EntityCommands, data: Option<serde_json::Value>) {
+        let component: T = if let Some(data) = data {
+            match serde_json::from_value(data) {
+                Ok(component) => component,
+                Err(err) => {
+                    error!("Cannot load {:?}: {:?}", T::KEY, err);
+                    return;
+                }
+            }
+        } else {
+            Default::default()
+        };
+        cmd.insert(component);
+    }
+
+    fn build_in_bevy_app(&self, app: &mut App) {
+        if let Some(schedule) = app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents) {
+            schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
+                for (mut yoleck_managed, component) in query.iter_mut() {
+                    let data =
+                        serde_json::to_value(&*component).expect("Data must be serializable");
+                    let yoleck_managed = yoleck_managed.as_mut();
+                    match yoleck_managed.components_data.entry(T::KEY) {
+                        bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
+                            yoleck_managed.needs_to_be_populated = true;
+                            entry.insert(data);
+                        }
+                        bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
+                            if entry.get() != &data {
+                                yoleck_managed.needs_to_be_populated = true;
+                                entry.insert(data);
+                            }
                         }
                     }
-                } else {
-                    Default::default()
-                };
-                cmd.insert(component);
-            }),
-            build_in_bevy_app: Box::new(|app| {
-                if let Some(schedule) =
-                    app.get_schedule_mut(YoleckSchedule::UpdateRawDataFromComponents)
-                {
-                    schedule.add_system(|mut query: Query<(&mut YoleckManaged, &mut T)>| {
-                        for (mut yoleck_managed, component) in query.iter_mut() {
-                            let data = serde_json::to_value(&*component)
-                                .expect("Data must be serializable");
-                            let yoleck_managed = yoleck_managed.as_mut();
-                            match yoleck_managed.components_data.entry(T::KEY) {
-                                bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
-                                    yoleck_managed.needs_to_be_populated = true;
-                                    entry.insert(data);
-                                }
-                                bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
-                                    if entry.get() != &data {
-                                        yoleck_managed.needs_to_be_populated = true;
-                                        entry.insert(data);
-                                    }
-                                }
-                            }
-                            // yoleck_managed.components_data.insert(T::KEY, data);
-                        }
-                    });
+                    // yoleck_managed.components_data.insert(T::KEY, data);
                 }
-            }),
+            });
         }
     }
 }

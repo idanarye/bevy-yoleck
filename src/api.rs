@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::entity_management::EntitiesToPopulate;
 use crate::knobs::{KnobFromCache, YoleckKnobsCache};
-use crate::{BoxedArc, YoleckComponentHandler};
+use crate::{BoxedArc, YoleckComponentHandler, YoleckComponentHandlerImpl};
 
 /// Whether or not the Yoleck editor is active.
 #[derive(States, Default, Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -185,7 +185,7 @@ pub trait YoleckComponent: Default + Component + Serialize + for<'a> Deserialize
 
 pub struct YoleckEntityType {
     pub name: String,
-    pub(crate) components: Vec<YoleckComponentHandler>,
+    pub(crate) components: Vec<Box<dyn YoleckComponentHandler>>,
     #[allow(clippy::type_complexity)]
     pub(crate) on_init:
         Vec<Box<dyn 'static + Sync + Send + Fn(YoleckEditorState, &mut EntityCommands)>>,
@@ -201,7 +201,8 @@ impl YoleckEntityType {
     }
 
     pub fn with<T: YoleckComponent>(mut self) -> Self {
-        self.components.push(YoleckComponentHandler::new::<T>());
+        self.components
+            .push(Box::<YoleckComponentHandlerImpl<T>>::default());
         self
     }
 

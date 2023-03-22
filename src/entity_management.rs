@@ -76,10 +76,10 @@ pub(crate) fn yoleck_process_raw_entries(world: &mut World) {
                         error!("Component type {:?} is not registered", component_name);
                         continue;
                     };
-                let raw_component_data = raw_entry.data.get(handler.key);
-                (handler.insert_to_command)(&mut cmd, raw_component_data.cloned());
+                let raw_component_data = raw_entry.data.get(handler.key());
+                handler.insert_to_command(&mut cmd, raw_component_data.cloned());
                 if let Some(raw_component_data) = raw_component_data {
-                    components_data.insert(handler.key, raw_component_data.clone());
+                    components_data.insert(handler.key(), raw_component_data.clone());
                 }
             }
             for dlg in entity_type_info.on_init.iter() {
