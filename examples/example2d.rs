@@ -343,9 +343,13 @@ fn edit_fruit_type(
     });
 }
 
-fn populate_fruit(mut populate: YoleckPopulate<&mut FruitType>, assets: Res<GameAssets>) {
+fn populate_fruit(
+    mut populate: YoleckPopulate<&mut FruitType>,
+    assets: Res<GameAssets>,
+    marking: YoleckMarking,
+) {
     populate.populate(|_ctx, mut cmd, fruit| {
-        cmd.despawn_descendants(); // TODO: This is bad! Replace it!
+        marking.despawn_marked(&mut cmd);
         cmd.insert((
             VisibilityBundle::default(),
             VpeolWillContainClickableChildren,
@@ -354,7 +358,8 @@ fn populate_fruit(mut populate: YoleckPopulate<&mut FruitType>, assets: Res<Game
         // Could have placed them on the main entity, but with this the children picking feature
         // can be tested and demonstrated.
         cmd.with_children(|commands| {
-            commands.spawn(SpriteSheetBundle {
+            let mut child = commands.spawn(marking.marker());
+            child.insert(SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     index: fruit.index,
                     custom_size: Some(Vec2::new(100.0, 100.0)),

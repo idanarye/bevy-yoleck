@@ -196,7 +196,7 @@ pub mod prelude {
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::knobs::YoleckKnobs;
     pub use crate::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
-    pub use crate::populating::YoleckPopulate;
+    pub use crate::populating::{YoleckMarking, YoleckPopulate};
     pub use crate::specs_registration::{YoleckComponent, YoleckEntityType};
     pub use crate::{YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame};
 }
@@ -211,7 +211,7 @@ use self::entity_upgrading::YoleckEntityUpgrading;
 use self::knobs::YoleckKnobsCache;
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 use self::level_index::YoleckLevelIndex;
-pub use self::populating::YoleckPopulateContext;
+pub use self::populating::{YoleckPopulateContext, YoleckSystemMarker};
 use self::specs_registration::{YoleckComponentHandler, YoleckEntityType};
 pub use bevy_egui;
 pub use bevy_egui::egui;

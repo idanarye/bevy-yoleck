@@ -1,6 +1,9 @@
+use std::ops::RangeFrom;
+
 use bevy::ecs::query::{ReadOnlyWorldQuery, WorldQuery};
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 
 use crate::entity_management::EntitiesToPopulate;
 
@@ -57,6 +60,51 @@ impl YoleckPopulateContext {
             PopulateReason::EditorInit => true,
             PopulateReason::EditorUpdate => false,
             PopulateReason::RealGame => true,
+        }
+    }
+}
+
+#[derive(Debug, Component, PartialEq, Eq, Clone, Copy)]
+pub struct YoleckSystemMarker(usize);
+
+#[derive(Resource)]
+struct MarkerGenerator(RangeFrom<usize>);
+
+impl FromWorld for YoleckSystemMarker {
+    fn from_world(world: &mut World) -> Self {
+        let mut marker = world.get_resource_or_insert_with(|| MarkerGenerator(1..));
+        YoleckSystemMarker(marker.0.next().unwrap())
+    }
+}
+
+#[derive(SystemParam)]
+pub struct YoleckMarking<'w, 's> {
+    designated_marker: Local<'s, YoleckSystemMarker>,
+    children_query: Query<'w, 's, &'static Children>,
+    marked_query: Query<'w, 's, (&'static Parent, &'static YoleckSystemMarker)>,
+}
+
+impl YoleckMarking<'_, '_> {
+    pub fn marker(&self) -> YoleckSystemMarker {
+        *self.designated_marker
+    }
+
+    pub fn despawn_marked(&self, cmd: &mut EntityCommands) {
+        let mut marked_children_map: HashMap<Entity, Vec<Entity>> = Default::default();
+        for child in self.children_query.iter_descendants(cmd.id()) {
+            let Ok((parent, marker)) = self.marked_query.get(child) else { continue };
+            if *marker == *self.designated_marker {
+                marked_children_map
+                    .entry(parent.get())
+                    .or_default()
+                    .push(child);
+            }
+        }
+        for (parent, children) in marked_children_map {
+            cmd.commands().entity(parent).remove_children(&children);
+            for child in children {
+                cmd.commands().entity(child).despawn_recursive();
+            }
         }
     }
 }
