@@ -61,11 +61,7 @@
 //! ```no_run
 //! use bevy::prelude::*;
 //! use bevy_yoleck::bevy_egui::EguiPlugin;
-//! use bevy_yoleck::{
-//!     egui, YoleckEdit, YoleckExtForApp, YoleckLevelIndex, YoleckLoadingCommand,
-//!     YoleckPluginForEditor, YoleckPluginForGame, YoleckPopulate, YoleckRawLevel,
-//!     YoleckSyncWithEditorState, YoleckTypeHandler,
-//! };
+//! use bevy_yoleck::prelude::*;
 //! use serde::{Deserialize, Serialize};
 //!
 //! fn main() {
@@ -192,7 +188,7 @@ use bevy::utils::HashMap;
 pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckSyncWithEditorState};
-    pub use crate::entity_management::YoleckLoadingCommand;
+    pub use crate::entity_management::{YoleckLoadingCommand, YoleckRawLevel};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::knobs::YoleckKnobs;
     pub use crate::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};

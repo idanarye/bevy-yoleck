@@ -177,7 +177,7 @@ pub(crate) fn yoleck_process_loading_command(
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// # use bevy_yoleck::{YoleckLoadingCommand};
+/// # use bevy_yoleck::prelude::*;
 /// fn level_loading_system(
 ///     asset_server: Res<AssetServer>,
 ///     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,

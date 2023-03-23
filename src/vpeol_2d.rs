@@ -7,7 +7,7 @@
 //! ```no_run
 //! # use bevy::prelude::*;
 //! # use bevy_yoleck::bevy_egui::EguiPlugin;
-//! # use bevy_yoleck::YoleckPluginForEditor;
+//! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor;
 //! # let mut app = App::new();
 //! app.add_plugin(EguiPlugin);
@@ -33,15 +33,20 @@
 //! ```
 //!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
-//! dragging, there are two options. Either use the passed data:
+//! dragging, there are two options. Either add  the [`Vpeol2dPosition`] Yoleck component and use
+//! it as the source of position (there are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but
+//! they don't currently get editing support from vpeol_2d) or use the passed data:
 //!
 //! ```no_run
 //! # use bevy::prelude::*;
-//! # use bevy_yoleck::{YoleckTypeHandler, YoleckExtForApp, YoleckEdit, YoleckPopulate};
+//! # use bevy_yoleck::prelude::*;
 //! # use serde::{Deserialize, Serialize};
-//! # #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! # #[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
 //! # struct Example {
 //! #     position: Vec2,
+//! # }
+//! # impl YoleckComponent for Example {
+//! #     const KEY: &'static str = "Example";
 //! # }
 //! # let mut app = App::new();
 //! app.add_yoleck_handler({
@@ -50,7 +55,8 @@
 //!         .populate_with(populate_example)
 //! });
 //!
-//! fn edit_example(mut edit: YoleckEdit<Example>) {
+//! fn edit_example(mut query: Query<(&YoleckEdit, &mut Example)>) {
+//!     let Ok((edit, example)) = query.get_single_mut() else { return };
 //!     edit.edit(|ctx, data, _ui| {
 //!         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
 //!             data.position = pos.truncate();

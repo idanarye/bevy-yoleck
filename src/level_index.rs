@@ -17,7 +17,7 @@ pub struct YoleckLevelIndexEntry {
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// # use bevy_yoleck::{YoleckLevelIndex, YoleckLoadingCommand, YoleckRawLevel};
+/// # use bevy_yoleck::prelude::*;
 /// fn load_level_system(
 ///     asset_server: Res<AssetServer>,
 ///     level_index_assets: Res<Assets<YoleckLevelIndex>>,

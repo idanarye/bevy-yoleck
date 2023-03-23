@@ -19,16 +19,16 @@ impl YoleckEdit {
     ///
     /// ```no_run
     /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui};
+    /// # use bevy_yoleck::prelude::*;;
+    /// # #[derive(Component)]
     /// # struct Example {
-    /// #     position: Vec2,
+    /// #     message: String,
     /// # }
-    /// fn edit_example(mut edit: YoleckEdit<Example>) {
-    ///     edit.edit(|ctx, data, _ui| {
-    ///         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
-    ///             data.position = pos.truncate();
-    ///         }
-    ///     });
+    /// fn edit_example(mut query: Query<(&YoleckEdit, &mut Example)>) {
+    ///     let Ok((edit, mut example)) = query.get_single_mut() else { return };
+    ///     if let Some(message) = edit.get_passed_data::<String>() {
+    ///         example.message = message;
+    ///     }
     /// }
     /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {

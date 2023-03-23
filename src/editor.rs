@@ -34,7 +34,7 @@ pub enum YoleckEditorState {
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// # use bevy_yoleck::{YoleckSyncWithEditorState, YoleckPluginForEditor, YoleckPluginForGame};
+/// # use bevy_yoleck::prelude::*;
 /// # use bevy_yoleck::bevy_egui::EguiPlugin;
 /// #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 /// enum GameState {
@@ -143,31 +143,31 @@ impl YoleckDirective {
     /// ```no_run
     /// # use serde::{Deserialize, Serialize};
     /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::{YoleckEdit, egui, YoleckDirective, YoleckComponent};
+    /// # use bevy_yoleck::prelude::*;
+    /// # use bevy_yoleck::YoleckDirective;
+    /// # use bevy_yoleck::vpeol_2d::Vpeol2dPosition;
     /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
-    /// # struct Example {
-    /// #     position: Vec2,
-    /// # }
+    /// # struct Example;
     /// # impl YoleckComponent for Example {
     /// #     const KEY: &'static str = "Example";
     /// # }
-    /// fn duplicate_example(mut edit: YoleckEdit<Example>, mut writer: EventWriter<YoleckDirective>) {
-    ///     edit.edit(|_ctx, data, ui| {
-    ///         if ui.button("Duplicate").clicked() {
-    ///             writer.send(
-    ///                 YoleckDirective::spawn_entity(
-    ///                     "Example",
-    ///                     // Automatically select the newly created entity:
-    ///                     true,
-    ///                 )
-    ///                 .with(Example {
-    ///                     // Create the new example entity 100 units below the current one:
-    ///                     position: data.position - 100.0 * Vec2::Y,
-    ///                 })
-    ///                 .into(),
-    ///             );
-    ///         }
-    ///     });
+    /// fn duplicate_example(
+    ///     mut query: Query<&Vpeol2dPosition, (With<YoleckEdit>, With<Example>)>,
+    ///     mut writer: EventWriter<YoleckDirective>,
+    /// ) {
+    ///     let Ok(position) = query.get_single() else { return };
+    ///     if ui.button("Duplicate").clicked() {
+    ///         writer.send(
+    ///             YoleckDirective::spawn_entity(
+    ///                 "Example",
+    ///                 // Automatically select the newly created entity:
+    ///                 true,
+    ///             )
+    ///             // Create the new example entity 100 units below the current one:
+    ///             .with(Vpeol2dPosition(position.0 - 100.0 * Vec2::Y))
+    ///             .into(),
+    ///         );
+    ///     }
     /// }
     /// ```
     pub fn spawn_entity(
