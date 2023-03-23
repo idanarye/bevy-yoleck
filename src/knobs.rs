@@ -101,14 +101,15 @@ impl YoleckKnobHandle<'_, '_, '_> {
     /// ```no_run
     /// # use bevy::prelude::*;
     /// # use bevy_yoleck::prelude::*;;
+    /// # use bevy_yoleck::vpeol::YoleckKnobClick;
     /// # #[derive(Component)]
     /// # struct Example {
     /// #     num_clicks_on_knob: usize,
     /// # };
-    /// fn edit_example_with_knob(mut query: Query<&mut Example, With<YoleckEdit>>) {
-    ///     let Ok(mut example) = query.get_single_mut() else { return };
+    /// fn edit_example_with_knob(mut edit: YoleckEdit<&mut Example>, mut knobs: YoleckKnobs) {
+    ///     let Ok(mut example) = edit.get_single_mut() else { return };
     ///     let mut knob = knobs.knob("click-counting");
-    ///     knob.insert((
+    ///     knob.cmd.insert((
     ///         // setup the knobs position and graphics
     ///     ));
     ///     if knob.get_passed_data::<YoleckKnobClick>().is_some() {

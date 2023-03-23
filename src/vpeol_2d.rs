@@ -33,47 +33,58 @@
 //! ```
 //!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
-//! dragging, there are two options. Either add  the [`Vpeol2dPosition`] Yoleck component and use
+//! dragging, there are two options:
+//!
+//! 1. Either add  the [`Vpeol2dPosition`] Yoleck component and use
 //! it as the source of position (there are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but
-//! they don't currently get editing support from vpeol_2d) or use the passed data:
-//!
-//! ```no_run
-//! # use bevy::prelude::*;
-//! # use bevy_yoleck::prelude::*;
-//! # use serde::{Deserialize, Serialize};
-//! # #[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
-//! # struct Example {
-//! #     position: Vec2,
-//! # }
-//! # impl YoleckComponent for Example {
-//! #     const KEY: &'static str = "Example";
-//! # }
-//! # let mut app = App::new();
-//! app.add_yoleck_handler({
-//!     YoleckTypeHandler::<Example>::new("Example")
-//!         .edit_with(edit_example)
-//!         .populate_with(populate_example)
-//! });
-//!
-//! fn edit_example(mut query: Query<(&YoleckEdit, &mut Example)>) {
-//!     let Ok((edit, example)) = query.get_single_mut() else { return };
-//!     edit.edit(|ctx, data, _ui| {
-//!         if let Some(pos) = ctx.get_passed_data::<Vec3>() {
-//!             data.position = pos.truncate();
+//! they don't currently get editing support from vpeol_2d)
+//!     ```no_run
+//!     # use bevy::prelude::*;
+//!     # use bevy_yoleck::prelude::*;
+//!     # use bevy_yoleck::vpeol_2d::Vpeol2dPosition;
+//!     # use serde::{Deserialize, Serialize};
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+//!     # struct Example;
+//!     # impl YoleckComponent for Example {
+//!     #     const KEY: &'static str = "Example";
+//!     # }
+//!     # let mut app = App::new();
+//!     app.add_yoleck_entity_type({
+//!         YoleckEntityType::new("Example")
+//!             .with::<Vpeol2dPosition>() // vpeol_2d dragging
+//!             .with::<Example>() // entity's specific data and systems
+//!     });
+//!     ```
+//! 2. Use data passing. vpeol_2d will pass a `Vec3` to the entity being dragged:
+//!     ```no_run
+//!     # use bevy::prelude::*;
+//!     # use bevy_yoleck::prelude::*;
+//!     # use serde::{Deserialize, Serialize};
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+//!     # struct Example {
+//!     #     position: Vec2,
+//!     # }
+//!     # impl YoleckComponent for Example {
+//!     #     const KEY: &'static str = "Example";
+//!     # }
+//!     # let mut app = App::new();
+//!     fn edit_example(mut edit: YoleckEdit<(Entity, &mut Example)>, passed_data: Res<YoleckPassedData>) {
+//!         let Ok((entity, mut example)) = edit.get_single_mut() else { return };
+//!         if let Some(pos) = passed_data.get::<Vec3>(entity) {
+//!             example.position = pos.truncate();
 //!         }
-//!     });
-//! }
+//!     }
 //!
-//! fn populate_example(mut populate: YoleckPopulate<Example>) {
-//!     populate.populate(|_ctx, data, mut cmd| {
-//!         cmd.insert(SpriteBundle {
-//!             transform: Transform::from_translation(data.position.extend(0.0)),
-//!             // Actual sprite components
-//!             ..Default::default()
+//!     fn populate_example(mut populate: YoleckPopulate<&Example>) {
+//!         populate.populate(|_ctx, mut cmd, example| {
+//!             cmd.insert(SpriteBundle {
+//!                 transform: Transform::from_translation(example.position.extend(0.0)),
+//!                 // Actual sprite components
+//!                 ..Default::default()
+//!             });
 //!         });
-//!     });
-//! }
-//! ```
+//!     }
+//!     ```
 //!
 //! Alternatively, use [`vpeol_position_edit_adapter`].
 

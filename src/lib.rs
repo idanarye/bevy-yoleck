@@ -63,6 +63,7 @@
 //! use bevy_yoleck::bevy_egui::EguiPlugin;
 //! use bevy_yoleck::prelude::*;
 //! use serde::{Deserialize, Serialize};
+//! # use bevy_yoleck::egui;
 //!
 //! fn main() {
 //!     let is_editor = std::env::args().any(|arg| arg == "--editor");
@@ -89,11 +90,12 @@
 //!     }
 //!     app.add_startup_system(setup_camera);
 //!
-//!     app.add_yoleck_handler({
-//!         YoleckTypeHandler::<Rectangle>::new("Rectangle")
-//!             .populate_with(populate_rectangle)
-//!             .edit_with(edit_rectangle)
+//!     app.add_yoleck_entity_type({
+//!         YoleckEntityType::new("Rectangle")
+//!             .with::<Rectangle>()
 //!     });
+//!     app.add_yoleck_edit_system(edit_rectangle);
+//!     app.yoleck_populate_schedule_mut().add_system(populate_rectangle);
 //!
 //!     app.run();
 //! }
@@ -110,24 +112,31 @@
 //!     commands.spawn(Camera2dBundle::default());
 //! }
 //!
-//! #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//! #[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
 //! struct Rectangle {
-//!     #[serde(default = "default_rectangle_side")]
 //!     width: f32,
-//!     #[serde(default = "default_rectangle_side")]
 //!     height: f32,
 //! }
 //!
-//! fn default_rectangle_side() -> f32 {
-//!     50.0
+//! impl YoleckComponent for Rectangle {
+//!     const KEY: &'static str = "Rectangle";
 //! }
 //!
-//! fn populate_rectangle(mut populate: YoleckPopulate<Rectangle>) {
-//!     populate.populate(|_ctx, data, mut cmd| {
+//! impl Default for Rectangle {
+//!     fn default() -> Self {
+//!         Self {
+//!             width: 50.0,
+//!             height: 50.0,
+//!         }
+//!     }
+//! }
+//!
+//! fn populate_rectangle(mut populate: YoleckPopulate<&Rectangle>) {
+//!     populate.populate(|_ctx, mut cmd, rectangle| {
 //!         cmd.insert(SpriteBundle {
 //!             sprite: Sprite {
 //!                 color: Color::RED,
-//!                 custom_size: Some(Vec2::new(data.width, data.height)),
+//!                 custom_size: Some(Vec2::new(rectangle.width, rectangle.height)),
 //!                 ..Default::default()
 //!             },
 //!             ..Default::default()
@@ -135,11 +144,10 @@
 //!     });
 //! }
 //!
-//! fn edit_rectangle(mut edit: YoleckEdit<Rectangle>) {
-//!     edit.edit(|_ctx, data, ui| {
-//!         ui.add(egui::Slider::new(&mut data.width, 50.0..=500.0).prefix("Width: "));
-//!         ui.add(egui::Slider::new(&mut data.height, 50.0..=500.0).prefix("Height: "));
-//!     });
+//! fn edit_rectangle(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
+//!     let Ok(mut rectangle) = edit.get_single_mut() else { return };
+//!     ui.add(egui::Slider::new(&mut rectangle.width, 50.0..=500.0).prefix("Width: "));
+//!     ui.add(egui::Slider::new(&mut rectangle.height, 50.0..=500.0).prefix("Height: "));
 //! }
 //!
 //! fn load_first_level(

@@ -152,10 +152,11 @@ impl YoleckDirective {
     /// #     const KEY: &'static str = "Example";
     /// # }
     /// fn duplicate_example(
-    ///     mut query: Query<&Vpeol2dPosition, (With<YoleckEdit>, With<Example>)>,
+    ///     mut ui: ResMut<YoleckUi>,
+    ///     mut edit: YoleckEdit<&Vpeol2dPosition, With<Example>>,
     ///     mut writer: EventWriter<YoleckDirective>,
     /// ) {
-    ///     let Ok(position) = query.get_single() else { return };
+    ///     let Ok(position) = edit.get_single() else { return };
     ///     if ui.button("Duplicate").clicked() {
     ///         writer.send(
     ///             YoleckDirective::spawn_entity(
@@ -225,12 +226,12 @@ impl YoleckPassedData {
     /// #     message: String,
     /// # }
     /// fn edit_example(
-    ///     mut query: Query<(Entity, &mut Example), With<YoleckEdit>>,
+    ///     mut edit: YoleckEdit<(Entity, &mut Example)>,
     ///     passed_data: Res<YoleckPassedData>,
     /// ) {
-    ///     let Ok((entity, mut example)) = query.get_single_mut() else { return };
+    ///     let Ok((entity, mut example)) = edit.get_single_mut() else { return };
     ///     if let Some(message) = passed_data.get::<String>(entity) {
-    ///         example.message = message;
+    ///         example.message = message.clone();
     ///     }
     /// }
     /// ```

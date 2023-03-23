@@ -390,10 +390,17 @@ fn eat_fruits(
     }
 }
 
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
 pub struct TextContent {
-    #[serde(default)]
     text: String,
+}
+
+impl Default for TextContent {
+    fn default() -> Self {
+        Self {
+            text: "<TEXT>".to_owned(),
+        }
+    }
 }
 
 impl YoleckComponent for TextContent {
