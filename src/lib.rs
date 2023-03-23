@@ -112,14 +112,10 @@
 //!     commands.spawn(Camera2dBundle::default());
 //! }
 //!
-//! #[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
+//! #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 //! struct Rectangle {
 //!     width: f32,
 //!     height: f32,
-//! }
-//!
-//! impl YoleckComponent for Rectangle {
-//!     const KEY: &'static str = "Rectangle";
 //! }
 //!
 //! impl Default for Rectangle {
@@ -203,6 +199,7 @@ pub mod prelude {
     pub use crate::populating::{YoleckMarking, YoleckPopulate};
     pub use crate::specs_registration::{YoleckComponent, YoleckEntityType};
     pub use crate::{YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame};
+    pub use bevy_yoleck_macros::YoleckComponent;
 }
 
 pub use self::editing::YoleckEditMarker;

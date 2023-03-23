@@ -43,11 +43,8 @@
 //!     # use bevy_yoleck::prelude::*;
 //!     # use bevy_yoleck::vpeol_2d::Vpeol2dPosition;
 //!     # use serde::{Deserialize, Serialize};
-//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 //!     # struct Example;
-//!     # impl YoleckComponent for Example {
-//!     #     const KEY: &'static str = "Example";
-//!     # }
 //!     # let mut app = App::new();
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
@@ -60,12 +57,9 @@
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
 //!     # use serde::{Deserialize, Serialize};
-//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 //!     # struct Example {
 //!     #     position: Vec2,
-//!     # }
-//!     # impl YoleckComponent for Example {
-//!     #     const KEY: &'static str = "Example";
 //!     # }
 //!     # let mut app = App::new();
 //!     fn edit_example(mut edit: YoleckEdit<(Entity, &mut Example)>, passed_data: Res<YoleckPassedData>) {
@@ -468,23 +462,15 @@ pub struct VpeolTransform2dProjection<'a> {
     pub translation: &'a mut Vec2,
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dPosition(pub Vec2);
 
-impl YoleckComponent for Vpeol2dPosition {
-    const KEY: &'static str = "Vpeol2dPosition";
-}
-
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dRotatation(pub f32);
 
-impl YoleckComponent for Vpeol2dRotatation {
-    const KEY: &'static str = "Vpeol2dRotatation";
-}
-
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dScale(pub Vec2);
 
@@ -492,10 +478,6 @@ impl Default for Vpeol2dScale {
     fn default() -> Self {
         Self(Vec2::ONE)
     }
-}
-
-impl YoleckComponent for Vpeol2dScale {
-    const KEY: &'static str = "Vpeol2dScale";
 }
 
 fn vpeol_2d_edit_position(

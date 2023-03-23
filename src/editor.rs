@@ -146,11 +146,8 @@ impl YoleckDirective {
     /// # use bevy_yoleck::prelude::*;
     /// # use bevy_yoleck::YoleckDirective;
     /// # use bevy_yoleck::vpeol_2d::Vpeol2dPosition;
-    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
     /// # struct Example;
-    /// # impl YoleckComponent for Example {
-    /// #     const KEY: &'static str = "Example";
-    /// # }
     /// fn duplicate_example(
     ///     mut ui: ResMut<YoleckUi>,
     ///     mut edit: YoleckEdit<&Vpeol2dPosition, With<Example>>,

@@ -269,14 +269,10 @@ fn control_player(
 #[derive(Component)]
 struct IsFruit;
 
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 struct FruitType {
     #[serde(default)]
     index: usize,
-}
-
-impl YoleckComponent for FruitType {
-    const KEY: &'static str = "FruitType";
 }
 
 fn duplicate_fruit(
@@ -390,7 +386,7 @@ fn eat_fruits(
     }
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 pub struct TextContent {
     text: String,
 }
@@ -401,10 +397,6 @@ impl Default for TextContent {
             text: "<TEXT>".to_owned(),
         }
     }
-}
-
-impl YoleckComponent for TextContent {
-    const KEY: &'static str = "TextContent";
 }
 
 fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAssets>) {

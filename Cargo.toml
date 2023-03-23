@@ -1,3 +1,6 @@
+[workspace]
+members = ["macros"]
+
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
@@ -17,6 +20,7 @@ exclude = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bevy-yoleck-macros = { version = "0.9.0", path = "macros" }
 anyhow = "^1"
 bevy = { version = "^0.10", default-features = false }
 bevy_egui = { version = "^0.20", default-features = false, features = ["default_fonts"] }
