@@ -7,11 +7,11 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
-use crate::knobs::{YoleckKnobData, YoleckKnobsCache};
-use crate::prelude::{YoleckComponent, YoleckEdit, YoleckUi};
+use crate::knobs::YoleckKnobsCache;
+use crate::prelude::{YoleckComponent, YoleckUi};
 use crate::{
-    BoxedArc, YoleckEditSystems, YoleckEntityConstructionSpecs, YoleckManaged, YoleckSchedule,
-    YoleckState,
+    BoxedArc, YoleckEditMarker, YoleckEditSystems, YoleckEntityConstructionSpecs, YoleckManaged,
+    YoleckSchedule, YoleckState,
 };
 
 /// Whether or not the Yoleck editor is active.
@@ -208,6 +208,43 @@ impl From<SpawnEntityBuilder> for YoleckDirective {
     }
 }
 
+#[derive(Resource)]
+pub struct YoleckPassedData(pub(crate) HashMap<Entity, HashMap<TypeId, BoxedArc>>);
+
+impl YoleckPassedData {
+    /// Get data sent to an entity from external systems (usually from (usually a [ViewPort Editing
+    /// OverLay](crate::vpeol))
+    ///
+    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;;
+    /// # #[derive(Component)]
+    /// # struct Example {
+    /// #     message: String,
+    /// # }
+    /// fn edit_example(
+    ///     mut query: Query<(Entity, &mut Example), With<YoleckEdit>>,
+    ///     passed_data: Res<YoleckPassedData>,
+    /// ) {
+    ///     let Ok((entity, mut example)) = query.get_single_mut() else { return };
+    ///     if let Some(message) = passed_data.get::<String>(entity) {
+    ///         example.message = message;
+    ///     }
+    /// }
+    /// ```
+    pub fn get<T: 'static>(&self, entity: Entity) -> Option<&T> {
+        Some(
+            self.0
+                .get(&entity)?
+                .get(&TypeId::of::<T>())?
+                .downcast_ref()
+                .expect("Passed data TypeId must be correct"),
+        )
+    }
+}
+
 fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
     if yoleck_managed.name.is_empty() {
         format!("{} {:?}", yoleck_managed.type_name, entity)
@@ -323,9 +360,8 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         Query<(Entity, &mut YoleckManaged)>,
-        Query<Entity, With<YoleckEdit>>,
+        Query<Entity, With<YoleckEditMarker>>,
         EventReader<YoleckDirective>,
-        Query<(Entity, Option<&mut YoleckEdit>, Option<&mut YoleckKnobData>)>,
         Commands,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
@@ -335,13 +371,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
     let mut previously_edited_entity: Option<Entity> = None;
 
     move |world, ui| {
+        let mut passed_data = YoleckPassedData(Default::default());
         {
             let (
                 mut yoleck,
                 mut yoleck_managed_query,
                 yoleck_edited_query,
                 mut directives_reader,
-                mut data_passing_query,
                 mut commands,
                 editor_state,
                 mut writer,
@@ -357,7 +393,14 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             for directive in directives_reader.iter() {
                 match &directive.0 {
                     YoleckDirectiveInner::PassToEntity(entity, type_id, data) => {
-                        data_passed_to_entities
+                        if false {
+                            data_passed_to_entities
+                                .entry(*entity)
+                                .or_default()
+                                .insert(*type_id, data.clone());
+                        }
+                        passed_data
+                            .0
                             .entry(*entity)
                             .or_default()
                             .insert(*type_id, data.clone());
@@ -369,21 +412,23 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                 if entity_to_deselect == *entity {
                                     already_selected = true;
                                 } else {
-                                    commands.entity(entity_to_deselect).remove::<YoleckEdit>();
+                                    commands
+                                        .entity(entity_to_deselect)
+                                        .remove::<YoleckEditMarker>();
                                     writer.send(YoleckEditorEvent::EntityDeselected(
                                         entity_to_deselect,
                                     ));
                                 }
                             }
                             if !already_selected {
-                                commands.entity(*entity).insert(YoleckEdit {
-                                    passed_data: Default::default(),
-                                });
+                                commands.entity(*entity).insert(YoleckEditMarker);
                                 writer.send(YoleckEditorEvent::EntitySelected(*entity));
                             }
                         } else {
                             for entity_to_deselect in yoleck_edited_query.iter() {
-                                commands.entity(entity_to_deselect).remove::<YoleckEdit>();
+                                commands
+                                    .entity(entity_to_deselect)
+                                    .remove::<YoleckEditMarker>();
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
@@ -418,32 +463,17 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         if *select_created_entity {
                             yoleck.entity_being_edited = Some(cmd.id());
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
-                            cmd.insert(YoleckEdit {
-                                passed_data: Default::default(),
-                            });
+                            cmd.insert(YoleckEditMarker);
                             for entity_to_deselect in yoleck_edited_query.iter() {
-                                commands.entity(entity_to_deselect).remove::<YoleckEdit>();
+                                commands
+                                    .entity(entity_to_deselect)
+                                    .remove::<YoleckEditMarker>();
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
                         }
                         yoleck.level_needs_saving = true;
                     }
-                }
-            }
-
-            for (entity, edit, knob_data) in data_passing_query.iter_mut() {
-                if let Some(mut edit) = edit {
-                    edit.passed_data = data_passed_to_entities
-                        .get(&entity)
-                        .cloned()
-                        .unwrap_or_default();
-                }
-                if let Some(mut knob_data) = knob_data {
-                    knob_data.passed_data = data_passed_to_entities
-                        .get(&entity)
-                        .cloned()
-                        .unwrap_or_default();
                 }
             }
 
@@ -489,12 +519,14 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             ui.child_ui(egui::Rect::EVERYTHING, *ui.layout()),
         );
         world.insert_resource(YoleckUi(content_ui));
+        world.insert_resource(passed_data);
         world.resource_scope(|world, mut yoleck_edit_systems: Mut<YoleckEditSystems>| {
             yoleck_edit_systems.run_systems(world);
         });
         let YoleckUi(content_ui) = world
             .remove_resource()
             .expect("The YoleckUi resource was put in the world by this very function");
+        world.remove_resource::<YoleckPassedData>();
         prepared.content_ui = content_ui;
         prepared.end(ui);
 

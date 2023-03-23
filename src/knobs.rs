@@ -5,6 +5,7 @@ use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+use crate::editor::YoleckPassedData;
 use crate::BoxedArc;
 
 #[doc(hidden)]
@@ -15,9 +16,7 @@ pub struct YoleckKnobsCache {
 
 #[doc(hidden)]
 #[derive(Component)]
-pub struct YoleckKnobData {
-    pub(crate) passed_data: HashMap<TypeId, BoxedArc>,
-}
+pub struct YoleckKnobMarker;
 
 struct CachedKnob {
     key: Box<dyn Send + Sync + Any>,
@@ -48,9 +47,7 @@ impl YoleckKnobsCache {
                 }
             }
         }
-        let cmd = commands.spawn(YoleckKnobData {
-            passed_data: Default::default(),
-        });
+        let cmd = commands.spawn(YoleckKnobMarker);
         entries.push(CachedKnob {
             key: Box::new(key),
             entity: cmd.id(),
@@ -97,7 +94,28 @@ pub struct YoleckKnobHandle<'w, 's, 'a> {
 
 impl YoleckKnobHandle<'_, '_, '_> {
     /// Get data sent to the knob from external systems (usually interaciton from the level
-    /// editor). See [`YoleckEdit::get_passed_data`].
+    /// editor)
+    ///
+    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;;
+    /// # #[derive(Component)]
+    /// # struct Example {
+    /// #     num_clicks_on_knob: usize,
+    /// # };
+    /// fn edit_example_with_knob(mut query: Query<&mut Example, With<YoleckEdit>>) {
+    ///     let Ok(mut example) = query.get_single_mut() else { return };
+    ///     let mut knob = knobs.knob("click-counting");
+    ///     knob.insert((
+    ///         // setup the knobs position and graphics
+    ///     ));
+    ///     if knob.get_passed_data::<YoleckKnobClick>().is_some() {
+    ///         example.num_clicks_on_knob += 1;
+    ///     }
+    /// }
+    /// ```
     pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
         if let Some(dynamic) = self.passed.get(&TypeId::of::<T>()) {
             dynamic.downcast_ref()
@@ -111,7 +129,7 @@ impl YoleckKnobHandle<'_, '_, '_> {
 pub struct YoleckKnobs<'w, 's> {
     knobs_cache: ResMut<'w, YoleckKnobsCache>,
     commands: Commands<'w, 's>,
-    knobs_query: Query<'w, 's, &'static YoleckKnobData>,
+    passed_data: Res<'w, YoleckPassedData>,
 }
 
 impl<'w, 's> YoleckKnobs<'w, 's> {
@@ -121,9 +139,11 @@ impl<'w, 's> YoleckKnobs<'w, 's> {
     {
         let KnobFromCache { cmd, is_new } = self.knobs_cache.access(key, &mut self.commands);
         let passed = self
-            .knobs_query
-            .get(cmd.id())
-            .map(|knobs_data| knobs_data.passed_data.clone())
+            .passed_data
+            .0
+            .get(&cmd.id())
+            // TODO: find a way to do this with the borrow checker, without cloning
+            .cloned()
             .unwrap_or_default();
         YoleckKnobHandle {
             cmd,

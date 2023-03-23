@@ -187,7 +187,7 @@ use bevy::utils::HashMap;
 
 pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
-    pub use crate::editor::{YoleckEditorState, YoleckSyncWithEditorState};
+    pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckLoadingCommand, YoleckRawLevel};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::knobs::YoleckKnobs;
@@ -197,6 +197,7 @@ pub mod prelude {
     pub use crate::{YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame};
 }
 
+pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
 use self::editor::YoleckEditorState;

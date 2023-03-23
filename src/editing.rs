@@ -1,38 +1,34 @@
-use std::any::TypeId;
 use std::ops::{Deref, DerefMut};
 
+use bevy::ecs::query::{QuerySingleError, ReadOnlyWorldQuery, WorldQuery};
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy_egui::egui;
 
-use crate::BoxedArc;
-
 #[derive(Component)]
-pub struct YoleckEdit {
-    pub(crate) passed_data: HashMap<TypeId, BoxedArc>,
+pub struct YoleckEditMarker;
+
+#[derive(SystemParam)]
+pub struct YoleckEdit<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
+    query: Query<'w, 's, Q, (With<YoleckEditMarker>, F)>,
+    verification_query: Query<'w, 's, (), With<YoleckEditMarker>>,
 }
 
-impl YoleckEdit {
-    /// Get data sent to the entity from external systems (usually from (usually a [ViewPort Editing OverLay](crate::vpeol))
-    ///
-    /// The data is sent using [a directive event](crate::YoleckDirective::pass_to_entity).
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::prelude::*;;
-    /// # #[derive(Component)]
-    /// # struct Example {
-    /// #     message: String,
-    /// # }
-    /// fn edit_example(mut query: Query<(&YoleckEdit, &mut Example)>) {
-    ///     let Ok((edit, mut example)) = query.get_single_mut() else { return };
-    ///     if let Some(message) = edit.get_passed_data::<String>() {
-    ///         example.message = message;
-    ///     }
-    /// }
-    /// ```
-    pub fn get_passed_data<T: 'static>(&self) -> Option<&T> {
-        self.passed_data.get(&TypeId::of::<T>())?.downcast_ref()
+impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdit<'w, 's, Q, F> {
+    pub fn get_single(
+        &self,
+    ) -> Result<<<Q as WorldQuery>::ReadOnly as WorldQuery>::Item<'_>, QuerySingleError> {
+        let single = self.query.get_single()?;
+        // This will return an error if multiple entities are selected (but only one fits F and Q)
+        self.verification_query.get_single()?;
+        Ok(single)
+    }
+
+    pub fn get_single_mut(&mut self) -> Result<<Q as WorldQuery>::Item<'_>, QuerySingleError> {
+        let single = self.query.get_single_mut()?;
+        // This will return an error if multiple entities are selected (but only one fits F and Q)
+        self.verification_query.get_single()?;
+        Ok(single)
     }
 }
 

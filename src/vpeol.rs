@@ -12,7 +12,7 @@ use bevy::utils::HashMap;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
-use crate::knobs::YoleckKnobData;
+use crate::knobs::YoleckKnobMarker;
 use crate::prelude::YoleckEditorState;
 use crate::{YoleckDirective, YoleckState};
 
@@ -145,7 +145,7 @@ impl VpeolCameraState {
 
 fn prepare_camera_state(
     mut query: Query<&mut VpeolCameraState>,
-    knob_query: Query<Entity, With<YoleckKnobData>>,
+    knob_query: Query<Entity, With<YoleckKnobMarker>>,
 ) {
     for mut camera_state in query.iter_mut() {
         camera_state.entity_under_cursor = None;
@@ -181,7 +181,7 @@ fn handle_camera_state(
     window_getter: WindowGetter,
     buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
-    knob_query: Query<Entity, With<YoleckKnobData>>,
+    knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: EventWriter<YoleckDirective>,
 ) {
     enum MouseButtonOp {

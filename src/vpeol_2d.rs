@@ -489,10 +489,11 @@ impl YoleckComponent for Vpeol2dScale {
 
 fn vpeol_2d_edit_position(
     mut ui: ResMut<YoleckUi>,
-    mut query: Query<(&YoleckEdit, &mut Vpeol2dPosition)>,
+    mut query: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    passed_data: Res<YoleckPassedData>,
 ) {
-    let Ok((edit, mut position)) = query.get_single_mut() else { return };
-    if let Some(pos) = edit.get_passed_data::<Vec3>() {
+    let Ok((entity, mut position)) = query.get_single_mut() else { return };
+    if let Some(pos) = passed_data.get::<Vec3>(entity) {
         position.0 = pos.truncate();
     }
     ui.horizontal(|ui| {
