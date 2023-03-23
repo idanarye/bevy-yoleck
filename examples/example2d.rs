@@ -218,10 +218,10 @@ fn populate_player(mut populate: YoleckPopulate<(), With<IsPlayer>>, assets: Res
 
 fn edit_player(
     mut ui: ResMut<YoleckUi>,
-    mut query: YoleckEdit<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation)>,
+    mut edit: YoleckEdit<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation)>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((_, Vpeol2dPosition(position), mut rotation)) = query.get_single_mut() else { return };
+    let Ok((_, Vpeol2dPosition(position), mut rotation)) = edit.get_single_mut() else { return };
     use std::f32::consts::PI;
     ui.add(egui::Slider::new(&mut rotation.0, PI..=-PI).prefix("Angle: "));
     // TODO: do this in vpeol_2d?
@@ -281,10 +281,10 @@ impl YoleckComponent for FruitType {
 
 fn duplicate_fruit(
     mut ui: ResMut<YoleckUi>,
-    query: YoleckEdit<(&FruitType, &Vpeol2dPosition)>,
+    edit: YoleckEdit<(&FruitType, &Vpeol2dPosition)>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((fruit_type, Vpeol2dPosition(position))) = query.get_single() else { return };
+    let Ok((fruit_type, Vpeol2dPosition(position))) = edit.get_single() else { return };
     if ui.button("Duplicate").clicked() {
         writer.send(
             YoleckDirective::spawn_entity(
@@ -301,11 +301,11 @@ fn duplicate_fruit(
 
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut query: YoleckEdit<(&mut FruitType, &Vpeol2dPosition)>,
+    mut edit: YoleckEdit<(&mut FruitType, &Vpeol2dPosition)>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((mut fruit_type, Vpeol2dPosition(position))) = query.get_single_mut() else { return };
+    let Ok((mut fruit_type, Vpeol2dPosition(position))) = edit.get_single_mut() else { return };
     ui.horizontal(|ui| {
         ui.label(format!("New Style:\n#{} chosen", fruit_type.index));
         let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
@@ -420,9 +420,9 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAss
 
 fn edit_text(
     mut ui: ResMut<YoleckUi>,
-    mut query: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
+    mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
 ) {
-    let Ok((mut content, mut scale)) = query.get_single_mut() else { return };
+    let Ok((mut content, mut scale)) = edit.get_single_mut() else { return };
     ui.text_edit_multiline(&mut content.text);
     // TODO: do this in vpeol_2d?
     ui.add(egui::Slider::new(&mut scale.0.x, 0.5..=5.0).logarithmic(true));
