@@ -9,13 +9,25 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::YoleckEditorState;
 use crate::{BoxedAny, YoleckEntityLifecycleStatus, YoleckManaged, YoleckSchedule};
 
+/// A component that Yoleck will write to and read from `.yol` files.
+///
+/// Rather than being used for general ECS behavior definition, `YoleckComponent`s should be used
+/// for spawning the actual components using [populate
+/// systems](crate::YoleckExtForApp::yoleck_populate_schedule_mut).
 pub trait YoleckComponent:
     Default + Clone + PartialEq + Component + Serialize + for<'a> Deserialize<'a>
 {
     const KEY: &'static str;
 }
 
+/// A type of entity that can be created and edited with the Yoleck level editor.
+///
+/// Yoleck will only read and write the components registered on the entity type with the
+/// [`with`](YoleckEntityType::with) method, even if the file has data of other components or if
+/// the Bevy entity has other [`YoleckComponent`]s inserted to it. These components will still take
+/// effect in edit and populate systems though, even if they are not registered on the entity.
 pub struct YoleckEntityType {
+    /// The `type_name` used to identify the entity type.
     pub name: String,
     pub(crate) components: Vec<Box<dyn YoleckComponentHandler>>,
     #[allow(clippy::type_complexity)]
@@ -32,12 +44,16 @@ impl YoleckEntityType {
         }
     }
 
+    /// Register a [`YoleckComponent`] for entities of this type.
     pub fn with<T: YoleckComponent>(mut self) -> Self {
         self.components
             .push(Box::<YoleckComponentHandlerImpl<T>>::default());
         self
     }
 
+    /// Automatically spawn regular Bevy components when creating entities of this type.
+    ///
+    /// This is useful for marker components that don't carry data that needs to be saved to files.
     pub fn insert_on_init<T: Bundle>(
         mut self,
         bundle_maker: impl 'static + Sync + Send + Fn() -> T,
@@ -48,6 +64,8 @@ impl YoleckEntityType {
         self
     }
 
+    /// Similar to [`insert_on_init`](Self::insert_on_init), but only applies for entities in the
+    /// editor. Will not be added during playtests or actual game.
     pub fn insert_on_init_during_editor<T: Bundle>(
         mut self,
         bundle_maker: impl 'static + Sync + Send + Fn() -> T,
@@ -60,6 +78,8 @@ impl YoleckEntityType {
         self
     }
 
+    /// Similar to [`insert_on_init`](Self::insert_on_init), but only applies for entities in
+    /// playtests or the actual game. Will not be added in the editor.
     pub fn insert_on_init_during_game<T: Bundle>(
         mut self,
         bundle_maker: impl 'static + Sync + Send + Fn() -> T,
