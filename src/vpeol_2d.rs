@@ -101,7 +101,8 @@ pub struct Vpeol2dPluginForGame;
 impl Plugin for Vpeol2dPluginForGame {
     fn build(&self, app: &mut App) {
         app.yoleck_populate_schedule_mut().add_system(
-            vpeol_2d_populate_transform.in_base_set(YoleckPopulateBaseSet::AddTransform),
+            vpeol_2d_populate_transform
+                .in_base_set(YoleckPopulateBaseSet::OverrideCommonComponents),
         );
     }
 }

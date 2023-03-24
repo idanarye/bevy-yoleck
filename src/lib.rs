@@ -312,17 +312,74 @@ impl Plugin for YoleckPluginForEditor {
 }
 
 pub trait YoleckExtForApp {
-    /// TODO: document
-    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
+    /// Add a type of entity that can be edited in Yoleck's level editor.
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+    /// # struct Component1;
+    /// # type Component2 = Component1;
+    /// # type Component3 = Component1;
+    /// # let mut app = App::new();
+    /// app.add_yoleck_entity_type({
+    ///     YoleckEntityType::new("MyEntityType")
+    ///         .with::<Component1>()
+    ///         .with::<Component2>()
+    ///         .with::<Component3>()
+    /// });
+    /// ```
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType);
+
+    /// Add a system for editing Yoleck components in the level editor.
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+    /// # struct Component1;
+    /// # let mut app = App::new();
+    ///
+    /// app.add_yoleck_edit_system(edit_component1);
+    ///
+    /// fn edit_component1(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
+    ///     let Ok(component1) = edit.get_single_mut() else { return };
+    ///     // Edit `component1` with the `ui`
+    /// }
+    /// ```
+    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
+
+    /// Get a Bevy schedule to add Yoleck populate systems on.
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+    /// # struct Component1;
+    /// # let mut app = App::new();
+    ///
+    /// app.yoleck_populate_schedule_mut().add_system(populate_component1);
+    ///
+    /// fn populate_component1(mut populate: YoleckPopulate<&Component1>) {
+    ///     populate.populate(|_ctx, mut cmd, component1| {
+    ///         // Add Bevy components derived from `component1` to `cmd`.
+    ///     });
+    /// }
+    /// ```
     fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule;
 
+    /// Register a function that upgrades entities from a previous version of the app format.
     fn add_yoleck_entity_upgrade(
         &mut self,
         to_version: usize,
         upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
     );
 
+    /// Register a function that upgrades entities of a specific type from a previous version of
+    /// the app format.
     fn add_yoleck_entity_upgrade_for(
         &mut self,
         to_version: usize,
@@ -339,15 +396,6 @@ pub trait YoleckExtForApp {
 }
 
 impl YoleckExtForApp for App {
-    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>) {
-        let mut system = IntoSystem::into_system(system);
-        system.initialize(&mut self.world);
-        let mut edit_systems = self
-            .world
-            .get_resource_or_insert_with(YoleckEditSystems::default);
-        edit_systems.edit_systems.push(Box::new(system));
-    }
-
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType) {
         let construction_specs = self
             .world
@@ -393,6 +441,15 @@ impl YoleckExtForApp for App {
         }
     }
 
+    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>) {
+        let mut system = IntoSystem::into_system(system);
+        system.initialize(&mut self.world);
+        let mut edit_systems = self
+            .world
+            .get_resource_or_insert_with(YoleckEditSystems::default);
+        edit_systems.edit_systems.push(Box::new(system));
+    }
+
     fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule {
         self
             .get_schedule_mut(YoleckSchedule::Populate)
@@ -427,11 +484,16 @@ pub struct YoleckManaged {
     ///
     /// This is for level editors' convenience only - it will not be used in the games.
     pub name: String,
+
+    /// The type of the Yoleck entity, as registered with
+    /// [`add_yoleck_entity_type`](YoleckExtForApp::add_yoleck_entity_type).
+    ///
+    /// This defines the Yoleck components that can be edited for the entity.
     pub type_name: String,
 
-    pub lifecycle_status: YoleckEntityLifecycleStatus,
+    lifecycle_status: YoleckEntityLifecycleStatus,
 
-    pub components_data: HashMap<TypeId, BoxedAny>,
+    components_data: HashMap<TypeId, BoxedAny>,
 }
 
 pub enum YoleckEntityLifecycleStatus {
@@ -454,7 +516,7 @@ impl YoleckEditSystems {
     }
 }
 
-pub struct YoleckEntityTypeInfo {
+pub(crate) struct YoleckEntityTypeInfo {
     pub name: String,
     pub components: Vec<TypeId>,
     #[allow(clippy::type_complexity)]
@@ -532,9 +594,13 @@ pub(crate) enum YoleckSchedule {
     Populate,
 }
 
+/// Base sets for [Yoleck's populate schedule](YoleckExtForApp::yoleck_populate_schedule_mut).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
 #[system_set(base)]
 pub enum YoleckPopulateBaseSet {
+    /// This is where most user defined populate systems should reside.
     RunPopulateSystems,
-    AddTransform,
+    /// Since many bundles add their own transform and visibility components, systems that override
+    /// them explicitly need to go here.
+    OverrideCommonComponents,
 }
