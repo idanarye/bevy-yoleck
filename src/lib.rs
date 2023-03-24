@@ -292,7 +292,6 @@ impl Plugin for YoleckPluginForEditor {
         app.add_plugin(YoleckPluginBase);
         app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
-            entity_being_edited: None,
             level_needs_saving: false,
         });
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
@@ -540,14 +539,7 @@ impl YoleckEntityConstructionSpecs {
 /// Fields of the Yoleck editor.
 #[derive(Resource)]
 pub struct YoleckState {
-    entity_being_edited: Option<Entity>,
     level_needs_saving: bool,
-}
-
-impl YoleckState {
-    pub fn entity_being_edited(&self) -> Option<Entity> {
-        self.entity_being_edited
-    }
 }
 
 /// Sections for the Yoleck editor window.

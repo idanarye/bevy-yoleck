@@ -14,7 +14,7 @@ use bevy_egui::EguiContexts;
 
 use crate::knobs::YoleckKnobMarker;
 use crate::prelude::YoleckEditorState;
-use crate::{YoleckDirective, YoleckState};
+use crate::{YoleckDirective, YoleckEditMarker};
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
@@ -381,24 +381,18 @@ struct SelectionCueAnimation {
 }
 
 fn manage_selection_transform_components(
-    yoleck: Res<YoleckState>,
-    existance_query: Query<Option<&SelectionCueAnimation>>,
-    animated_query: Query<Entity, With<SelectionCueAnimation>>,
+    add_cue_query: Query<Entity, (Without<SelectionCueAnimation>, With<YoleckEditMarker>)>,
+    remove_cue_query: Query<Entity, (With<SelectionCueAnimation>, Without<YoleckEditMarker>)>,
     mut commands: Commands,
 ) {
-    let entitiy_being_edited = yoleck.entity_being_edited();
-    if let Some(entity) = entitiy_being_edited {
-        if matches!(existance_query.get(entity), Ok(None)) {
-            commands.entity(entity).insert(SelectionCueAnimation {
-                cached_transform: Default::default(),
-                progress: 0.0,
-            });
-        }
+    for entity in add_cue_query.iter() {
+        commands.entity(entity).insert(SelectionCueAnimation {
+            cached_transform: Default::default(),
+            progress: 0.0,
+        });
     }
-    for entity in animated_query.iter() {
-        if Some(entity) != entitiy_being_edited {
-            commands.entity(entity).remove::<SelectionCueAnimation>();
-        }
+    for entity in remove_cue_query.iter() {
+        commands.entity(entity).remove::<SelectionCueAnimation>();
     }
 }
 

@@ -298,15 +298,14 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
     let mut filter_types = HashSet::<String>::new();
 
     let mut system_state = SystemState::<(
-        Res<YoleckState>,
         Res<YoleckEntityConstructionSpecs>,
-        Query<(Entity, &YoleckManaged)>,
+        Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>)>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
     )>::new(world);
 
     move |world, ui| {
-        let (yoleck, construction_specs, yoleck_managed_query, editor_state, mut writer) =
+        let (construction_specs, yoleck_managed_query, editor_state, mut writer) =
             system_state.get_mut(world);
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -330,14 +329,14 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                     }
                 }
             });
-            for (entity, yoleck_managed) in yoleck_managed_query.iter() {
+            for (entity, yoleck_managed, edit_marker) in yoleck_managed_query.iter() {
                 if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
                     continue;
                 }
                 if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
                     continue;
                 }
-                let is_selected = yoleck.entity_being_edited == Some(entity);
+                let is_selected = edit_marker.is_some();
                 if ui
                     .selectable_label(is_selected, format_caption(entity, yoleck_managed))
                     .clicked()
@@ -357,7 +356,7 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
 pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
-        Query<(Entity, &mut YoleckManaged)>,
+        Query<(Entity, &mut YoleckManaged), With<YoleckEditMarker>>,
         Query<Entity, With<YoleckEditMarker>>,
         EventReader<YoleckDirective>,
         Commands,
@@ -431,20 +430,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
                         }
-
-                        // TODO: this one can be removed
-                        if *entity != yoleck.entity_being_edited {
-                            if let Some(entity) = entity {
-                                writer.send(YoleckEditorEvent::EntitySelected(*entity));
-                            } else {
-                                writer.send(YoleckEditorEvent::EntityDeselected(
-                                    yoleck
-                                        .entity_being_edited
-                                        .expect("cannot be None because `entity` is None"),
-                                ));
-                            }
-                            yoleck.entity_being_edited = *entity;
-                        }
                     }
                     YoleckDirectiveInner::SpawnEntity {
                         type_name,
@@ -459,7 +444,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             data: data.clone(),
                         });
                         if *select_created_entity {
-                            yoleck.entity_being_edited = Some(cmd.id());
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
                             cmd.insert(YoleckEditMarker);
                             for entity_to_deselect in yoleck_edited_query.iter() {
@@ -475,10 +459,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 }
             }
 
-            if let Some((entity, mut yoleck_managed)) = yoleck
-                .entity_being_edited
-                .and_then(|entity| yoleck_managed_query.get_mut(entity).ok())
-            {
+            let entity_being_edited;
+            if let Ok((entity, mut yoleck_managed)) = yoleck_managed_query.get_single_mut() {
+                entity_being_edited = Some(entity);
                 ui.horizontal(|ui| {
                     ui.heading(format!(
                         "Editing {}",
@@ -487,7 +470,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     if ui.button("Delete").clicked() {
                         commands.entity(entity).despawn_recursive();
                         writer.send(YoleckEditorEvent::EntityDeselected(entity));
-                        yoleck.entity_being_edited = None;
                         yoleck.level_needs_saving = true;
                     }
                 });
@@ -495,10 +477,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     ui.label("Custom Name:");
                     ui.text_edit_singleline(&mut yoleck_managed.name);
                 });
+            } else {
+                entity_being_edited = None;
             }
 
-            if previously_edited_entity != yoleck.entity_being_edited() {
-                previously_edited_entity = yoleck.entity_being_edited();
+            if previously_edited_entity != entity_being_edited {
+                previously_edited_entity = entity_being_edited;
                 for knob_entity in knobs_cache.drain() {
                     commands.entity(knob_entity).despawn_recursive();
                 }
