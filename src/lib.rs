@@ -348,6 +348,8 @@ pub trait YoleckExtForApp {
     ///     // Edit `component1` with the `ui`
     /// }
     /// ```
+    ///
+    /// See [`YoleckEdit`](crate::editing::YoleckEdit).
     fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
 
     /// Get a Bevy schedule to add Yoleck populate systems on.
@@ -538,7 +540,7 @@ impl YoleckEntityConstructionSpecs {
 
 /// Fields of the Yoleck editor.
 #[derive(Resource)]
-pub struct YoleckState {
+pub(crate) struct YoleckState {
     level_needs_saving: bool,
 }
 
