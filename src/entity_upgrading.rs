@@ -4,7 +4,34 @@ use bevy::prelude::*;
 
 use crate::YoleckRawLevel;
 
+/// Support upgrading of entities when the layout of the Yoleck entities and components change.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::prelude::*;
+/// # let mut app = App::new();
+/// app.add_plugin(YoleckEntityUpgradingPlugin {
+///     app_format_version: 5,
+/// });
+///
+/// // The newest upgrade, from 4 to 5
+/// app.add_yoleck_entity_upgrade_for(5, "Foo", |data| {
+///     let mut old_data = data.as_object_mut().unwrap().remove("OldFooComponent").unwrap();
+///     data["NewFooComponent"] = old_data;
+/// });
+///
+/// // Some older upgrade, from 2 to 3
+/// app.add_yoleck_entity_upgrade(3, |_type_name, data| {
+///     if let Some(component_data) = data.get_mut("Bar") {
+///         component_data["some_new_field"] = 42.into();
+///     }
+/// });
+/// ```
 pub struct YoleckEntityUpgradingPlugin {
+    /// The current version of the app data.
+    ///
+    /// If `YoleckEntityUpgradingPlugin` is not added, the current version is considered 0
+    /// ("unversioned")
     pub app_format_version: usize,
 }
 

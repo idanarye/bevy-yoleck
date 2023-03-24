@@ -373,6 +373,10 @@ pub trait YoleckExtForApp {
     fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule;
 
     /// Register a function that upgrades entities from a previous version of the app format.
+    ///
+    /// This should only be called _after_ adding
+    /// [`YoleckEntityUpgradingPlugin`](crate::entity_upgrading::YoleckEntityUpgradingPlugin). See
+    /// that plugin's docs for more info.
     fn add_yoleck_entity_upgrade(
         &mut self,
         to_version: usize,
