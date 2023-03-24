@@ -16,7 +16,6 @@ use crate::{
 /// Used by Yoleck to determine how to handle the entity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct YoleckEntryHeader {
-    /// This is the name passed to [`YoleckTypeHandler`](crate::YoleckTypeHandler::new).
     #[serde(rename = "type")]
     pub type_name: String,
     /// A name to display near the entity in the entities list.

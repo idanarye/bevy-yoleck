@@ -13,40 +13,41 @@
 //! structs:
 //!
 //! ```none
-//! ┌────────┐  Populate   ┏━━━━━━┓   Edit      ┌───────┐
-//! │Bevy    │  Systems    ┃Yoleck┃   Systems   │egui   │
-//! │Entities│◄────────────┃Struct┃◄═══════════►│Widgets│
-//! └────────┘             ┗━━━━━━┛             └───────┘
-//!                          ▲
-//!                          ║
-//!                          ║ Serde
-//!                          ║
-//!                          ▼
-//!                        ┌─────┐
-//!                        │.yol │
-//!                        │Files│
-//!                        └─────┘
+//! ┌────────┐  Populate   ┏━━━━━━━━━┓   Edit      ┌───────┐
+//! │Bevy    │  Systems    ┃Yoleck   ┃   Systems   │egui   │
+//! │Entities│◄────────────┃Component┃◄═══════════►│Widgets│
+//! └────────┘             ┃Structs  ┃             └───────┘
+//!                        ┗━━━━━━━━━┛
+//!                            ▲
+//!                            ║
+//!                            ║ Serde
+//!                            ║
+//!                            ▼
+//!                          ┌─────┐
+//!                          │.yol │
+//!                          │Files│
+//!                          └─────┘
 //! ```
 //!
 //! To support integrate Yoleck, a game needs to:
 //!
-//! * Define the entity structs, and make sure they implement:
+//! * Define the component structs, and make sure they implement:
 //!   ```text
-//!   #[derive(Clone, PartialEq, Serialize, Deserialize)]
+//!   #[derive(Default, Clone, PartialEq, Component, Serialize, Deserialize, YoleckComponent)]
 //!   ```
-//!   The structs need to be deserializable form the empty object `{}`, because that's how they'll
-//!   be initially created when the editor clicks on _Add New Entity_. Just slap
-//!   `#[serde(default)]` on all the fields.
-//! * For each struct, use [`add_yoleck_handler`](YoleckExtForApp::add_yoleck_handler) to add a
-//!   [`YoleckTypeHandler`] to the Bevy app.
-//!   * Register edit systems on the type handler with [`edit_with`](crate::YoleckTypeHandler::edit_with).
-//!   * Register populate systems on the type handler with
-//!     [`populate_with`](crate::YoleckTypeHandler::populate_with).
+//! * For each entity type that can be created in the level editor, use
+//!   [`add_yoleck_entity_type`](YoleckExtForApp::add_yoleck_entity_type) to add a
+//!   [`YoleckEntityType`]. Use [`YoleckEntityType::with`] to register the
+//!   [`YoleckComponent`](crate::specs_registration::YoleckComponent)s for that entity type.
+//! * Register edit systems with
+//!   [`add_yoleck_edit_system`](YoleckExtForApp::add_yoleck_edit_system).
+//! * Register populate systems on [the populate
+//!   schedule](YoleckExtForApp::yoleck_populate_schedule_mut)
 //! * If the application starts in editor mode:
 //!   * Add the `EguiPlugin` plugin.
 //!   * Add the [`YoleckPluginForEditor`] plugin.
-//!   * Use [`YoleckSyncWithEditorState`] to synchronize the game's state with the
-//!     [`YoleckEditorState`] (optional but highly recommended)
+//!   * Use [`YoleckSyncWithEditorState`](crate::editor::YoleckSyncWithEditorState) to synchronize
+//!     the game's state with the [`YoleckEditorState`] (optional but highly recommended)
 //! * If the application starts in game mode:
 //!   * Add the [`YoleckPluginForGame`] plugin.
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
@@ -56,7 +57,7 @@
 //! [`vpeol_2d`](crate::vpeol_2d) module. Helpers that can be used in `vpeol_2d` can be found in
 //! [`vpeol`](crate::vpeol).
 //!
-//! # Minimal Working Example
+//! # Example
 //!
 //! ```no_run
 //! use bevy::prelude::*;
@@ -426,7 +427,6 @@ pub struct YoleckManaged {
     ///
     /// This is for level editors' convenience only - it will not be used in the games.
     pub name: String,
-    /// This is the name passed to [`YoleckTypeHandler`](YoleckTypeHandler::new).
     pub type_name: String,
 
     pub lifecycle_status: YoleckEntityLifecycleStatus,

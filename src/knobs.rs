@@ -83,7 +83,7 @@ pub struct KnobFromCache<'w, 's, 'a> {
     pub is_new: bool,
 }
 
-/// An handle for intearcing with a knob from an [edit system](YoleckEdit::edit).
+/// An handle for intearcing with a knob from an edit system.
 pub struct YoleckKnobHandle<'w, 's, 'a> {
     /// The command of the knob entity.
     pub cmd: EntityCommands<'w, 's, 'a>,

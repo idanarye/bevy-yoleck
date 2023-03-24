@@ -270,8 +270,8 @@ fn handle_camera_state(
     }
 }
 
-/// A [passed data](crate::api::YoleckEditContext::get_passed_data) to a knob entity that indicate it was
-/// clicked by the level editor.
+/// A [passed data](crate::knobs::YoleckKnobHandle::get_passed_data) to a knob entity that indicate
+/// it was clicked by the level editor.
 pub struct YoleckKnobClick;
 
 /// Marker for entities that will be interacted in the viewport using their children.

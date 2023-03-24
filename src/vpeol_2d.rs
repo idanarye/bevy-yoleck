@@ -35,9 +35,9 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Either add  the [`Vpeol2dPosition`] Yoleck component and use
-//! it as the source of position (there are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but
-//! they don't currently get editing support from vpeol_2d)
+//! 1. Add  the [`Vpeol2dPosition`] Yoleck component and use it as the source of position (there
+//!    are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but they don't currently get editing
+//!    support from vpeol_2d)
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -79,8 +79,6 @@
 //!         });
 //!     }
 //!     ```
-//!
-//! Alternatively, use [`vpeol_position_edit_adapter`].
 
 use crate::bevy_egui::{egui, EguiContexts};
 use crate::vpeol::{
@@ -455,11 +453,6 @@ fn screen_pos_to_world_pos(
 
     // reduce it to a 2D value
     world_pos.truncate()
-}
-
-/// See [`vpeol_position_edit_adapter`].
-pub struct VpeolTransform2dProjection<'a> {
-    pub translation: &'a mut Vec2,
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]

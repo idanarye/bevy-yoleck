@@ -122,9 +122,9 @@ pub struct YoleckDirective(YoleckDirectiveInner);
 impl YoleckDirective {
     /// Pass data from an external system (usually a [ViewPort Editing OverLay](crate::vpeol)) to an entity.
     ///
-    /// If the entity is currently being edited, this data can be received using the
-    /// [`get_passed_data`](crate::YoleckEditContext::get_passed_data) method of
-    /// [`YoleckEdit`](crate::YoleckEdit::edit).
+    /// This data can be received using the [`YoleckPassedData`] resource. If the data is
+    /// passed to a knob, it can also be received using the knob handle's
+    /// [`get_passed_data`](crate::knobs::YoleckKnobHandle::get_passed_data) method.
     pub fn pass_to_entity<T: 'static + Send + Sync>(entity: Entity, data: T) -> Self {
         Self(YoleckDirectiveInner::PassToEntity(
             entity,
