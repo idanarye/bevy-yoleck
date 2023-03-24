@@ -340,7 +340,7 @@ fn edit_fruit_type(
 }
 
 fn populate_fruit(
-    mut populate: YoleckPopulate<&mut FruitType>,
+    mut populate: YoleckPopulate<&FruitType>,
     assets: Res<GameAssets>,
     marking: YoleckMarking,
 ) {

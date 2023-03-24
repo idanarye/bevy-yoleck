@@ -7,6 +7,7 @@ use bevy::utils::HashMap;
 
 use crate::entity_management::EntitiesToPopulate;
 
+/// Wrapper for writing queries in populate systems.
 #[derive(SystemParam)]
 pub struct YoleckPopulate<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
     entities_to_populate: Res<'w, EntitiesToPopulate>,
@@ -15,6 +16,8 @@ pub struct YoleckPopulate<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnly
 }
 
 impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckPopulate<'_, '_, Q, F> {
+    /// Iterate over the entities that need populating in order to add/update components using
+    /// a Bevy command.
     pub fn populate(
         &mut self,
         mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as WorldQuery>::Item<'_>),
@@ -64,6 +67,7 @@ impl YoleckPopulateContext {
     }
 }
 
+/// See [`YoleckMarking`].
 #[derive(Debug, Component, PartialEq, Eq, Clone, Copy)]
 pub struct YoleckSystemMarker(usize);
 
@@ -77,6 +81,30 @@ impl FromWorld for YoleckSystemMarker {
     }
 }
 
+/// Use to mark child entities created from a specific system.
+///
+/// Using `despawn_descendants` is dangerous because it can delete entities created by other
+/// populate systems in the same frame. Instead, a populate system that wants to despawn its own
+/// child entities should do something like this:
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::prelude::*;
+/// # use serde::{Deserialize, Serialize};
+/// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+/// # struct MyComponent;
+/// fn populate_system(mut populate: YoleckPopulate<&MyComponent>, marking: YoleckMarking) {
+///     populate.populate(|_ctx, mut cmd, my_component| {
+///         marking.despawn_marked(&mut cmd);
+///         cmd.with_children(|commands| {
+///             let mut child = commands.spawn(marking.marker());
+///             child.insert((
+///                 // relevant Bevy components
+///             ));
+///         });
+///     });
+/// }
+/// ```
 #[derive(SystemParam)]
 pub struct YoleckMarking<'w, 's> {
     designated_marker: Local<'s, YoleckSystemMarker>,
@@ -85,10 +113,13 @@ pub struct YoleckMarking<'w, 's> {
 }
 
 impl YoleckMarking<'_, '_> {
+    /// Create a marker unique to this system.
     pub fn marker(&self) -> YoleckSystemMarker {
         *self.designated_marker
     }
 
+    /// Despawn (with `despawn_recursive`) all the entities marked by the current system, that are
+    /// descendants of the entity edited by the supplied `cmd`.
     pub fn despawn_marked(&self, cmd: &mut EntityCommands) {
         let mut marked_children_map: HashMap<Entity, Vec<Entity>> = Default::default();
         for child in self.children_query.iter_descendants(cmd.id()) {
