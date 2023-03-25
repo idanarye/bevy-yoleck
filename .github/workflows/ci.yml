@@ -46,7 +46,7 @@ jobs:
           path: ~/.cargo
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Test
-        run: cargo test --verbose -- --nocapture
+        run: cargo test --verbose --all-features -- --nocapture
   fmt:
    name: Rustfmt
    runs-on: ubuntu-latest
