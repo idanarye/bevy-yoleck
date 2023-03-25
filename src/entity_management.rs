@@ -159,6 +159,9 @@ pub(crate) fn yoleck_process_loading_command(
                 for entry in level.entries() {
                     commands.spawn(entry.clone());
                 }
+            } else {
+                // Restore the loading command so that it can be re-chekced in the next frame.
+                *yoleck_loading_command = YoleckLoadingCommand::FromAsset(handle);
             }
         }
         YoleckLoadingCommand::FromData(mut level) => {
