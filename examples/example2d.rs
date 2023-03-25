@@ -271,7 +271,6 @@ struct IsFruit;
 
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 struct FruitType {
-    #[serde(default)]
     index: usize,
 }
 
@@ -317,7 +316,7 @@ fn edit_fruit_type(
             }
 
             if index != fruit_type.index {
-                let mut knob = knobs.knob(("select2", index));
+                let mut knob = knobs.knob(("select", index));
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
                 knob.cmd.insert(SpriteSheetBundle {
