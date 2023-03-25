@@ -119,7 +119,6 @@ impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugin(VpeolBasePlugin);
         app.add_plugin(Vpeol2dPluginForGame);
-        app.add_system(update_camera_world_position.in_set(VpeolSystemSet::PrepareCameraState));
 
         app.add_systems(
             (
@@ -159,7 +158,7 @@ struct CursorInWorldPos {
 impl CursorInWorldPos {
     fn from_camera_state(camera_state: &VpeolCameraState) -> Option<Self> {
         Some(Self {
-            cursor_in_world_pos: camera_state.cursor_in_world_position?.truncate(),
+            cursor_in_world_pos: camera_state.cursor_ray?.origin.truncate(),
         })
     }
 
@@ -189,31 +188,6 @@ impl CursorInWorldPos {
             && cursor.x <= max_corner.x
             && min_corner.y <= cursor.y
             && cursor.y <= max_corner.y
-    }
-}
-
-fn update_camera_world_position(
-    mut cameras_query: Query<
-        (&mut VpeolCameraState, &GlobalTransform, &Camera),
-        With<OrthographicProjection>,
-    >,
-    window_getter: WindowGetter,
-) {
-    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
-        camera_state.cursor_in_world_position = (|| {
-            let RenderTarget::Window(window_ref) = camera.target else { return None };
-            let window = window_getter.get_window(window_ref)?;
-            let cursor_in_screen_pos = window.cursor_position()?;
-            Some(
-                screen_pos_to_world_pos(
-                    cursor_in_screen_pos,
-                    window,
-                    &camera_transform.compute_matrix(),
-                    camera,
-                )
-                .extend(0.0),
-            )
-        })();
     }
 }
 

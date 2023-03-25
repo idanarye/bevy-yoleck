@@ -46,14 +46,11 @@ impl Plugin for VpeolBasePlugin {
                 .chain()
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
-        app.add_system({
-            prepare_camera_state.in_set(VpeolSystemSet::PrepareCameraState)
-            // .in_set(OnUpdate(YoleckEditorState::EditorActive))
-        });
-        app.add_system({
-            handle_camera_state.in_set(VpeolSystemSet::HandleCameraState)
-            // .in_set(OnUpdate(YoleckEditorState::EditorActive))
-        });
+        app.add_systems(
+            (prepare_camera_state, update_camera_world_position)
+                .in_set(VpeolSystemSet::PrepareCameraState),
+        );
+        app.add_system(handle_camera_state.in_set(VpeolSystemSet::HandleCameraState));
     }
 }
 
@@ -61,7 +58,7 @@ impl Plugin for VpeolBasePlugin {
 #[derive(Component, Default, Debug)]
 pub struct VpeolCameraState {
     /// Where this camera considers the cursor to be in the world.
-    pub cursor_in_world_position: Option<Vec3>,
+    pub cursor_ray: Option<Ray>,
     /// The topmost entity being pointed by the cursor.
     pub entity_under_cursor: Option<(Entity, VpeolCursorPointing)>,
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
@@ -160,6 +157,20 @@ fn prepare_camera_state(
     }
 }
 
+fn update_camera_world_position(
+    mut cameras_query: Query<(&mut VpeolCameraState, &GlobalTransform, &Camera)>,
+    window_getter: WindowGetter,
+) {
+    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+        camera_state.cursor_ray = (|| {
+            let RenderTarget::Window(window_ref) = camera.target else { return None };
+            let window = window_getter.get_window(window_ref)?;
+            let cursor_in_screen_pos = window.cursor_position()?;
+            camera.viewport_to_world(camera_transform, cursor_in_screen_pos)
+        })();
+    }
+}
+
 #[derive(SystemParam)]
 pub(crate) struct WindowGetter<'w, 's> {
     windows: Query<'w, 's, &'static Window>,
@@ -205,7 +216,8 @@ fn handle_camera_state(
         return;
     };
     for (camera, mut camera_state) in query.iter_mut() {
-        let Some(cursor_in_world_position) = camera_state.cursor_in_world_position else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let cursor_in_world_position = cursor_ray.origin;
 
         let RenderTarget::Window(window_ref) = camera.target else { continue };
         let Some(window) = window_getter.get_window(window_ref) else { continue };

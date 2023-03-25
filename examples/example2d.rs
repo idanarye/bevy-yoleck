@@ -36,7 +36,7 @@ fn main() {
         app.add_plugin(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
-        // example3d in the same repository so we use different directories.
+        // example2d and example3d in the same repository so we use different directories.
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));

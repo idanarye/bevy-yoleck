@@ -34,6 +34,9 @@ vpeol_2d = [
     "bevy/bevy_text",
     "bevy/bevy_sprite",
 ]
+vpeol_3d = [
+    "vpeol",
+]
 
 [dev-dependencies]
 bevy = { version = "^0.10", default-features = false, features = ["bevy_sprite", "x11"] }
@@ -41,6 +44,15 @@ bevy = { version = "^0.10", default-features = false, features = ["bevy_sprite",
 [[example]]
 name = "example2d"
 required-features = ["vpeol_2d", "bevy/png"]
+
+[[example]]
+name = "example3d"
+required-features = [
+    "vpeol_3d",
+    "bevy/bevy_pbr",
+    "bevy/bevy_scene",
+    "bevy/bevy_gltf",
+]
 
 [package.metadata.docs.rs]
 

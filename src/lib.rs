@@ -180,6 +180,8 @@ mod specs_registration;
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
+#[cfg(feature = "vpeol_3d")]
+pub mod vpeol_3d;
 
 use std::any::{Any, TypeId};
 use std::path::Path;
@@ -231,6 +233,7 @@ enum YoleckSystemSet {
 
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
+        app.init_resource::<YoleckEntityConstructionSpecs>();
         app.insert_resource(YoleckLoadingCommand::NoCommand);
         app.add_asset::<YoleckRawLevel>();
         app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
@@ -290,6 +293,7 @@ impl Plugin for YoleckPluginForEditor {
         app.add_state::<YoleckEditorState>();
         app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
+        app.init_resource::<YoleckEditSystems>();
         app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
             level_needs_saving: false,
