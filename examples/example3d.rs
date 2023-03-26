@@ -49,6 +49,7 @@ fn main() {
         );
     }
     app.add_startup_system(setup_camera);
+    app.add_startup_system(setup_arena);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Spaceship")
@@ -75,6 +76,10 @@ fn main() {
     app.yoleck_populate_schedule_mut()
         .add_system(populate_planet);
 
+    app.add_systems(
+        (control_spaceship, hit_planets).in_set(OnUpdate(YoleckEditorState::GameActive)),
+    );
+
     app.run();
 }
 
@@ -94,8 +99,25 @@ fn setup_camera(mut commands: Commands) {
             shadows_enabled: true,
             ..Default::default()
         },
-        transform: Transform::from_xyz(10.0, 10.0, 20.0)
-            .looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
+        transform: Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z),
+        ..Default::default()
+    });
+}
+
+fn setup_arena(
+    mut commands: Commands,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+) {
+    let mesh = mesh_assets.add(Mesh::from(shape::Plane {
+        size: 100.0,
+        subdivisions: 0,
+    }));
+    let material = material_assets.add(Color::GRAY.into());
+    commands.spawn(PbrBundle {
+        mesh,
+        material,
+        transform: Transform::from_xyz(0.0, -10.0, 0.0),
         ..Default::default()
     });
 }
@@ -136,4 +158,45 @@ fn populate_planet(
             });
         }
     });
+}
+
+fn control_spaceship(
+    mut spaceship_query: Query<&mut Transform, With<IsSpaceship>>,
+    time: Res<Time>,
+    input: Res<Input<KeyCode>>,
+) {
+    let calc_axis = |neg: KeyCode, pos: KeyCode| match (input.pressed(neg), input.pressed(pos)) {
+        (true, true) | (false, false) => 0.0,
+        (true, false) => -1.0,
+        (false, true) => 1.0,
+    };
+    let pitch = calc_axis(KeyCode::Up, KeyCode::Down);
+    let roll = calc_axis(KeyCode::Left, KeyCode::Right);
+    for mut spaceship_transform in spaceship_query.iter_mut() {
+        let forward_direction = spaceship_transform.rotation.mul_vec3(-Vec3::Z);
+        let roll_quat =
+            Quat::from_scaled_axis(2.0 * forward_direction * time.delta_seconds() * roll);
+        let pitch_axis = spaceship_transform.rotation.mul_vec3(Vec3::X);
+        let pitch_quat = Quat::from_scaled_axis(2.0 * pitch_axis * time.delta_seconds() * pitch);
+        spaceship_transform.rotation = roll_quat * pitch_quat * spaceship_transform.rotation;
+        spaceship_transform.translation += 2.0 * forward_direction * time.delta_seconds();
+    }
+}
+
+fn hit_planets(
+    spaceship_query: Query<&Transform, With<IsSpaceship>>,
+    planets_query: Query<(Entity, &Transform), With<IsPlanet>>,
+    mut commands: Commands,
+) {
+    for spaceship_transform in spaceship_query.iter() {
+        for (planet_entity, planet_transform) in planets_query.iter() {
+            if spaceship_transform
+                .translation
+                .distance_squared(planet_transform.translation)
+                < 2.0f32.powi(2)
+            {
+                commands.entity(planet_entity).despawn_recursive();
+            }
+        }
+    }
 }

@@ -130,9 +130,11 @@ fn update_camera_status_for_models(
 
             let Some(distance_to_aabb) = ray_intersection_with_aabb(ray_in_object_coords, aabb) else { continue };
 
-            camera_state.consider(root_resolver.resolve_root(entity), distance_to_aabb, || {
-                cursor_ray.get_point(distance_to_aabb)
-            });
+            camera_state.consider(
+                root_resolver.resolve_root(entity),
+                -distance_to_aabb,
+                || cursor_ray.get_point(distance_to_aabb),
+            );
 
             // TODO: Check the triangles for ray intersection
             /*
