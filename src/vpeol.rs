@@ -14,7 +14,7 @@ use bevy_egui::EguiContexts;
 
 use crate::knobs::YoleckKnobMarker;
 use crate::prelude::YoleckEditorState;
-use crate::{YoleckDirective, YoleckEditMarker};
+use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged};
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
@@ -329,15 +329,17 @@ pub struct YoleckRouteClickTo(pub Entity);
 #[derive(SystemParam)]
 pub struct VpeolRootResolver<'w, 's> {
     root_resolver: Query<'w, 's, &'static YoleckRouteClickTo>,
+    has_managed_query: Query<'w, 's, Or<(With<YoleckManaged>, With<YoleckKnobMarker>)>>,
 }
 
 impl VpeolRootResolver<'_, '_> {
     /// Find the Yoleck controlled entity that's in charge of an entity the user points at.
-    pub fn resolve_root(&self, entity: Entity) -> Entity {
+    pub fn resolve_root(&self, entity: Entity) -> Option<Entity> {
         if let Ok(YoleckRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
-            *root_entity
+            Some(*root_entity)
         } else {
-            entity
+            self.has_managed_query.get(entity).ok()?;
+            Some(entity)
         }
     }
 }

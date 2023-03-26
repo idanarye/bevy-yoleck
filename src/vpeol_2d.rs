@@ -214,7 +214,8 @@ fn update_camera_status_for_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
+                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
@@ -248,7 +249,8 @@ fn update_camera_status_for_atlas_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
+                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
@@ -269,7 +271,8 @@ fn update_camera_status_for_text_2d(
         {
             if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
-                camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {
+                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
