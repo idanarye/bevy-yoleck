@@ -88,6 +88,7 @@ use crate::vpeol::{
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
+use bevy::render::view::VisibleEntities;
 use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
@@ -193,15 +194,17 @@ impl CursorInWorldPos {
 }
 
 fn update_camera_status_for_sprites(
-    mut cameras_query: Query<&mut VpeolCameraState>,
+    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
     image_assets: Res<Assets<Image>>,
     root_resolver: VpeolRootResolver,
 ) {
-    for mut camera_state in cameras_query.iter_mut() {
+    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
-        for (entity, entity_transform, sprite, texture) in entities_query.iter() {
+        for (entity, entity_transform, sprite, texture) in
+            entities_query.iter_many(&visible_entities.entities)
+        {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
             } else if let Some(texture) = image_assets.get(texture) {
@@ -220,7 +223,7 @@ fn update_camera_status_for_sprites(
 }
 
 fn update_camera_status_for_atlas_sprites(
-    mut cameras_query: Query<&mut VpeolCameraState>,
+    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(
         Entity,
         &GlobalTransform,
@@ -230,10 +233,12 @@ fn update_camera_status_for_atlas_sprites(
     texture_atlas_assets: Res<Assets<TextureAtlas>>,
     root_resolver: VpeolRootResolver,
 ) {
-    for mut camera_state in cameras_query.iter_mut() {
+    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
-        for (entity, entity_transform, sprite, texture) in entities_query.iter() {
+        for (entity, entity_transform, sprite, texture) in
+            entities_query.iter_many(&visible_entities.entities)
+        {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
             } else if let Some(texture_atlas) = texture_atlas_assets.get(texture) {
@@ -252,14 +257,16 @@ fn update_camera_status_for_atlas_sprites(
 }
 
 fn update_camera_status_for_text_2d(
-    mut cameras_query: Query<&mut VpeolCameraState>,
+    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(Entity, &GlobalTransform, &TextLayoutInfo, &Anchor)>,
     root_resolver: VpeolRootResolver,
 ) {
-    for mut camera_state in cameras_query.iter_mut() {
+    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
         let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
 
-        for (entity, entity_transform, text_layout_info, anchor) in entities_query.iter() {
+        for (entity, entity_transform, text_layout_info, anchor) in
+            entities_query.iter_many(&visible_entities.entities)
+        {
             if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
                 camera_state.consider(root_resolver.resolve_root(entity), z_depth, || {

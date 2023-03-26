@@ -7,6 +7,7 @@ use crate::{prelude::*, YoleckPopulateBaseSet};
 use bevy::prelude::*;
 use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
+use bevy::render::view::VisibleEntities;
 use serde::{Deserialize, Serialize};
 
 /// Add the systems required for loading levels that use vpeol_3d components
@@ -102,14 +103,15 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
 }
 
 fn update_camera_status_for_models(
-    mut cameras_query: Query<&mut VpeolCameraState>,
+    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(Entity, &GlobalTransform, &Handle<Mesh>)>,
     mesh_assets: Res<Assets<Mesh>>,
     root_resolver: VpeolRootResolver,
 ) {
-    for mut camera_state in cameras_query.iter_mut() {
+    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
         let Some(cursor_ray) = camera_state.cursor_ray else { continue };
-        for (entity, global_transform, mesh) in entities_query.iter() {
+        for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
+        {
             let Some(mesh) = mesh_assets.get(mesh) else { continue };
             if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
                 continue;
