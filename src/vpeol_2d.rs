@@ -82,8 +82,8 @@
 
 use crate::bevy_egui::{egui, EguiContexts};
 use crate::vpeol::{
-    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolRootResolver,
-    VpeolSystemSet, WindowGetter,
+    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
+    VpeolRootResolver, VpeolSystemSet, WindowGetter,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -119,6 +119,7 @@ impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugin(VpeolBasePlugin);
         app.add_plugin(Vpeol2dPluginForGame);
+        app.insert_resource(VpeolDragPlane { normal: Vec3::Z });
 
         app.add_systems(
             (

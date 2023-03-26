@@ -1,7 +1,7 @@
 use crate::bevy_egui::egui;
 use crate::vpeol::{
-    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolRootResolver,
-    VpeolSystemSet,
+    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
+    VpeolRootResolver, VpeolSystemSet,
 };
 use crate::{prelude::*, YoleckPopulateBaseSet};
 use bevy::prelude::*;
@@ -26,12 +26,31 @@ impl Plugin for Vpeol3dPluginForGame {
 /// * Entity selection.
 /// * Entity dragging.
 /// * Connecting nested entities.
-pub struct Vpeol3dPluginForEditor;
+pub struct Vpeol3dPluginForEditor {
+    pub drag_plane_normal: Vec3,
+}
+
+impl Vpeol3dPluginForEditor {
+    pub fn sidescroller() -> Self {
+        Self {
+            drag_plane_normal: Vec3::Z,
+        }
+    }
+
+    pub fn topdown() -> Self {
+        Self {
+            drag_plane_normal: Vec3::Y,
+        }
+    }
+}
 
 impl Plugin for Vpeol3dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugin(VpeolBasePlugin);
         app.add_plugin(Vpeol3dPluginForGame);
+        app.insert_resource(VpeolDragPlane {
+            normal: self.drag_plane_normal,
+        });
 
         app.add_systems(
             (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
@@ -61,13 +80,19 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
         (Vec3::Y, aabb.half_extents.y),
         (Vec3::Z, aabb.half_extents.z),
     ] {
-        let mut low = ray.intersect_plane(center - half_extent * axis, axis)?;
-        let mut high = ray.intersect_plane(center + half_extent * axis, axis)?;
-        if high < low {
-            core::mem::swap(&mut low, &mut high);
+        let low = ray.intersect_plane(center - half_extent * axis, axis);
+        let high = ray.intersect_plane(center + half_extent * axis, axis);
+        let (low, high) = if 0.0 <= ray.direction.dot(axis) {
+            (low, high)
+        } else {
+            (high, low)
+        };
+        if let Some(low) = low {
+            max_low = max_low.max(low);
         }
-        max_low = max_low.max(low);
-        min_high = min_high.min(high);
+        if let Some(high) = high {
+            min_high = min_high.min(high);
+        }
     }
     if max_low <= min_high {
         Some(max_low)

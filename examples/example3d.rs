@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 
 use bevy_yoleck::prelude::*;
-use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren};
+use bevy_yoleck::vpeol::{VpeolCameraState, VpeolDragPlane, VpeolWillContainClickableChildren};
 use bevy_yoleck::vpeol_3d::Vpeol3dPosition;
 // use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,7 @@ fn main() {
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels3d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor);
+        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor::sidescroller());
         app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
@@ -57,6 +57,15 @@ fn main() {
     });
     app.yoleck_populate_schedule_mut()
         .add_system(populate_spaceship);
+
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("Planet")
+            .with::<Vpeol3dPosition>()
+            .insert_on_init(|| IsPlanet)
+            .insert_on_init(|| VpeolDragPlane::XZ)
+    });
+    app.yoleck_populate_schedule_mut()
+        .add_system(populate_planet);
 
     app.run();
 }
@@ -92,9 +101,29 @@ fn populate_spaceship(
 ) {
     populate.populate(|ctx, mut cmd, ()| {
         cmd.insert(VpeolWillContainClickableChildren);
+        // Spaceship model doesn't change, so there is no need to despawn and recreated it.
         if ctx.is_first_time() {
             cmd.insert(SceneBundle {
                 scene: asset_server.load("models/spaceship.glb#Scene0"),
+                ..Default::default()
+            });
+        }
+    });
+}
+
+#[derive(Component)]
+struct IsPlanet;
+
+fn populate_planet(
+    mut populate: YoleckPopulate<(), With<IsPlanet>>,
+    asset_server: Res<AssetServer>,
+) {
+    populate.populate(|ctx, mut cmd, ()| {
+        cmd.insert(VpeolWillContainClickableChildren);
+        // Planet model doesn't change, so there is no need to despawn and recreated it.
+        if ctx.is_first_time() {
+            cmd.insert(SceneBundle {
+                scene: asset_server.load("models/planet.glb#Scene0"),
                 ..Default::default()
             });
         }

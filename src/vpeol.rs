@@ -54,6 +54,16 @@ impl Plugin for VpeolBasePlugin {
     }
 }
 
+#[derive(Component, Resource)]
+pub struct VpeolDragPlane {
+    pub normal: Vec3,
+}
+
+impl VpeolDragPlane {
+    pub const XY: VpeolDragPlane = VpeolDragPlane { normal: Vec3::Z };
+    pub const XZ: VpeolDragPlane = VpeolDragPlane { normal: Vec3::Y };
+}
+
 /// Data passed between Vpeol abstraction and backends.
 #[derive(Component, Default, Debug)]
 pub struct VpeolCameraState {
@@ -194,6 +204,8 @@ fn handle_camera_state(
     global_transform_query: Query<&GlobalTransform>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: EventWriter<YoleckDirective>,
+    global_drag_plane: Res<VpeolDragPlane>,
+    drag_plane_overrides_query: Query<&VpeolDragPlane>,
 ) {
     enum MouseButtonOp {
         JustPressed,
@@ -217,7 +229,16 @@ fn handle_camera_state(
     };
     for (camera, mut camera_state) in query.iter_mut() {
         let Some(cursor_ray) = camera_state.cursor_ray else { continue };
-        let cursor_in_world_position = cursor_ray.origin;
+        let calc_cursor_in_world_position = |entity: Entity, plane_origin: Vec3| -> Option<Vec3> {
+            let drag_plane_normal =
+                if let Ok(drag_plane_override) = drag_plane_overrides_query.get(entity) {
+                    drag_plane_override.normal
+                } else {
+                    global_drag_plane.normal
+                };
+            let distance = cursor_ray.intersect_plane(plane_origin, drag_plane_normal)?;
+            Some(cursor_ray.get_point(distance))
+        };
 
         let RenderTarget::Window(window_ref) = camera.target else { continue };
         let Some(window) = window_getter.get_window(window_ref) else { continue };
@@ -225,26 +246,29 @@ fn handle_camera_state(
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
             (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
-                if let Some(knob_entity) = knob_query
-                    .iter()
-                    .find(|knob_entity| camera_state.pointing_at_entity(*knob_entity).is_some())
+                if let Some((knob_entity, cursor_pointing)) =
+                    knob_query.iter().find_map(|knob_entity| {
+                        Some((knob_entity, camera_state.pointing_at_entity(knob_entity)?))
+                    })
                 {
                     directives_writer.send(YoleckDirective::pass_to_entity(
                         knob_entity,
                         YoleckKnobClick,
                     ));
                     let Ok(knob_transform) = global_transform_query.get(knob_entity) else { continue };
+                    let Some(cursor_in_world_position) = calc_cursor_in_world_position(knob_entity, cursor_pointing.cursor_position_world_coords) else { continue };
                     camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::BeingDragged {
                         entity: knob_entity,
                         prev_screen_pos: cursor_in_screen_pos,
                         offset: cursor_in_world_position - knob_transform.translation(),
                     }
                 } else {
-                    camera_state.clicks_on_objects_state = if let Some((entity, _cursor_pointing)) =
+                    camera_state.clicks_on_objects_state = if let Some((entity, cursor_pointing)) =
                         &camera_state.entity_under_cursor
                     {
                         let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
                         directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                        let Some(cursor_in_world_position) = calc_cursor_in_world_position(*entity, cursor_pointing.cursor_position_world_coords) else { continue };
                         VpeolClicksOnObjectsState::BeingDragged {
                             entity: *entity,
                             prev_screen_pos: cursor_in_screen_pos,
@@ -265,6 +289,9 @@ fn handle_camera_state(
                 },
             ) => {
                 if 0.1 <= prev_screen_pos.distance_squared(cursor_in_screen_pos) {
+                    let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
+                    let drag_point = entity_transform.translation() + *offset;
+                    let Some(cursor_in_world_position) = calc_cursor_in_world_position(*entity, drag_point) else { continue };
                     directives_writer.send(YoleckDirective::pass_to_entity(
                         *entity,
                         cursor_in_world_position - *offset,
