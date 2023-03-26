@@ -5,9 +5,11 @@ use crate::vpeol::{
 };
 use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::prelude::*;
-use bevy::render::primitives::Aabb;
+use bevy::render::primitives::{Aabb, Frustum};
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::render::view::VisibleEntities;
+use bevy::utils::HashMap;
+use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 
 /// Add the systems required for loading levels that use vpeol_3d components
@@ -56,9 +58,9 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_systems(
             (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
         );
-        //app.add_systems(
-        //(camera_3d_pan, camera_3d_zoom).in_set(OnUpdate(YoleckEditorState::EditorActive)),
-        //);
+        app.add_systems(
+            (camera_3d_pan, camera_3d_zoom).in_set(OnUpdate(YoleckEditorState::EditorActive)),
+        );
         app.add_systems(
             (
                 apply_system_buffers,
@@ -159,6 +161,127 @@ fn update_camera_status_for_models(
             */
         }
     }
+}
+
+/// Pan, zoom and rotate a camera entity with the mouse while inisde the editor.
+#[derive(Component)]
+pub struct Vpeol3dCameraControl {
+    /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.
+    pub zoom_per_scroll_line: f32,
+    /// How much to zoom when receiving scroll event in `MouseScrollUnit::Pixel` units.
+    pub zoom_per_scroll_pixel: f32,
+}
+
+impl Default for Vpeol3dCameraControl {
+    fn default() -> Self {
+        Self {
+            zoom_per_scroll_line: 0.2,
+            zoom_per_scroll_pixel: 0.001,
+        }
+    }
+}
+
+fn camera_3d_pan(
+    mut egui_context: EguiContexts,
+    buttons: Res<Input<MouseButton>>,
+    mut cameras_query: Query<
+        (Entity, &mut Transform, &VpeolCameraState),
+        With<Vpeol3dCameraControl>,
+    >,
+    mut last_ray_by_camera: Local<HashMap<Entity, Ray>>,
+) {
+    enum MouseButtonOp {
+        JustPressed,
+        BeingPressed,
+    }
+
+    let mouse_button_op = if buttons.just_pressed(MouseButton::Right) {
+        if egui_context.ctx_mut().is_pointer_over_area() {
+            return;
+        }
+        MouseButtonOp::JustPressed
+    } else if buttons.pressed(MouseButton::Right) {
+        MouseButtonOp::BeingPressed
+    } else {
+        last_ray_by_camera.clear();
+        return;
+    };
+
+    for (camera_entity, _camera_transform, camera_state) in cameras_query.iter_mut() {
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        match mouse_button_op {
+            MouseButtonOp::JustPressed => {
+                last_ray_by_camera.insert(camera_entity, cursor_ray);
+            }
+            MouseButtonOp::BeingPressed => {
+                if let Some(prev_ray) = last_ray_by_camera.get_mut(&camera_entity) {
+                    // TODO: decide how to decide how far to look
+                }
+            }
+        }
+    }
+}
+
+fn camera_3d_zoom(/*
+    mut egui_context: EguiContexts,
+    window_getter: WindowGetter,
+    mut cameras_query: Query<(
+        &mut Transform,
+        &GlobalTransform,
+        &Camera,
+        &Vpeol3dCameraControl,
+    )>,
+    mut wheel_events_reader: EventReader<MouseWheel>,
+    */) {
+    /*
+    if egui_context.ctx_mut().is_pointer_over_area() {
+        return;
+    }
+
+    for (mut camera_transform, camera_global_transform, camera, camera_control) in
+        cameras_query.iter_mut()
+    {
+        let zoom_amount: f32 = wheel_events_reader
+            .iter()
+            .map(|wheel_event| match wheel_event.unit {
+                bevy::input::mouse::MouseScrollUnit::Line => {
+                    wheel_event.y * camera_control.zoom_per_scroll_line
+                }
+                bevy::input::mouse::MouseScrollUnit::Pixel => {
+                    wheel_event.y * camera_control.zoom_per_scroll_pixel
+                }
+            })
+            .sum();
+
+        if zoom_amount == 0.0 {
+            continue;
+        }
+
+        let scale_by = (-zoom_amount).exp();
+
+        let window = if let RenderTarget::Window(window_ref) = camera.target {
+            window_getter.get_window(window_ref).unwrap()
+        } else {
+            continue;
+        };
+        if let Some(screen_pos) = window.cursor_position() {
+            let camera_global_transform_matrix = camera_global_transform.compute_matrix();
+            let world_pos = screen_pos_to_world_pos(
+                screen_pos,
+                window,
+                &camera_global_transform_matrix,
+                camera,
+            );
+            camera_transform.scale.x *= scale_by;
+            camera_transform.scale.y *= scale_by;
+            let new_global_transform_matrix = camera_global_transform_matrix
+                .mul_mat4(&Mat4::from_scale(Vec3::new(scale_by, scale_by, 1.0)));
+            let new_world_pos =
+                screen_pos_to_world_pos(screen_pos, window, &new_global_transform_matrix, camera);
+            camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
+        }
+    }
+    */
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]

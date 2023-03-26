@@ -5,7 +5,7 @@ use bevy_egui::EguiPlugin;
 
 use bevy_yoleck::prelude::*;
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolDragPlane, VpeolWillContainClickableChildren};
-use bevy_yoleck::vpeol_3d::{Vpeol3dPosition, Vpeol3dThirdAxisWithKnob};
+use bevy_yoleck::vpeol_3d::{Vpeol3dCameraControl, Vpeol3dPosition, Vpeol3dThirdAxisWithKnob};
 // use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -90,7 +90,8 @@ fn setup_camera(mut commands: Commands) {
                 .looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
             ..Default::default()
         })
-        .insert(VpeolCameraState::default());
+        .insert(VpeolCameraState::default())
+        .insert(Vpeol3dCameraControl::default());
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
