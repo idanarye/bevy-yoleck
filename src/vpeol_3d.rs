@@ -5,7 +5,7 @@ use crate::vpeol::{
 };
 use crate::{prelude::*, YoleckPopulateBaseSet};
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
+use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
 use serde::{Deserialize, Serialize};
 
@@ -52,20 +52,60 @@ impl Plugin for Vpeol3dPluginForEditor {
     }
 }
 
+fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
+    let center: Vec3 = aabb.center.into();
+    let mut max_low = f32::NEG_INFINITY;
+    let mut min_high = f32::INFINITY;
+    for (axis, half_extent) in [
+        (Vec3::X, aabb.half_extents.x),
+        (Vec3::Y, aabb.half_extents.y),
+        (Vec3::Z, aabb.half_extents.z),
+    ] {
+        let mut low = ray.intersect_plane(center - half_extent * axis, axis)?;
+        let mut high = ray.intersect_plane(center + half_extent * axis, axis)?;
+        if high < low {
+            core::mem::swap(&mut low, &mut high);
+        }
+        max_low = max_low.max(low);
+        min_high = min_high.min(high);
+    }
+    if max_low <= min_high {
+        Some(max_low)
+    } else {
+        None
+    }
+}
+
 fn update_camera_status_for_models(
     mut cameras_query: Query<&mut VpeolCameraState>,
     entities_query: Query<(Entity, &GlobalTransform, &Handle<Mesh>)>,
     mesh_assets: Res<Assets<Mesh>>,
-    _root_resolver: VpeolRootResolver,
+    root_resolver: VpeolRootResolver,
 ) {
-    for camera_state in cameras_query.iter_mut() {
+    for mut camera_state in cameras_query.iter_mut() {
         let Some(cursor_ray) = camera_state.cursor_ray else { continue };
-        for (_entity, global_transform, mesh) in entities_query.iter() {
+        for (entity, global_transform, mesh) in entities_query.iter() {
             let Some(mesh) = mesh_assets.get(mesh) else { continue };
             if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
                 continue;
             }
-            // TODO: add AABB check
+            let Some(aabb) = mesh.compute_aabb() else { continue };
+
+            let inverse_transform = global_transform.compute_matrix().inverse();
+
+            let ray_in_object_coords = Ray {
+                origin: inverse_transform.transform_point3(cursor_ray.origin),
+                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+            };
+
+            let Some(distance_to_aabb) = ray_intersection_with_aabb(ray_in_object_coords, aabb) else { continue };
+
+            camera_state.consider(root_resolver.resolve_root(entity), distance_to_aabb, || {
+                cursor_ray.get_point(distance_to_aabb)
+            });
+
+            // TODO: Check the triangles for ray intersection
+            /*
             let Some(indices) = mesh.indices() else { continue };
             let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { continue };
             let mut it = indices.iter();
@@ -82,8 +122,10 @@ fn update_camera_status_for_models(
                 let triangle_normal = vec1.cross(vec2).normalize_or_zero();
                 let Some(distance) = cursor_ray.intersect_plane(triangle_origin, triangle_normal) else { continue };
                 let intersection = cursor_ray.get_point(distance);
-                info!("intersection {:?}", intersection);
+                let _ = intersection;
+                //info!("intersection {:?}", intersection);
             }
+            */
         }
     }
 }

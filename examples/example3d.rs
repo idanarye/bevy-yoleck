@@ -90,11 +90,13 @@ fn populate_spaceship(
     mut populate: YoleckPopulate<(), With<IsSpaceship>>,
     asset_server: Res<AssetServer>,
 ) {
-    populate.populate(|_ctx, mut cmd, ()| {
+    populate.populate(|ctx, mut cmd, ()| {
         cmd.insert(VpeolWillContainClickableChildren);
-        cmd.insert(SceneBundle {
-            scene: asset_server.load("models/spaceship.glb#Scene0"),
-            ..Default::default()
-        });
+        if ctx.is_first_time() {
+            cmd.insert(SceneBundle {
+                scene: asset_server.load("models/spaceship.glb#Scene0"),
+                ..Default::default()
+            });
+        }
     });
 }
