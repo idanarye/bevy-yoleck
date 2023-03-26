@@ -94,6 +94,8 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
         }
         if let Some(high) = high {
             min_high = min_high.min(high);
+        } else {
+            return None;
         }
     }
     if max_low <= min_high {
