@@ -5,7 +5,7 @@ use bevy_egui::EguiPlugin;
 
 use bevy_yoleck::prelude::*;
 use bevy_yoleck::vpeol::{VpeolCameraState, VpeolDragPlane, VpeolWillContainClickableChildren};
-use bevy_yoleck::vpeol_3d::Vpeol3dPosition;
+use bevy_yoleck::vpeol_3d::{Vpeol3dPosition, Vpeol3dThirdAxisWithKnob};
 // use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -54,6 +54,10 @@ fn main() {
         YoleckEntityType::new("Spaceship")
             .with::<Vpeol3dPosition>()
             .insert_on_init(|| IsSpaceship)
+            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
+                knob_distance: 2.0,
+                knob_scale: 0.5,
+            })
     });
     app.yoleck_populate_schedule_mut()
         .add_system(populate_spaceship);
@@ -62,7 +66,11 @@ fn main() {
         YoleckEntityType::new("Planet")
             .with::<Vpeol3dPosition>()
             .insert_on_init(|| IsPlanet)
-            .insert_on_init(|| VpeolDragPlane::XZ)
+            .insert_on_init_during_editor(|| VpeolDragPlane::XZ)
+            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
+                knob_distance: 2.0,
+                knob_scale: 0.5,
+            })
     });
     app.yoleck_populate_schedule_mut()
         .add_system(populate_planet);

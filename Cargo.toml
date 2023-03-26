@@ -36,6 +36,7 @@ vpeol_2d = [
 ]
 vpeol_3d = [
     "vpeol",
+    "bevy/bevy_pbr",
 ]
 
 [dev-dependencies]
@@ -49,7 +50,6 @@ required-features = ["vpeol_2d", "bevy/png"]
 name = "example3d"
 required-features = [
     "vpeol_3d",
-    "bevy/bevy_pbr",
     "bevy/bevy_scene",
     "bevy/bevy_gltf",
 ]

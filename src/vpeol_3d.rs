@@ -3,7 +3,7 @@ use crate::vpeol::{
     handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
     VpeolRootResolver, VpeolSystemSet,
 };
-use crate::{prelude::*, YoleckPopulateBaseSet};
+use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::prelude::*;
 use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
@@ -69,6 +69,7 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
+        app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
     }
 }
 
@@ -161,6 +162,12 @@ fn update_camera_status_for_models(
 #[serde(transparent)]
 pub struct Vpeol3dPosition(pub Vec3);
 
+#[derive(Component)]
+pub struct Vpeol3dThirdAxisWithKnob {
+    pub knob_distance: f32,
+    pub knob_scale: f32,
+}
+
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol3dRotatation(pub Quat);
@@ -189,6 +196,78 @@ fn vpeol_3d_edit_position(
         ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut position.0.z).prefix("Z:"));
     });
+}
+
+fn vpeol_3d_edit_third_axis_with_knob(
+    mut edit: YoleckEdit<(
+        Entity,
+        &GlobalTransform,
+        &Vpeol3dThirdAxisWithKnob,
+        Option<&VpeolDragPlane>,
+    )>,
+    global_drag_plane: Res<VpeolDragPlane>,
+    mut knobs: YoleckKnobs,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+    mut mesh_and_material: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
+    mut directives_writer: EventWriter<YoleckDirective>,
+) {
+    let Ok((entity, global_transform, third_axis_with_knob, drag_plane)) = edit.get_single_mut() else { return };
+
+    let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
+        (
+            mesh_assets.add(Mesh::from(shape::Cylinder {
+                radius: 0.5,
+                height: 1.0,
+                resolution: 10,
+                segments: 10,
+            })),
+            material_assets.add(Color::ORANGE_RED.into()),
+        )
+    });
+
+    let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
+    let entity_position = global_transform.translation();
+
+    for (knob_name, drag_plane_normal) in [
+        ("vpeol-3d-third-axis-knob-positive", drag_plane.normal),
+        ("vpeol-3d-third-axis-knob-negative", -drag_plane.normal),
+    ] {
+        let mut knob = knobs.knob(knob_name);
+        let knob_offset = third_axis_with_knob.knob_distance * drag_plane_normal;
+        let knob_transform = Transform {
+            translation: entity_position + knob_offset,
+            rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
+            scale: third_axis_with_knob.knob_scale * Vec3::ONE,
+        };
+        knob.cmd.insert(VpeolDragPlane {
+            normal: {
+                let normal = drag_plane.normal.cross(Vec3::X).normalize_or_zero();
+                if normal == Vec3::ZERO {
+                    Vec3::Y
+                } else {
+                    normal
+                }
+            },
+        });
+        knob.cmd.insert(PbrBundle {
+            mesh: mesh.clone(),
+            material: material.clone(),
+            transform: knob_transform,
+            global_transform: knob_transform.into(),
+            ..Default::default()
+        });
+        if let Some(pos) = knob.get_passed_data::<Vec3>() {
+            let vector_from_entity = *pos - knob_offset - entity_position;
+            let along_drag_normal = vector_from_entity.dot(drag_plane.normal);
+            let vector_along_drag_normal = along_drag_normal * drag_plane.normal;
+            let position_along_drag_normal = entity_position + vector_along_drag_normal;
+            directives_writer.send(YoleckDirective::pass_to_entity(
+                entity,
+                position_along_drag_normal,
+            ));
+        }
+    }
 }
 
 fn vpeol_3d_populate_transform(
