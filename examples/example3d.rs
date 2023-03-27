@@ -92,6 +92,7 @@ fn setup_camera(mut commands: Commands) {
         })
         .insert(VpeolCameraState::default())
         .insert(Vpeol3dCameraControl::sidescroller());
+    // .insert(Vpeol3dCameraControl::topdown());
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
