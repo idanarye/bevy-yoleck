@@ -21,7 +21,12 @@ own level editor.
 ## Examples:
 
 * WASM examples - you can't save the levels because it's WASM, but you can edit the levels run playtests:
-  * https://idanarye.github.io/bevy-yoleck/demos/example2d
+  * 2D editor: https://idanarye.github.io/bevy-yoleck/demos/example2d
+
+    https://user-images.githubusercontent.com/1149255/228007948-31a37b3f-7bd3-4a36-a3bc-4617d359c7c2.mp4
+  * 3D editor: https://idanarye.github.io/bevy-yoleck/demos/example3d
+
+    https://user-images.githubusercontent.com/1149255/228008014-825ef02e-2edc-49f5-a15c-1fa6044f84de.mp4
 * Example game:
   * Download binaries from https://aeon-felis.itch.io/danger-doofus
   * See the code at https://github.com/idanarye/sidekick-jam-entry-danger-doofus
