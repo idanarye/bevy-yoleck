@@ -4,8 +4,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 
 use bevy_yoleck::prelude::*;
-use bevy_yoleck::vpeol::{VpeolCameraState, VpeolDragPlane, VpeolWillContainClickableChildren};
-use bevy_yoleck::vpeol_3d::{Vpeol3dCameraControl, Vpeol3dPosition, Vpeol3dThirdAxisWithKnob};
+use bevy_yoleck::vpeol::prelude::*;
 // use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -27,7 +26,7 @@ fn main() {
                 );
             },
         );
-        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForGame);
+        app.add_plugin(Vpeol3dPluginForGame);
     } else {
         app.add_plugin(EguiPlugin);
         app.add_plugin(YoleckPluginForEditor);
@@ -37,8 +36,8 @@ fn main() {
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels3d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor::topdown());
-        app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
+        app.add_plugin(Vpeol3dPluginForEditor::topdown());
+        app.add_plugin(VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,

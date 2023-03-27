@@ -4,10 +4,7 @@ use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
-use bevy_yoleck::vpeol::{VpeolCameraState, VpeolWillContainClickableChildren, YoleckKnobClick};
-use bevy_yoleck::vpeol_2d::{
-    Vpeol2dCameraControl, Vpeol2dPosition, Vpeol2dRotatation, Vpeol2dScale,
-};
+use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckDirective};
 use serde::{Deserialize, Serialize};
 
@@ -40,8 +37,8 @@ fn main() {
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor);
-        app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
+        app.add_plugin(Vpeol2dPluginForEditor);
+        app.add_plugin(VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,

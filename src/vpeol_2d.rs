@@ -8,7 +8,7 @@
 //! # use bevy::prelude::*;
 //! # use bevy_yoleck::bevy_egui::EguiPlugin;
 //! # use bevy_yoleck::prelude::*;
-//! # use bevy_yoleck::vpeol_2d::Vpeol2dPluginForEditor;
+//! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
 //! app.add_plugin(EguiPlugin);
 //! app.add_plugin(YoleckPluginForEditor);
@@ -25,7 +25,7 @@
 //! ```no_run
 //! # use bevy::prelude::*;
 //! # use bevy_yoleck::vpeol::VpeolCameraState;
-//! # use bevy_yoleck::vpeol_2d::Vpeol2dCameraControl;
+//! # use bevy_yoleck::vpeol::prelude::*;
 //! # let commands: Commands = panic!();
 //! commands
 //!     .spawn(Camera2dBundle::default())
@@ -42,7 +42,7 @@
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
-//!     # use bevy_yoleck::vpeol_2d::Vpeol2dPosition;
+//!     # use bevy_yoleck::vpeol::prelude::*;
 //!     # use serde::{Deserialize, Serialize};
 //!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 //!     # struct Example;

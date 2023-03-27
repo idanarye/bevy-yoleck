@@ -16,6 +16,22 @@ use crate::knobs::YoleckKnobMarker;
 use crate::prelude::YoleckEditorState;
 use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged};
 
+pub mod prelude {
+    pub use crate::vpeol::{
+        VpeolCameraState, VpeolDragPlane, VpeolSelectionCuePlugin,
+        VpeolWillContainClickableChildren, YoleckKnobClick,
+    };
+    #[cfg(feature = "vpeol_2d")]
+    pub use crate::vpeol_2d::{
+        Vpeol2dCameraControl, Vpeol2dPluginForEditor, Vpeol2dPluginForGame, Vpeol2dPosition,
+        Vpeol2dRotatation, Vpeol2dScale,
+    };
+    pub use crate::vpeol_3d::{
+        Vpeol3dCameraControl, Vpeol3dPluginForEditor, Vpeol3dPluginForGame, Vpeol3dPosition,
+        Vpeol3dRotatation, Vpeol3dScale, Vpeol3dThirdAxisWithKnob,
+    };
+}
+
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum VpeolSystemSet {
