@@ -54,8 +54,9 @@
 //!   * Use [`YoleckLoadingCommand`] to load the level.
 //!
 //! To support picking and moving entities in the viewport with the mouse, check out the
-//! [`vpeol_2d`](crate::vpeol_2d) module. Helpers that can be used in `vpeol_2d` can be found in
-//! [`vpeol`](crate::vpeol).
+//! [`vpeol_2d`](crate::vpeol_2d) and [`vpeol_3d`](crate::vpeol_3d) modules. After adding the
+//! appropriate feature flag (`vpeol_2d`/`vpeol_3d`), import their types from
+//! [`bevy_yoleck::vpeol::prelude::*`](crate::vpeol::prelude).
 //!
 //! # Example
 //!

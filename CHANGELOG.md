@@ -5,10 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.9.0 - 2023-03-27
 ### Changed
 - [**BREAKING**] This entire release is a huge breaking change. See the
   [migration guide](migration-guides/MIGRATION_TO_0.9.md).
-- [**BREAKING**] Move to a new model, where each Yoleck entity 
+- [**BREAKING**] Move to a new model, where each Yoleck entity can be composed
+  of multiple `YoleckComponent`s.
 - [**BREAKING**] The syntax of edit systems and populate systems has
   drastically changed.
 
@@ -16,7 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - A mechanism for upgrading entity's data when their layout changes. See
   `YoleckEntityUpgradingPlugin`. This can be used to upgrade old games to use
   the new semantics introduced in this version.
-- vpeol_3d
+- `vpeol_3d` is back in, without the dependencies and with better dragging.
 - `yoleck::prelude`
 - `yoleck::vpeol::prelude`
 

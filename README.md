@@ -15,7 +15,11 @@ own level editor.
   systems for both loading the levels and visualizing them in the editor.
 * Entity editing is done with egui widgets that edit these structs.
 * Support for external plugins that offer more visual editing.
-  * One simple such plugin included behind feature flag - `vpeol_2d`.
+  * One simple such plugin - Vpeol is included in the crate. It provides basic
+    entity selection, positioning with mouse dragging, and basic camera
+    control. It has two variants behind feature flags - `vpeol_2d` and
+    `vpeol_3d`.
+* A knobs mechanism for more visual editing.
 * Playtest the levels inside the editor.
 
 ## Examples:
@@ -44,7 +48,7 @@ file's top level is a tuple (actually JSON array) of three values:
 Each entity is a tuple of two values:
 
 * Entity metadata - e.g. its type.
-* Entity data - that's the user defined struct
+* Entity componments - that's the user defined structs.
 
 The reason tuples are used instead of objects is to ensure ordering - to
 guarantee the metadata can be read before the data. This is important because
@@ -63,6 +67,7 @@ at a directory's contents). The index file containes a tuple of two values:
 
 | bevy | bevy-yoleck | bevy-egui |
 |------|-------------|-----------|
+| 0.10 | 0.9         | 0.20      |
 | 0.10 | 0.7, 0.8    | 0.20      |
 | 0.9  | 0.5, 0.6    | 0.19      |
 | 0.9  | 0.4         | 0.17      |
