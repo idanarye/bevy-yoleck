@@ -12,7 +12,8 @@
 //! # let mut app = App::new();
 //! app.add_plugin(EguiPlugin);
 //! app.add_plugin(YoleckPluginForEditor);
-//! app.add_plugin(Vpeol2dPluginForEditor); // use Vpeol2dPluginForGame when setting up for game
+//! // Use `Vpeol2dPluginForGame` instead when setting up for game.
+//! app.add_plugin(Vpeol2dPluginForEditor);
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -110,7 +111,7 @@ impl Plugin for Vpeol2dPluginForGame {
 
 /// Add the systems required for 2D editing.
 ///
-/// * 2D camera zoom/pan
+/// * 2D camera control (for cameras with [`Vpeol2dCameraControl`])
 /// * Entity selection.
 /// * Entity dragging.
 /// * Connecting nested entities.
@@ -441,14 +442,19 @@ fn screen_pos_to_world_pos(
     world_pos.truncate()
 }
 
+/// A position component that's edited and populated by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dPosition(pub Vec2);
 
+/// A rotation component that's populated (but not edited) by vpeol_2d.
+///
+/// The rotation is in radians around the Z axis.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dRotatation(pub f32);
 
+/// A scale component that's populated (but not edited) by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol2dScale(pub Vec2);

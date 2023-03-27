@@ -1,3 +1,98 @@
+//! # Viewport Editing Overlay for 3D games.
+//!
+//! Use this module to implement simple 3D editing for 3D games.
+//!
+//! To use add the egui and Yoleck plugins to the Bevy app, as well as the plugin of this module:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::bevy_egui::EguiPlugin;
+//! # use bevy_yoleck::prelude::*;
+//! # use bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor;
+//! # let mut app = App::new();
+//! app.add_plugin(EguiPlugin);
+//! app.add_plugin(YoleckPluginForEditor);
+//!
+//! // - Use `Vpeol3dPluginForGame` instead when setting up for game.
+//! // - Use topdown is for games that utilize the XZ plane. There is also
+//! //   `Vpeol3dPluginForEditor::sidescroller` for games that mainly need the XY plane.
+//! app.add_plugin(Vpeol3dPluginForEditor::topdown());
+//! ```
+//!
+//! Add the following components to the camera entity:
+//! * [`VpeolCameraState`] in order to select and drag entities.
+//! * [`Vpeol3dCameraControl`] in order to control the camera with the mouse. This one can be
+//!   skipped if there are other means to control the camera inside the editor, or if no camera
+//!   control inside the editor is desired.
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::vpeol::VpeolCameraState;
+//! # use bevy_yoleck::vpeol_3d::Vpeol3dCameraControl;
+//! # let commands: Commands = panic!();
+//! commands
+//!     .spawn(Camera3dBundle::default())
+//!     .insert(VpeolCameraState::default())
+//!     // Use a variant of the camera controls that fit the choice of editor plugin.
+//!     .insert(Vpeol3dCameraControl::topdown());
+//! ```
+//!
+//! Entity selection by clicking on it is supported by just adding the plugin. To implement
+//! dragging, there are two options:
+//!
+//! 1. Add  the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
+//!    are also [`Vpeol3dRotatation`] and [`Vpeol3dScale`], but they don't currently get editing
+//!    support from vpeol_3d). To enable dragging across the third axis, add
+//!    [`Vpeol3dThirdAxisWithKnob`] as well.
+//!     ```no_run
+//!     # use bevy::prelude::*;
+//!     # use bevy_yoleck::prelude::*;
+//!     # use bevy_yoleck::vpeol_3d::{Vpeol3dPosition, Vpeol3dThirdAxisWithKnob};
+//!     # use serde::{Deserialize, Serialize};
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
+//!     # struct Example;
+//!     # let mut app = App::new();
+//!     app.add_yoleck_entity_type({
+//!         YoleckEntityType::new("Example")
+//!             .with::<Vpeol3dPosition>() // vpeol_3d dragging
+//!             .with::<Example>() // entity's specific data and systems
+//!             // Optional:
+//!             .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
+//!                 knob_distance: 2.0,
+//!                 knob_scale: 0.5,
+//!             })
+//!     });
+//!     ```
+//! 2. Use data passing. vpeol_3d will pass a `Vec3` to the entity being dragged:
+//!     ```no_run
+//!     # use bevy::prelude::*;
+//!     # use bevy_yoleck::prelude::*;
+//!     # use serde::{Deserialize, Serialize};
+//!     # #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
+//!     # struct Example {
+//!     #     position: Vec3,
+//!     # }
+//!     # let mut app = App::new();
+//!     fn edit_example(mut edit: YoleckEdit<(Entity, &mut Example)>, passed_data: Res<YoleckPassedData>) {
+//!         let Ok((entity, mut example)) = edit.get_single_mut() else { return };
+//!         if let Some(pos) = passed_data.get::<Vec3>(entity) {
+//!             example.position = *pos;
+//!         }
+//!     }
+//!
+//!     fn populate_example(mut populate: YoleckPopulate<&Example>) {
+//!         populate.populate(|_ctx, mut cmd, example| {
+//!             cmd.insert(SpriteBundle {
+//!                 transform: Transform::from_translation(example.position),
+//!                 // Actual model/scene components
+//!                 ..Default::default()
+//!             });
+//!         });
+//!     }
+//!     ```
+//!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
+//!     axis knob.
+
 use crate::bevy_egui::egui;
 use crate::vpeol::{
     handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
@@ -27,20 +122,34 @@ impl Plugin for Vpeol3dPluginForGame {
 
 /// Add the systems required for 3D editing.
 ///
+/// * 3D camera control (for cameras with [`Vpeol3dCameraControl`])
 /// * Entity selection.
 /// * Entity dragging.
 /// * Connecting nested entities.
 pub struct Vpeol3dPluginForEditor {
+    /// The normal to configure the global [`VpeolDragPlane`] resource with.
+    ///
+    /// Indiviual entities can override this with their own [`VpeolDragPlane`] component.
     pub drag_plane_normal: Vec3,
 }
 
 impl Vpeol3dPluginForEditor {
+    /// For sidescroller games - drag entities along the XY plane.
+    ///
+    /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
+    ///
+    /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Z axis manipulation.
     pub fn sidescroller() -> Self {
         Self {
             drag_plane_normal: Vec3::Z,
         }
     }
 
+    /// For games that are not sidescrollers - drag entities along the XZ plane.
+    ///
+    /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
+    ///
+    /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Y axis manipulation.
     pub fn topdown() -> Self {
         Self {
             drag_plane_normal: Vec3::Y,
@@ -169,12 +278,16 @@ fn update_camera_status_for_models(
     }
 }
 
-/// Pan, zoom and rotate a camera entity with the mouse while inisde the editor.
+/// Move and rotate a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
 pub struct Vpeol3dCameraControl {
+    /// Panning is done by dragging a plane with this as its origin.
     pub plane_origin: Vec3,
+    /// Panning is done by dragging a plane with this as its normal.
     pub plane_normal: Vec3,
-    pub allow_rotation_while_keeping_up: Option<Vec3>,
+    /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
+    /// direction.
+    pub allow_rotation_while_maintaining_up: Option<Vec3>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.
     pub proximity_per_scroll_line: f32,
@@ -188,7 +301,7 @@ impl Vpeol3dCameraControl {
         Self {
             plane_origin: Vec3::ZERO,
             plane_normal: -Vec3::Z,
-            allow_rotation_while_keeping_up: None,
+            allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
         }
@@ -198,7 +311,7 @@ impl Vpeol3dCameraControl {
         Self {
             plane_origin: Vec3::ZERO,
             plane_normal: Vec3::Y,
-            allow_rotation_while_keeping_up: Some(Vec3::Y),
+            allow_rotation_while_maintaining_up: Some(Vec3::Y),
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
         }
@@ -319,7 +432,7 @@ fn camera_3d_rotate(
     for (camera_entity, mut camera_transform, camera_state, camera_control) in
         cameras_query.iter_mut()
     {
-        let Some(keeping_up) = camera_control.allow_rotation_while_keeping_up else { continue };
+        let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else { continue };
         let Some(cursor_ray) = camera_state.cursor_ray else { continue };
         match mouse_button_op {
             MouseButtonOp::JustPressed => {
@@ -331,27 +444,42 @@ fn camera_3d_rotate(
                         Quat::from_rotation_arc(cursor_ray.direction, prev_ray.direction);
                     camera_transform.rotate(rotation);
                     let new_forward = camera_transform.forward();
-                    camera_transform.look_to(new_forward, keeping_up);
+                    camera_transform.look_to(new_forward, maintaining_up);
                 }
             }
         }
     }
 }
 
+/// A position component that's edited and populated by vpeol_3d.
+///
+/// Editing is done with egui, or by dragging the entity on a [`VpeolDragPlane`]  that passes
+/// through the entity. To support dragging perpendicular to that plane, use
+/// [`Vpeol3dThirdAxisWithKnob`].
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol3dPosition(pub Vec3);
 
+/// Add a knob for dragging the entity perpendicular to the [`VpeolDragPlane`].
+///
+/// Dragging the knob will not actually change any component - it will only pass to the entity a
+/// `Vec3` that describes the drag. Since regular entity dragging is also implemented by passing a
+/// `Vec3`, just adding this component should be enough if there is already an edit system in place
+/// that reads that `Vec3` (such as the edit system for [`Vpeol3dPosition`])
 #[derive(Component)]
 pub struct Vpeol3dThirdAxisWithKnob {
+    /// The distance of the knob from the entity's origin.
     pub knob_distance: f32,
+    /// A scale for the knob's model.
     pub knob_scale: f32,
 }
 
+/// A rotation component that's populated (but not edited) by vpeol_3d.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol3dRotatation(pub Quat);
 
+/// A scale component that's populated (but not edited) by vpeol_3d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 pub struct Vpeol3dScale(pub Vec3);

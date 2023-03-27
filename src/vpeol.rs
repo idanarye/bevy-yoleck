@@ -54,8 +54,18 @@ impl Plugin for VpeolBasePlugin {
     }
 }
 
+/// A plane to define the drag direction of entities.
+///
+/// This is both a component and a resource. Entities that have the component will use the plane
+/// defined by it, while entities that don't will use the global one defined by the resource.
+/// Child entities will use the plane of the root Yoleck managed entity (if it has one). Knobs will
+/// use the one attached to the knob entity.
+///
+/// This configuration is only meaningful for 3D, but vpeol_2d still requires it resource.
+/// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
 #[derive(Component, Resource)]
 pub struct VpeolDragPlane {
+    /// The normal of the plane.
     pub normal: Vec3,
 }
 
@@ -96,8 +106,7 @@ pub enum VpeolClicksOnObjectsState {
         entity: Entity,
         /// Used for deciding if the cursor has moved.
         prev_screen_pos: Vec2,
-        /// Offset from the entity's center to
-        /// [`cursor_in_world_position`](VpeolCameraState::cursor_in_world_position).
+        /// Offset from the entity's center to the cursor's position on the drag plane.
         offset: Vec3,
     },
 }
