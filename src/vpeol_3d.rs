@@ -60,7 +60,11 @@ impl Plugin for Vpeol3dPluginForEditor {
             (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
         );
         app.add_systems(
-            (camera_3d_pan, camera_3d_move_along_plane_normal)
+            (
+                camera_3d_pan,
+                camera_3d_move_along_plane_normal,
+                camera_3d_rotate,
+            )
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
@@ -170,7 +174,6 @@ fn update_camera_status_for_models(
 pub struct Vpeol3dCameraControl {
     pub plane_origin: Vec3,
     pub plane_normal: Vec3,
-    pub clamp_distance_to_drag_point_at: f32,
     pub allow_rotation_while_keeping_up: Option<Vec3>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.
@@ -185,8 +188,7 @@ impl Vpeol3dCameraControl {
         Self {
             plane_origin: Vec3::ZERO,
             plane_normal: -Vec3::Z,
-            clamp_distance_to_drag_point_at: 100.0,
-            allow_rotation_while_keeping_up: Some(Vec3::Y),
+            allow_rotation_while_keeping_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
         }
@@ -196,7 +198,6 @@ impl Vpeol3dCameraControl {
         Self {
             plane_origin: Vec3::ZERO,
             plane_normal: Vec3::Y,
-            clamp_distance_to_drag_point_at: 100.0,
             allow_rotation_while_keeping_up: Some(Vec3::Y),
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
@@ -205,11 +206,7 @@ impl Vpeol3dCameraControl {
 
     fn ray_intersection(&self, ray: Ray) -> Option<Vec3> {
         let distance = ray.intersect_plane(self.plane_origin, self.plane_normal)?;
-        if distance <= self.clamp_distance_to_drag_point_at {
-            Some(ray.get_point(distance))
-        } else {
-            None
-        }
+        Some(ray.get_point(distance))
     }
 }
 
@@ -288,6 +285,56 @@ fn camera_3d_move_along_plane_normal(
         }
 
         camera_transform.translation += zoom_amount * camera_control.plane_normal;
+    }
+}
+
+fn camera_3d_rotate(
+    mut egui_context: EguiContexts,
+    buttons: Res<Input<MouseButton>>,
+    mut cameras_query: Query<(
+        Entity,
+        &mut Transform,
+        &VpeolCameraState,
+        &Vpeol3dCameraControl,
+    )>,
+    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray>>,
+) {
+    enum MouseButtonOp {
+        JustPressed,
+        BeingPressed,
+    }
+
+    let mouse_button_op = if buttons.just_pressed(MouseButton::Middle) {
+        if egui_context.ctx_mut().is_pointer_over_area() {
+            return;
+        }
+        MouseButtonOp::JustPressed
+    } else if buttons.pressed(MouseButton::Middle) {
+        MouseButtonOp::BeingPressed
+    } else {
+        last_cursor_ray_by_camera.clear();
+        return;
+    };
+
+    for (camera_entity, mut camera_transform, camera_state, camera_control) in
+        cameras_query.iter_mut()
+    {
+        let Some(keeping_up) = camera_control.allow_rotation_while_keeping_up else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        match mouse_button_op {
+            MouseButtonOp::JustPressed => {
+                last_cursor_ray_by_camera.insert(camera_entity, cursor_ray);
+            }
+            MouseButtonOp::BeingPressed => {
+                if let Some(prev_ray) = last_cursor_ray_by_camera.get_mut(&camera_entity) {
+                    let rotation =
+                        Quat::from_rotation_arc(cursor_ray.direction, prev_ray.direction);
+                    camera_transform.rotate(rotation);
+                    let new_forward = camera_transform.forward();
+                    camera_transform.look_to(new_forward, keeping_up);
+                }
+            }
+        }
     }
 }
 
