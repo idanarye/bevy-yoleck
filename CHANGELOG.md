@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - A mechanism for upgrading entity's data when their layout changes. See
   `YoleckEntityUpgradingPlugin`. This can be used to upgrade old games to use
   the new semantics introduced in this version.
+- vpeol_3d
+- `yoleck::prelude`
+- `yoleck::vpeol::prelude`
 
 ### Removed
 - `vpeol_position_edit_adapter` and `VpeolTransform2dProjection`. Use `Vpeol2dPosition` instead.
