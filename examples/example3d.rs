@@ -37,7 +37,7 @@ fn main() {
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels3d"),
         ));
-        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor::sidescroller());
+        app.add_plugin(bevy_yoleck::vpeol_3d::Vpeol3dPluginForEditor::topdown());
         app.add_plugin(bevy_yoleck::vpeol::VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
@@ -67,7 +67,7 @@ fn main() {
         YoleckEntityType::new("Planet")
             .with::<Vpeol3dPosition>()
             .insert_on_init(|| IsPlanet)
-            .insert_on_init_during_editor(|| VpeolDragPlane::XZ)
+            .insert_on_init_during_editor(|| VpeolDragPlane::XY)
             .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
                 knob_distance: 2.0,
                 knob_scale: 0.5,
@@ -91,8 +91,7 @@ fn setup_camera(mut commands: Commands) {
             ..Default::default()
         })
         .insert(VpeolCameraState::default())
-        .insert(Vpeol3dCameraControl::sidescroller());
-    // .insert(Vpeol3dCameraControl::topdown());
+        .insert(Vpeol3dCameraControl::topdown());
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
