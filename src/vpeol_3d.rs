@@ -5,7 +5,7 @@ use crate::vpeol::{
 };
 use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::prelude::*;
-use bevy::render::primitives::{Aabb, Frustum};
+use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
@@ -166,17 +166,42 @@ fn update_camera_status_for_models(
 /// Pan, zoom and rotate a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
 pub struct Vpeol3dCameraControl {
+    pub drag_plane_origin: Vec3,
+    pub drag_plane_normal: Vec3,
+    pub clamp_distance_to_drag_point_at: f32,
     /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.
     pub zoom_per_scroll_line: f32,
     /// How much to zoom when receiving scroll event in `MouseScrollUnit::Pixel` units.
     pub zoom_per_scroll_pixel: f32,
 }
 
-impl Default for Vpeol3dCameraControl {
-    fn default() -> Self {
+impl Vpeol3dCameraControl {
+    pub fn sidescroller() -> Self {
         Self {
+            drag_plane_origin: Vec3::ZERO,
+            drag_plane_normal: Vec3::Z,
+            clamp_distance_to_drag_point_at: 100.0,
             zoom_per_scroll_line: 0.2,
             zoom_per_scroll_pixel: 0.001,
+        }
+    }
+
+    pub fn topdown() -> Self {
+        Self {
+            drag_plane_origin: Vec3::ZERO,
+            drag_plane_normal: Vec3::Y,
+            clamp_distance_to_drag_point_at: 100.0,
+            zoom_per_scroll_line: 0.2,
+            zoom_per_scroll_pixel: 0.001,
+        }
+    }
+
+    fn ray_intersection(&self, ray: Ray) -> Option<Vec3> {
+        let distance = ray.intersect_plane(self.drag_plane_origin, self.drag_plane_normal)?;
+        if distance <= self.clamp_distance_to_drag_point_at {
+            Some(ray.get_point(distance))
+        } else {
+            None
         }
     }
 }
@@ -184,11 +209,13 @@ impl Default for Vpeol3dCameraControl {
 fn camera_3d_pan(
     mut egui_context: EguiContexts,
     buttons: Res<Input<MouseButton>>,
-    mut cameras_query: Query<
-        (Entity, &mut Transform, &VpeolCameraState),
-        With<Vpeol3dCameraControl>,
-    >,
-    mut last_ray_by_camera: Local<HashMap<Entity, Ray>>,
+    mut cameras_query: Query<(
+        Entity,
+        &mut Transform,
+        &VpeolCameraState,
+        &Vpeol3dCameraControl,
+    )>,
+    mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec3>>,
 ) {
     enum MouseButtonOp {
         JustPressed,
@@ -203,19 +230,24 @@ fn camera_3d_pan(
     } else if buttons.pressed(MouseButton::Right) {
         MouseButtonOp::BeingPressed
     } else {
-        last_ray_by_camera.clear();
+        last_cursor_world_pos_by_camera.clear();
         return;
     };
 
-    for (camera_entity, _camera_transform, camera_state) in cameras_query.iter_mut() {
+    for (camera_entity, mut camera_transform, camera_state, camera_control) in
+        cameras_query.iter_mut()
+    {
         let Some(cursor_ray) = camera_state.cursor_ray else { continue };
         match mouse_button_op {
             MouseButtonOp::JustPressed => {
-                last_ray_by_camera.insert(camera_entity, cursor_ray);
+                let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else { continue };
+                last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
             }
             MouseButtonOp::BeingPressed => {
-                if let Some(prev_ray) = last_ray_by_camera.get_mut(&camera_entity) {
-                    // TODO: decide how to decide how far to look
+                if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity) {
+                    let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else { continue };
+                    let movement = *prev_pos - world_pos;
+                    camera_transform.translation += movement;
                 }
             }
         }
