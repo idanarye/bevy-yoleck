@@ -129,6 +129,8 @@ pub struct Vpeol3dPluginForEditor {
     /// The normal to configure the global [`VpeolDragPlane`] resource with.
     ///
     /// Indiviual entities can override this with their own [`VpeolDragPlane`] component.
+    ///
+    /// It is a good idea to match this to [`Vpeol3dCameraControl::plane_normal`].
     pub drag_plane_normal: Vec3,
 }
 
@@ -138,6 +140,8 @@ impl Vpeol3dPluginForEditor {
     /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
     ///
     /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Z axis manipulation.
+    ///
+    /// This combines well with [`Vpeol3dCameraControl::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
             drag_plane_normal: Vec3::Z,
@@ -149,6 +153,8 @@ impl Vpeol3dPluginForEditor {
     /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
     ///
     /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Y axis manipulation.
+    ///
+    /// This combines well with [`Vpeol3dCameraControl::topdown`].
     pub fn topdown() -> Self {
         Self {
             drag_plane_normal: Vec3::Y,
@@ -286,6 +292,8 @@ pub struct Vpeol3dCameraControl {
     pub plane_normal: Vec3,
     /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
+    ///
+    /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane_normal`].
     pub allow_rotation_while_maintaining_up: Option<Vec3>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.
@@ -296,6 +304,11 @@ pub struct Vpeol3dCameraControl {
 }
 
 impl Vpeol3dCameraControl {
+    /// Preset for sidescroller games, where the the game world is on the XY plane.
+    ///
+    /// With this preset, the camera rotation is disabled.
+    ///
+    /// This combines well with [`Vpeol3dPluginForEditor::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
@@ -306,6 +319,10 @@ impl Vpeol3dCameraControl {
         }
     }
 
+    /// Preset for games where the the game world is mainly on the XZ plane (though there can still
+    /// be verticality)
+    ///
+    /// This combines well with [`Vpeol3dPluginForEditor::topdown`].
     pub fn topdown() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
