@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Model detection now raycasts against the meshes in addition to the AABB.
 
+### Added
+- Supported for 2D meshes in vpeol_2d.
+
 ## 0.9.0 - 2023-03-27
 ### Changed
 - [**BREAKING**] This entire release is a huge breaking change. See the

@@ -7,6 +7,9 @@ use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
+use bevy::render::mesh::VertexAttributeValues;
+use bevy::render::primitives::Aabb;
+use bevy::render::render_resource::PrimitiveTopology;
 use bevy::transform::TransformSystem;
 use bevy::utils::HashMap;
 use bevy::window::{PrimaryWindow, WindowRef};
@@ -488,5 +491,95 @@ fn restore_transform_from_cache_after_transform_propagate(
 ) {
     for (animation, mut transform) in query.iter_mut() {
         *transform = animation.cached_transform;
+    }
+}
+
+pub(crate) fn ray_intersection_with_mesh(ray: Ray, mesh: &Mesh) -> Option<f32> {
+    let aabb = mesh.compute_aabb()?;
+    let distance_to_aabb = ray_intersection_with_aabb(ray, aabb)?;
+
+    if let Some(mut triangles) = iter_triangles(mesh) {
+        triangles.find_map(|triangle| triangle.ray_intersection(ray))
+    } else {
+        Some(distance_to_aabb)
+    }
+}
+
+fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
+    let center: Vec3 = aabb.center.into();
+    let mut max_low = f32::NEG_INFINITY;
+    let mut min_high = f32::INFINITY;
+    for (axis, half_extent) in [
+        (Vec3::X, aabb.half_extents.x),
+        (Vec3::Y, aabb.half_extents.y),
+        (Vec3::Z, aabb.half_extents.z),
+    ] {
+        let dot = ray.direction.dot(axis);
+        if dot == 0.0 {
+            let distance_from_center = (ray.origin - center).dot(axis);
+            if half_extent < distance_from_center.abs() {
+                return None;
+            }
+        } else {
+            let low = ray.intersect_plane(center - half_extent * axis, axis);
+            let high = ray.intersect_plane(center + half_extent * axis, axis);
+            let (low, high) = if 0.0 <= dot { (low, high) } else { (high, low) };
+            if let Some(low) = low {
+                max_low = max_low.max(low);
+            }
+            if let Some(high) = high {
+                min_high = min_high.min(high);
+            } else {
+                return None;
+            }
+        }
+    }
+    if max_low <= min_high {
+        Some(max_low)
+    } else {
+        None
+    }
+}
+
+fn iter_triangles<'a>(mesh: &'a Mesh) -> Option<impl 'a + Iterator<Item = Triangle>> {
+    if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+        return None;
+    }
+    let indices = mesh.indices()?;
+    let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return None };
+    let mut it = indices.iter();
+    Some(std::iter::from_fn(move || {
+        Some(Triangle(
+            [it.next()?, it.next()?, it.next()?].map(|idx| Vec3::from_array(positions[idx])),
+        ))
+    }))
+}
+
+#[derive(Debug)]
+struct Triangle([Vec3; 3]);
+
+impl Triangle {
+    fn ray_intersection(&self, ray: Ray) -> Option<f32> {
+        let directions = [
+            self.0[1] - self.0[0],
+            self.0[2] - self.0[1],
+            self.0[0] - self.0[2],
+        ];
+        let normal = directions[0].cross(directions[1]); // no need to normalize it
+        let distance = ray.intersect_plane(self.0[0], normal)?;
+        let point = ray.get_point(distance);
+        if self
+            .0
+            .iter()
+            .zip(directions.iter())
+            .all(|(vertex, direction)| {
+                let vertical = direction.cross(normal);
+                vertical.dot(point - *vertex) <= 0.0
+            })
+        {
+            Some(distance)
+        } else {
+            None
+        }
     }
 }

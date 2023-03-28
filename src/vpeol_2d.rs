@@ -83,14 +83,14 @@
 
 use crate::bevy_egui::{egui, EguiContexts};
 use crate::vpeol::{
-    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
-    VpeolRootResolver, VpeolSystemSet, WindowGetter,
+    handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
+    VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet, WindowGetter,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
-use bevy::sprite::Anchor;
+use bevy::sprite::{Anchor, Mesh2dHandle};
 use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
@@ -127,6 +127,7 @@ impl Plugin for Vpeol2dPluginForEditor {
             (
                 update_camera_status_for_sprites,
                 update_camera_status_for_atlas_sprites,
+                update_camera_status_for_2d_meshes,
                 update_camera_status_for_text_2d,
             )
                 .in_set(VpeolSystemSet::UpdateCameraState),
@@ -255,6 +256,33 @@ fn update_camera_status_for_atlas_sprites(
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
             }
+        }
+    }
+}
+
+fn update_camera_status_for_2d_meshes(
+    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
+    entities_query: Query<(Entity, &GlobalTransform, &Mesh2dHandle)>,
+    mesh_assets: Res<Assets<Mesh>>,
+    root_resolver: VpeolRootResolver,
+) {
+    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
+        {
+            let Some(mesh) = mesh_assets.get(&mesh.0) else { continue };
+
+            let inverse_transform = global_transform.compute_matrix().inverse();
+
+            let ray_in_object_coords = Ray {
+                origin: inverse_transform.transform_point3(cursor_ray.origin),
+                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+            };
+
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
+
+            let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+            camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
         }
     }
 }

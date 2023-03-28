@@ -94,15 +94,12 @@
 
 use crate::bevy_egui::egui;
 use crate::vpeol::{
-    handle_clickable_children_system, VpeolBasePlugin, VpeolCameraState, VpeolDragPlane,
-    VpeolRootResolver, VpeolSystemSet,
+    handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
+    VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet,
 };
 use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
-use bevy::render::primitives::Aabb;
-use bevy::render::render_resource::PrimitiveTopology;
 use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
 use bevy_egui::EguiContexts;
@@ -196,81 +193,6 @@ impl Plugin for Vpeol3dPluginForEditor {
     }
 }
 
-fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
-    let center: Vec3 = aabb.center.into();
-    let mut max_low = f32::NEG_INFINITY;
-    let mut min_high = f32::INFINITY;
-    for (axis, half_extent) in [
-        (Vec3::X, aabb.half_extents.x),
-        (Vec3::Y, aabb.half_extents.y),
-        (Vec3::Z, aabb.half_extents.z),
-    ] {
-        let low = ray.intersect_plane(center - half_extent * axis, axis);
-        let high = ray.intersect_plane(center + half_extent * axis, axis);
-        let (low, high) = if 0.0 <= ray.direction.dot(axis) {
-            (low, high)
-        } else {
-            (high, low)
-        };
-        if let Some(low) = low {
-            max_low = max_low.max(low);
-        }
-        if let Some(high) = high {
-            min_high = min_high.min(high);
-        } else {
-            return None;
-        }
-    }
-    if max_low <= min_high {
-        Some(max_low)
-    } else {
-        None
-    }
-}
-
-fn iter_triangles<'a>(mesh: &'a Mesh) -> Option<impl 'a + Iterator<Item = Triangle>> {
-    if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-        return None;
-    }
-    let indices = mesh.indices()?;
-    let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return None };
-    let mut it = indices.iter();
-    Some(std::iter::from_fn(move || {
-        Some(Triangle(
-            [it.next()?, it.next()?, it.next()?].map(|idx| Vec3::from_array(positions[idx])),
-        ))
-    }))
-}
-
-#[derive(Debug)]
-struct Triangle([Vec3; 3]);
-
-impl Triangle {
-    fn ray_intersection(&self, ray: Ray) -> Option<f32> {
-        let directions = [
-            self.0[1] - self.0[0],
-            self.0[2] - self.0[1],
-            self.0[0] - self.0[2],
-        ];
-        let normal = directions[0].cross(directions[1]); // no need to normalize it
-        let distance = ray.intersect_plane(self.0[0], normal)?;
-        let point = ray.get_point(distance);
-        if self
-            .0
-            .iter()
-            .zip(directions.iter())
-            .all(|(vertex, direction)| {
-                let vertical = direction.cross(normal);
-                vertical.dot(point - *vertex) <= 0.0
-            })
-        {
-            Some(distance)
-        } else {
-            None
-        }
-    }
-}
-
 fn update_camera_status_for_models(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(Entity, &GlobalTransform, &Handle<Mesh>)>,
@@ -282,7 +204,6 @@ fn update_camera_status_for_models(
         for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
         {
             let Some(mesh) = mesh_assets.get(mesh) else { continue };
-            let Some(aabb) = mesh.compute_aabb() else { continue };
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
@@ -291,19 +212,7 @@ fn update_camera_status_for_models(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance_to_aabb) = ray_intersection_with_aabb(ray_in_object_coords, aabb) else { continue };
-
-            let distance = if let Some(mut triangles) = iter_triangles(&mesh) {
-                if let Some(distance) =
-                    triangles.find_map(|triangle| triangle.ray_intersection(ray_in_object_coords))
-                {
-                    distance
-                } else {
-                    continue;
-                }
-            } else {
-                distance_to_aabb
-            };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));

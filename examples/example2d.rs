@@ -2,6 +2,9 @@ use std::path::Path;
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
+use bevy::render::mesh::Indices;
+use bevy::render::render_resource::PrimitiveTopology;
+use bevy::sprite::Mesh2dHandle;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::vpeol::prelude::*;
@@ -118,6 +121,15 @@ fn main() {
         )
         .unwrap();
     });
+
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("Triangle")
+            .with::<Vpeol2dPosition>()
+            .with::<TriangleVertices>()
+    });
+    app.add_yoleck_edit_system(edit_triangle);
+    app.yoleck_populate_schedule_mut()
+        .add_system(populate_triangle);
 
     app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
     app.run();
@@ -422,4 +434,86 @@ fn edit_text(
     // TODO: do this in vpeol_2d?
     ui.add(egui::Slider::new(&mut scale.0.x, 0.5..=5.0).logarithmic(true));
     scale.0.y = scale.0.x;
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+pub struct TriangleVertices {
+    vertices: [Vec2; 3],
+}
+
+impl Default for TriangleVertices {
+    fn default() -> Self {
+        Self {
+            vertices: [
+                Vec2::new(-50.0, -50.0),
+                Vec2::new(50.0, -50.0),
+                Vec2::new(50.0, 50.0),
+            ],
+        }
+    }
+}
+
+fn edit_triangle(
+    mut edit: YoleckEdit<(&mut TriangleVertices, &GlobalTransform)>,
+    mut knobs: YoleckKnobs,
+) {
+    let Ok((mut triangle, triangle_transform)) = edit.get_single_mut() else { return };
+    for (index, vertex) in triangle.vertices.iter_mut().enumerate() {
+        let mut knob = knobs.knob(("move-vertex", index));
+        if let Some(move_to) = knob.get_passed_data::<Vec3>() {
+            *vertex = triangle_transform
+                .compute_matrix()
+                .inverse()
+                .transform_point3(*move_to)
+                .truncate();
+        }
+        let knob_position = triangle_transform.transform_point(vertex.extend(1.0));
+        knob.cmd.insert(SpriteBundle {
+            sprite: Sprite {
+                color: Color::RED,
+                custom_size: Some(Vec2::new(15.0, 15.0)),
+                ..Default::default()
+            },
+            transform: Transform::from_translation(knob_position),
+            global_transform: Transform::from_translation(knob_position).into(),
+            ..Default::default()
+        });
+    }
+}
+
+fn populate_triangle(
+    mut populate: YoleckPopulate<(&TriangleVertices, Option<&Mesh2dHandle>)>,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<ColorMaterial>>,
+) {
+    populate.populate(|_ctx, mut cmd, (triangle, mesh2d)| {
+        let mesh = if let Some(Mesh2dHandle(mesh_handle)) = mesh2d {
+            mesh_assets
+                .get_mut(mesh_handle)
+                .expect("mesh inserted by previous invocation of this system")
+        } else {
+            let mesh_handle = mesh_assets.add(Mesh::new(PrimitiveTopology::TriangleList));
+            let mesh = mesh_assets.get_mut(&mesh_handle);
+            cmd.insert(ColorMesh2dBundle {
+                mesh: Mesh2dHandle(mesh_handle),
+                material: material_assets.add(Color::GREEN.into()),
+                ..Default::default()
+            });
+            mesh.expect("mesh was just inserted")
+        };
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
+            triangle
+                .vertices
+                .iter()
+                .map(|point| point.extend(0.0).to_array())
+                .collect::<Vec<_>>(),
+        );
+        let mut indices = Vec::new();
+        for i in 1..(triangle.vertices.len() - 1) {
+            let i = i as u32;
+            indices.extend([0, i, i + 1]);
+        }
+        mesh.set_indices(Some(Indices::U32(indices)));
+    });
 }
