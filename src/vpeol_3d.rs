@@ -100,6 +100,7 @@ use crate::vpeol::{
 use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
+use bevy::render::mesh::VertexAttributeValues;
 use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::render::view::VisibleEntities;
@@ -227,6 +228,49 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
     }
 }
 
+fn iter_triangles<'a>(mesh: &'a Mesh) -> Option<impl 'a + Iterator<Item = Triangle>> {
+    if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+        return None;
+    }
+    let indices = mesh.indices()?;
+    let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return None };
+    let mut it = indices.iter();
+    Some(std::iter::from_fn(move || {
+        Some(Triangle(
+            [it.next()?, it.next()?, it.next()?].map(|idx| Vec3::from_array(positions[idx])),
+        ))
+    }))
+}
+
+#[derive(Debug)]
+struct Triangle([Vec3; 3]);
+
+impl Triangle {
+    fn ray_intersection(&self, ray: Ray) -> Option<f32> {
+        let directions = [
+            self.0[1] - self.0[0],
+            self.0[2] - self.0[1],
+            self.0[0] - self.0[2],
+        ];
+        let normal = directions[0].cross(directions[1]); // no need to normalize it
+        let distance = ray.intersect_plane(self.0[0], normal)?;
+        let point = ray.get_point(distance);
+        if self
+            .0
+            .iter()
+            .zip(directions.iter())
+            .all(|(vertex, direction)| {
+                let vertical = direction.cross(normal);
+                vertical.dot(point - *vertex) <= 0.0
+            })
+        {
+            Some(distance)
+        } else {
+            None
+        }
+    }
+}
+
 fn update_camera_status_for_models(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(Entity, &GlobalTransform, &Handle<Mesh>)>,
@@ -238,9 +282,6 @@ fn update_camera_status_for_models(
         for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
         {
             let Some(mesh) = mesh_assets.get(mesh) else { continue };
-            if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
-                continue;
-            }
             let Some(aabb) = mesh.compute_aabb() else { continue };
 
             let inverse_transform = global_transform.compute_matrix().inverse();
@@ -252,33 +293,20 @@ fn update_camera_status_for_models(
 
             let Some(distance_to_aabb) = ray_intersection_with_aabb(ray_in_object_coords, aabb) else { continue };
 
-            let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
-            camera_state.consider(root_entity, -distance_to_aabb, || {
-                cursor_ray.get_point(distance_to_aabb)
-            });
+            let distance = if let Some(mut triangles) = iter_triangles(&mesh) {
+                if let Some(distance) =
+                    triangles.find_map(|triangle| triangle.ray_intersection(ray_in_object_coords))
+                {
+                    distance
+                } else {
+                    continue;
+                }
+            } else {
+                distance_to_aabb
+            };
 
-            // TODO: Check the triangles for ray intersection
-            /*
-            let Some(indices) = mesh.indices() else { continue };
-            let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { continue };
-            let mut it = indices.iter();
-            let mut next_triangle =
-                || {
-                    Some([it.next()?, it.next()?, it.next()?].map(|idx| {
-                        global_transform.transform_point(Vec3::from_array(positions[idx]))
-                    }))
-                };
-            while let Some(triangle) = next_triangle() {
-                let triangle_origin = triangle[0];
-                let vec1 = triangle[1] - triangle[0];
-                let vec2 = triangle[2] - triangle[0];
-                let triangle_normal = vec1.cross(vec2).normalize_or_zero();
-                let Some(distance) = cursor_ray.intersect_plane(triangle_origin, triangle_normal) else { continue };
-                let intersection = cursor_ray.get_point(distance);
-                let _ = intersection;
-                //info!("intersection {:?}", intersection);
-            }
-            */
+            let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+            camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
         }
     }
 }
@@ -565,14 +593,11 @@ fn vpeol_3d_edit_third_axis_with_knob(
             scale: third_axis_with_knob.knob_scale * Vec3::ONE,
         };
         knob.cmd.insert(VpeolDragPlane {
-            normal: {
-                let normal = drag_plane.normal.cross(Vec3::X).normalize_or_zero();
-                if normal == Vec3::ZERO {
-                    Vec3::Y
-                } else {
-                    normal
-                }
-            },
+            normal: drag_plane
+                .normal
+                .cross(Vec3::X)
+                .try_normalize()
+                .unwrap_or(Vec3::Y),
         });
         knob.cmd.insert(PbrBundle {
             mesh: mesh.clone(),
