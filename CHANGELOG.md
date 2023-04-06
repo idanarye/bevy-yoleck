@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.11.0 - 2023-04-06
 ### Added
 - `YoleckBelongsToLevel` for deciding which entities to despawn when the level
   unloads/restarts. This is added automatically by Yoleck, but should also be

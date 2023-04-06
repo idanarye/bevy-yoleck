@@ -65,9 +65,9 @@ at a directory's contents). The index file containes a tuple of two values:
 
 ## Versions
 
-| bevy | bevy-yoleck | bevy-egui |
+| bevy | bevy-yoleck | bevy_egui |
 |------|-------------|-----------|
-| 0.10 | 0.9, 0.10   | 0.20      |
+| 0.10 | 0.9 - 0.11  | 0.20      |
 | 0.10 | 0.7, 0.8    | 0.20      |
 | 0.9  | 0.5, 0.6    | 0.19      |
 | 0.9  | 0.4         | 0.17      |
