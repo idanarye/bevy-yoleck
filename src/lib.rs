@@ -202,7 +202,9 @@ pub mod prelude {
     pub use crate::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
     pub use crate::populating::{YoleckMarking, YoleckPopulate};
     pub use crate::specs_registration::{YoleckComponent, YoleckEntityType};
-    pub use crate::{YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame};
+    pub use crate::{
+        YoleckBelongsToLevel, YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame,
+    };
     pub use bevy_yoleck_macros::YoleckComponent;
 }
 
@@ -505,6 +507,21 @@ pub struct YoleckManaged {
 
     components_data: HashMap<TypeId, BoxedAny>,
 }
+
+/// A marker for entities that belongs to the Yoleck level and should be despawned with it.
+///
+/// Yoleck already adds this automatically to entities created from the editor. The game itself
+/// should this to entities created during gameplay, like bullets or spawned enemeis, so that
+/// they'll be despawned when a playtest is finished or restarted.
+///
+/// When despawning a level as part of the game's flow (e.g. - before loading the next level), use
+/// this marker to decide which entities to `despawn_recursive`.
+///
+/// There is no need to add this to child entities of entities that already has this marker,
+/// because Yoleck will use `despawn_recursive` internally and so should actual games when
+/// despawning these entities.
+#[derive(Component)]
+pub struct YoleckBelongsToLevel;
 
 pub enum YoleckEntityLifecycleStatus {
     Synchronized,

@@ -9,8 +9,8 @@ use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::populating::PopulateReason;
 use crate::{
-    YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus, YoleckManaged, YoleckSchedule,
-    YoleckState,
+    YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus,
+    YoleckManaged, YoleckSchedule, YoleckState,
 };
 
 /// Used by Yoleck to determine how to handle the entity.
@@ -96,6 +96,7 @@ pub(crate) fn yoleck_process_raw_entries(
             lifecycle_status: YoleckEntityLifecycleStatus::JustCreated,
             components_data,
         });
+        cmd.insert(YoleckBelongsToLevel);
     }
 }
 

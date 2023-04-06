@@ -13,8 +13,8 @@ use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::prelude::YoleckEditorState;
 use crate::{
-    YoleckEntityConstructionSpecs, YoleckLevelIndex, YoleckLoadingCommand, YoleckManaged,
-    YoleckRawLevel, YoleckState,
+    YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckLevelIndex, YoleckLoadingCommand,
+    YoleckManaged, YoleckRawLevel, YoleckState,
 };
 
 const EXTENSION: &str = ".yol";
@@ -43,7 +43,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<YoleckState>,
         ResMut<YoleckEditorLevelsDirectoryPath>,
         Res<YoleckEntityConstructionSpecs>,
-        Query<(Entity, &YoleckManaged)>,
+        Query<&YoleckManaged>,
+        Query<Entity, With<YoleckBelongsToLevel>>,
         Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
@@ -71,6 +72,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut levels_directory,
             construction_specs,
             yoleck_managed_query,
+            belongs_to_level_query,
             editor_state,
             mut next_editor_state,
             mut knobs_cache,
@@ -87,7 +89,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             YoleckRawLevel::new(app_format_version, {
                 yoleck_managed_query
                     .iter()
-                    .map(|(_entity, yoleck_managed)| YoleckRawEntry {
+                    .map(|yoleck_managed| YoleckRawEntry {
                         header: YoleckEntryHeader {
                             type_name: yoleck_managed.type_name.clone(),
                             name: yoleck_managed.name.clone(),
@@ -123,7 +125,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         };
 
         let mut clear_level = |commands: &mut Commands| {
-            for (entity, _) in yoleck_managed_query.iter() {
+            for entity in belongs_to_level_query.iter() {
                 commands.entity(entity).despawn_recursive();
             }
             for knob_entity in knobs_cache.drain() {
