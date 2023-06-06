@@ -171,6 +171,7 @@ mod editor;
 mod editor_window;
 mod entity_management;
 mod entity_upgrading;
+pub mod exclusive_systems;
 pub mod knobs;
 mod level_files_manager;
 pub mod level_files_upgrading;
@@ -216,6 +217,7 @@ pub use self::editor_window::YoleckEditorSection;
 
 use self::entity_management::{EntitiesToPopulate, YoleckLoadingCommand, YoleckRawLevel};
 use self::entity_upgrading::YoleckEntityUpgrading;
+use self::exclusive_systems::YoleckExclusiveSystemsQueue;
 use self::knobs::YoleckKnobsCache;
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 use self::level_index::YoleckLevelIndex;
@@ -297,6 +299,7 @@ impl Plugin for YoleckPluginForEditor {
         app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
         app.init_resource::<YoleckEditSystems>();
+        app.init_resource::<YoleckExclusiveSystemsQueue>();
         app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
             level_needs_saving: false,

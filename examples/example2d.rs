@@ -7,6 +7,7 @@ use bevy::render::render_resource::PrimitiveTopology;
 use bevy::sprite::Mesh2dHandle;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
+use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemsQueue, YoleckExclusiveSystemDirective};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckDirective};
 use serde::{Deserialize, Serialize};
@@ -130,6 +131,8 @@ fn main() {
     app.add_yoleck_edit_system(edit_triangle);
     app.yoleck_populate_schedule_mut()
         .add_system(populate_triangle);
+
+    app.add_yoleck_edit_system(placeholder_exclusive_system_initiator);
 
     app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
     app.run();
@@ -516,4 +519,22 @@ fn populate_triangle(
         }
         mesh.set_indices(Some(Indices::U32(indices)));
     });
+}
+
+fn placeholder_exclusive_system_initiator(
+    mut ui: ResMut<YoleckUi>,
+    mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
+) {
+    if ui.button("Start Exclusive Mode").clicked() {
+        exclusive_queue.enqueue(placeholder_exclusive_system);
+    }
+}
+
+fn placeholder_exclusive_system(
+    mut ui: ResMut<YoleckUi>,
+) -> YoleckExclusiveSystemDirective {
+    if ui.button("Done").clicked() {
+        return YoleckExclusiveSystemDirective::Finished;
+    }
+    YoleckExclusiveSystemDirective::Listening
 }
