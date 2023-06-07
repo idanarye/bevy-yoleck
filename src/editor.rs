@@ -380,6 +380,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckEditorEvent>,
         ResMut<YoleckKnobsCache>,
+        Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
     let mut previously_edited_entity: Option<Entity> = None;
@@ -396,6 +397,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 editor_state,
                 mut writer,
                 mut knobs_cache,
+                active_exclusive_system,
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
@@ -420,7 +422,9 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             .insert(*type_id, data.clone());
                     }
                     YoleckDirectiveInner::SetSelected(entity) => {
-                        if let Some(entity) = entity {
+                        if active_exclusive_system.is_some() {
+                            // TODO: pass the selection command to the exclusive system?
+                        } else if let Some(entity) = entity {
                             let mut already_selected = false;
                             for entity_to_deselect in yoleck_edited_query.iter() {
                                 if entity_to_deselect == *entity {

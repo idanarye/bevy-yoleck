@@ -522,17 +522,41 @@ fn populate_triangle(
 }
 
 fn placeholder_exclusive_system_initiator(
+    edit: YoleckEdit<With<Vpeol2dPosition>>,
     mut ui: ResMut<YoleckUi>,
     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 ) {
+    if edit.get_single().is_err() {
+        return;
+    }
     if ui.button("Start Exclusive Mode").clicked() {
         exclusive_queue.enqueue(placeholder_exclusive_system);
     }
 }
 
-fn placeholder_exclusive_system(mut ui: ResMut<YoleckUi>) -> YoleckExclusiveSystemDirective {
-    if ui.button("Done").clicked() {
+fn placeholder_exclusive_system(
+    mut edit: YoleckEdit<&mut Vpeol2dPosition>,
+    cameras_query: Query<&VpeolCameraState>,
+    ui: ResMut<YoleckUi>,
+    buttons: Res<Input<MouseButton>>,
+) -> YoleckExclusiveSystemDirective {
+    let Ok(mut position) = edit.get_single_mut() else {
+        return YoleckExclusiveSystemDirective::Finished;
+    };
+
+    let Some(cursor_ray) = cameras_query.iter().find_map(|camera_state| camera_state.cursor_ray) else {
+        return YoleckExclusiveSystemDirective::Listening;
+    };
+
+    position.0 = cursor_ray.origin.truncate();
+
+    if ui.ctx().is_pointer_over_area() {
+        return YoleckExclusiveSystemDirective::Listening;
+    }
+
+    if buttons.just_released(MouseButton::Left) {
         return YoleckExclusiveSystemDirective::Finished;
     }
+
     YoleckExclusiveSystemDirective::Listening
 }
