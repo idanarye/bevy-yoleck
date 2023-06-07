@@ -7,6 +7,9 @@ use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+use crate::exclusive_systems::{
+    YoleckActiveExclusiveSystem, YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue,
+};
 use crate::knobs::YoleckKnobsCache;
 use crate::prelude::{YoleckComponent, YoleckUi};
 use crate::{
@@ -260,10 +263,15 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         Res<YoleckEntityConstructionSpecs>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
+        Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
     move |world, ui| {
-        let (construction_specs, editor_state, mut writer) = system_state.get_mut(world);
+        let (construction_specs, editor_state, mut writer, active_exclusive_system) =
+            system_state.get_mut(world);
+        if active_exclusive_system.is_some() {
+            return;
+        }
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
@@ -302,11 +310,20 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
         Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>)>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
+        Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
     move |world, ui| {
-        let (construction_specs, yoleck_managed_query, editor_state, mut writer) =
-            system_state.get_mut(world);
+        let (
+            construction_specs,
+            yoleck_managed_query,
+            editor_state,
+            mut writer,
+            active_exclusive_system,
+        ) = system_state.get_mut(world);
+        if active_exclusive_system.is_some() {
+            return;
+        }
 
         if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
             return;
@@ -502,9 +519,49 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         );
         world.insert_resource(YoleckUi(content_ui));
         world.insert_resource(passed_data);
-        world.resource_scope(|world, mut yoleck_edit_systems: Mut<YoleckEditSystems>| {
-            yoleck_edit_systems.run_systems(world);
-        });
+
+        enum ActiveExclusiveSystemStatus {
+            DidNotRun,
+            StillRunningSame,
+            JustFinishedRunning,
+        }
+
+        let behavior_for_exclusive_system = if let Some(mut active_exclusive_system) =
+            world.remove_resource::<YoleckActiveExclusiveSystem>()
+        {
+            let result = active_exclusive_system.0.run((), world);
+            match result {
+                YoleckExclusiveSystemDirective::Listening => {
+                    world.insert_resource(active_exclusive_system);
+                    ActiveExclusiveSystemStatus::StillRunningSame
+                }
+                YoleckExclusiveSystemDirective::Finished => {
+                    ActiveExclusiveSystemStatus::JustFinishedRunning
+                }
+            }
+        } else {
+            ActiveExclusiveSystemStatus::DidNotRun
+        };
+
+        let should_run_regular_systems = match behavior_for_exclusive_system {
+            ActiveExclusiveSystemStatus::DidNotRun => loop {
+                let Some(mut new_exclusive_system) = world.resource_mut::<YoleckExclusiveSystemsQueue>().take() else { break true };
+                new_exclusive_system.initialize(world);
+                let first_run_result = new_exclusive_system.run((), world);
+                if matches!(first_run_result, YoleckExclusiveSystemDirective::Listening) {
+                    world.insert_resource(YoleckActiveExclusiveSystem(new_exclusive_system));
+                    break false;
+                }
+            },
+            ActiveExclusiveSystemStatus::StillRunningSame => false,
+            ActiveExclusiveSystemStatus::JustFinishedRunning => false,
+        };
+
+        if should_run_regular_systems {
+            world.resource_scope(|world, mut yoleck_edit_systems: Mut<YoleckEditSystems>| {
+                yoleck_edit_systems.run_systems(world);
+            });
+        }
         let YoleckUi(content_ui) = world
             .remove_resource()
             .expect("The YoleckUi resource was put in the world by this very function");

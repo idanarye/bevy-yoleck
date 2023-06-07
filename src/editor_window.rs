@@ -3,7 +3,6 @@ use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext};
 
 use crate::YoleckEditorSections;
-use crate::exclusive_systems::{YoleckActiveExclusiveSystem, YoleckExclusiveSystemsQueue};
 
 pub(crate) fn yoleck_editor_window(
     world: &mut World,
@@ -18,17 +17,6 @@ pub(crate) fn yoleck_editor_window(
     egui::Window::new("Level Editor")
         .vscroll(true)
         .show(borrowed_egui.get_mut(), |ui| {
-            if let Some(mut active_exclusive_system) = world.remove_resource::<YoleckActiveExclusiveSystem>() {
-                // info!("b {:?}", active_exclusive_system.0.run((), world));
-                world.insert_resource(active_exclusive_system);
-                return;
-            }
-            if let Some(mut new_exclusive_system) = world.resource_mut::<YoleckExclusiveSystemsQueue>().take() {
-                new_exclusive_system.initialize(world);
-                info!("a {:?}", new_exclusive_system.run((), world));
-                world.insert_resource(YoleckActiveExclusiveSystem(new_exclusive_system));
-                return;
-            }
             world.resource_scope(
                 |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
                     for section in yoleck_editor_sections.0.iter_mut() {

@@ -7,7 +7,7 @@ use bevy::render::render_resource::PrimitiveTopology;
 use bevy::sprite::Mesh2dHandle;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
-use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemsQueue, YoleckExclusiveSystemDirective};
+use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckDirective};
 use serde::{Deserialize, Serialize};
@@ -530,9 +530,7 @@ fn placeholder_exclusive_system_initiator(
     }
 }
 
-fn placeholder_exclusive_system(
-    mut ui: ResMut<YoleckUi>,
-) -> YoleckExclusiveSystemDirective {
+fn placeholder_exclusive_system(mut ui: ResMut<YoleckUi>) -> YoleckExclusiveSystemDirective {
     if ui.button("Done").clicked() {
         return YoleckExclusiveSystemDirective::Finished;
     }

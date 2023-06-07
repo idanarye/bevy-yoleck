@@ -8,6 +8,7 @@ use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
 use crate::entity_upgrading::YoleckEntityUpgrading;
+use crate::exclusive_systems::YoleckActiveExclusiveSystem;
 use crate::knobs::YoleckKnobsCache;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
@@ -50,6 +51,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<YoleckKnobsCache>,
         ResMut<YoleckLoadingCommand>,
         Option<Res<YoleckEntityUpgrading>>,
+        Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
     let mut should_list_files = true;
@@ -78,7 +80,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut knobs_cache,
             mut loading_command,
             entity_upgrading,
+            active_exclusive_system,
         ) = system_state.get_mut(world);
+
+        if active_exclusive_system.is_some() {
+            return;
+        }
 
         let gen_raw_level_file = || {
             let app_format_version = if let Some(entity_upgrading) = &entity_upgrading {
