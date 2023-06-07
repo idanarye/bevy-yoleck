@@ -218,7 +218,7 @@ impl From<SpawnEntityBuilder> for YoleckDirective {
     fn from(value: SpawnEntityBuilder) -> Self {
         YoleckDirective(YoleckDirectiveInner::SpawnEntity {
             type_name: value.type_name,
-            data: serde_json::to_value(value.data).expect("should always worl"),
+            data: serde_json::to_value(value.data).expect("should always work"),
             select_created_entity: value.select_created_entity,
             override_exclusive_systems: value.override_exclusive_systems,
         })

@@ -515,7 +515,8 @@ fn vpeol_2d_edit_position(
 }
 
 fn vpeol_2d_init_position(
-    ui: ResMut<YoleckUi>,
+    mut egui_context: EguiContexts,
+    ui: Res<YoleckUi>,
     mut edit: YoleckEdit<&mut Vpeol2dPosition>,
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<Input<MouseButton>>,
@@ -530,7 +531,7 @@ fn vpeol_2d_init_position(
 
     position.0 = cursor_ray.origin.truncate();
 
-    if ui.ctx().is_pointer_over_area() {
+    if egui_context.ctx_mut().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
         return YoleckExclusiveSystemDirective::Listening;
     }
 

@@ -93,6 +93,9 @@
 //!     axis knob.
 
 use crate::bevy_egui::egui;
+use crate::exclusive_systems::{
+    YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
+};
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet,
@@ -189,6 +192,9 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
+        app.world
+            .resource_mut::<YoleckEntityCreationExclusiveSystems>()
+            .push_first(|| vpeol_3d_init_position);
         app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
     }
 }
@@ -457,6 +463,38 @@ fn vpeol_3d_edit_position(
         ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut position.0.z).prefix("Z:"));
     });
+}
+
+fn vpeol_3d_init_position(
+    mut egui_context: EguiContexts,
+    ui: Res<YoleckUi>,
+    mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    global_drag_plane: Res<VpeolDragPlane>,
+    cameras_query: Query<&VpeolCameraState>,
+    mouse_buttons: Res<Input<MouseButton>>,
+) -> YoleckExclusiveSystemDirective {
+    let Ok((mut position, drag_plane)) = edit.get_single_mut() else {
+        return YoleckExclusiveSystemDirective::Finished;
+    };
+
+    let Some(cursor_ray) = cameras_query.iter().find_map(|camera_state| camera_state.cursor_ray) else {
+        return YoleckExclusiveSystemDirective::Listening;
+    };
+
+    let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
+    if let Some(distance_to_plane) = cursor_ray.intersect_plane(position.0, drag_plane.normal) {
+        position.0 = cursor_ray.get_point(distance_to_plane);
+    };
+
+    if egui_context.ctx_mut().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
+        return YoleckExclusiveSystemDirective::Listening;
+    }
+
+    if mouse_buttons.just_released(MouseButton::Left) {
+        return YoleckExclusiveSystemDirective::Finished;
+    }
+
+    return YoleckExclusiveSystemDirective::Listening;
 }
 
 fn vpeol_3d_edit_third_axis_with_knob(
