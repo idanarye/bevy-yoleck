@@ -229,7 +229,7 @@ fn handle_camera_state(
     mut egui_context: EguiContexts,
     mut query: Query<(&Camera, &mut VpeolCameraState)>,
     window_getter: WindowGetter,
-    buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<Input<MouseButton>>,
     global_transform_query: Query<&GlobalTransform>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: EventWriter<YoleckDirective>,
@@ -241,14 +241,14 @@ fn handle_camera_state(
         BeingPressed,
         JustReleased,
     }
-    let mouse_button_op = if buttons.just_pressed(MouseButton::Left) {
+    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Left) {
         if egui_context.ctx_mut().is_pointer_over_area() {
             return;
         }
         MouseButtonOp::JustPressed
-    } else if buttons.just_released(MouseButton::Left) {
+    } else if mouse_buttons.just_released(MouseButton::Left) {
         MouseButtonOp::JustReleased
-    } else if buttons.pressed(MouseButton::Left) {
+    } else if mouse_buttons.pressed(MouseButton::Left) {
         MouseButtonOp::BeingPressed
     } else {
         for (_, mut camera_state) in query.iter_mut() {

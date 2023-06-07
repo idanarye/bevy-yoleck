@@ -82,6 +82,9 @@
 //!     ```
 
 use crate::bevy_egui::{egui, EguiContexts};
+use crate::exclusive_systems::{
+    YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
+};
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet, WindowGetter,
@@ -152,6 +155,9 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .in_set(OnUpdate(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_2d_edit_position);
+        app.world
+            .resource_mut::<YoleckEntityCreationExclusiveSystems>()
+            .push_first(|| vpeol_2d_init_position);
     }
 }
 
@@ -330,7 +336,7 @@ impl Default for Vpeol2dCameraControl {
 fn camera_2d_pan(
     mut egui_context: EguiContexts,
     window_getter: WindowGetter,
-    buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<
         (Entity, &mut Transform, &GlobalTransform, &Camera),
         With<Vpeol2dCameraControl>,
@@ -342,12 +348,12 @@ fn camera_2d_pan(
         BeingPressed,
     }
 
-    let mouse_button_op = if buttons.just_pressed(MouseButton::Right) {
+    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
         if egui_context.ctx_mut().is_pointer_over_area() {
             return;
         }
         MouseButtonOp::JustPressed
-    } else if buttons.pressed(MouseButton::Right) {
+    } else if mouse_buttons.pressed(MouseButton::Right) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_world_pos_by_camera.clear();
@@ -506,6 +512,33 @@ fn vpeol_2d_edit_position(
         ui.add(egui::DragValue::new(&mut position.0.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
     });
+}
+
+fn vpeol_2d_init_position(
+    ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<&mut Vpeol2dPosition>,
+    cameras_query: Query<&VpeolCameraState>,
+    mouse_buttons: Res<Input<MouseButton>>,
+) -> YoleckExclusiveSystemDirective {
+    let Ok(mut position) = edit.get_single_mut() else {
+        return YoleckExclusiveSystemDirective::Finished;
+    };
+
+    let Some(cursor_ray) = cameras_query.iter().find_map(|camera_state| camera_state.cursor_ray) else {
+        return YoleckExclusiveSystemDirective::Listening;
+    };
+
+    position.0 = cursor_ray.origin.truncate();
+
+    if ui.ctx().is_pointer_over_area() {
+        return YoleckExclusiveSystemDirective::Listening;
+    }
+
+    if mouse_buttons.just_released(MouseButton::Left) {
+        return YoleckExclusiveSystemDirective::Finished;
+    }
+
+    return YoleckExclusiveSystemDirective::Listening;
 }
 
 fn vpeol_2d_populate_transform(

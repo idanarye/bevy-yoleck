@@ -278,7 +278,7 @@ impl Vpeol3dCameraControl {
 
 fn camera_3d_pan(
     mut egui_context: EguiContexts,
-    buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
@@ -292,12 +292,12 @@ fn camera_3d_pan(
         BeingPressed,
     }
 
-    let mouse_button_op = if buttons.just_pressed(MouseButton::Right) {
+    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
         if egui_context.ctx_mut().is_pointer_over_area() {
             return;
         }
         MouseButtonOp::JustPressed
-    } else if buttons.pressed(MouseButton::Right) {
+    } else if mouse_buttons.pressed(MouseButton::Right) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_world_pos_by_camera.clear();
@@ -356,7 +356,7 @@ fn camera_3d_move_along_plane_normal(
 
 fn camera_3d_rotate(
     mut egui_context: EguiContexts,
-    buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
@@ -370,12 +370,12 @@ fn camera_3d_rotate(
         BeingPressed,
     }
 
-    let mouse_button_op = if buttons.just_pressed(MouseButton::Middle) {
+    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Middle) {
         if egui_context.ctx_mut().is_pointer_over_area() {
             return;
         }
         MouseButtonOp::JustPressed
-    } else if buttons.pressed(MouseButton::Middle) {
+    } else if mouse_buttons.pressed(MouseButton::Middle) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_ray_by_camera.clear();

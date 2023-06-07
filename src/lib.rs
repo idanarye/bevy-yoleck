@@ -217,7 +217,7 @@ pub use self::editor_window::YoleckEditorSection;
 
 use self::entity_management::{EntitiesToPopulate, YoleckLoadingCommand, YoleckRawLevel};
 use self::entity_upgrading::YoleckEntityUpgrading;
-use self::exclusive_systems::YoleckExclusiveSystemsQueue;
+use self::exclusive_systems::YoleckExclusiveSystemsPlugin;
 use self::knobs::YoleckKnobsCache;
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 use self::level_index::YoleckLevelIndex;
@@ -298,8 +298,8 @@ impl Plugin for YoleckPluginForEditor {
         app.add_state::<YoleckEditorState>();
         app.add_event::<YoleckEditorEvent>();
         app.add_plugin(YoleckPluginBase);
+        app.add_plugin(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
-        app.init_resource::<YoleckExclusiveSystemsQueue>();
         app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
             level_needs_saving: false,
