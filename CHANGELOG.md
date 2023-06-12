@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- An exclusive systems mechanism for edit systems that operate alone and can
+  thus assume control over the input (e.g. mouse motion and clicks)
+
+### Changed
+- When creating a new entity that uses `Vpeol*dPosition`, an exclusive system
+  will kick in to allow placing the entity with the mouse (instead of just
+  placing it in the origin and letting the user drag it from there)
 
 ## 0.11.0 - 2023-04-06
 ### Added
