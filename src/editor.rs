@@ -110,6 +110,10 @@ pub enum YoleckEditorEvent {
 
 enum YoleckDirectiveInner {
     SetSelected(Option<Entity>),
+    ChangeSelectedStatus {
+        entity: Entity,
+        force_to: Option<bool>,
+    },
     PassToEntity(Entity, TypeId, BoxedArc),
     SpawnEntity {
         type_name: String,
@@ -141,6 +145,14 @@ impl YoleckDirective {
     /// Set the entity selected in the Yoleck editor.
     pub fn set_selected(entity: Option<Entity>) -> Self {
         Self(YoleckDirectiveInner::SetSelected(entity))
+    }
+
+    /// Set the entity selected in the Yoleck editor.
+    pub fn toggle_selected(entity: Entity) -> Self {
+        Self(YoleckDirectiveInner::ChangeSelectedStatus {
+            entity,
+            force_to: None,
+        })
     }
 
     /// Spawn a new entity with pre-populated data.
@@ -375,7 +387,9 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                     .selectable_label(is_selected, format_caption(entity, yoleck_managed))
                     .clicked()
                 {
-                    if is_selected {
+                    if ui.input(|input| input.modifiers.shift) {
+                        writer.send(YoleckDirective::toggle_selected(entity));
+                    } else if is_selected {
                         writer.send(YoleckDirective::set_selected(None));
                     } else {
                         writer.send(YoleckDirective::set_selected(Some(entity)));
@@ -473,6 +487,27 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                     .remove::<YoleckEditMarker>();
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
+                            }
+                        }
+                    }
+                    YoleckDirectiveInner::ChangeSelectedStatus { entity, force_to } => {
+                        if active_exclusive_system.is_some() {
+                            // TODO: pass the selection command to the exclusive system?
+                            continue;
+                        }
+                        match (force_to, yoleck_edited_query.contains(*entity)) {
+                            (Some(true), true) | (Some(false), false) => {
+                                // Nothing to do
+                            }
+                            (None, false) | (Some(true), false) => {
+                                // Add to selection
+                                 commands.entity(*entity).insert(YoleckEditMarker);
+                                writer.send(YoleckEditorEvent::EntitySelected(*entity));
+                            }
+                            (None, true) | (Some(false), true) => {
+                                // Remove from selection
+                                 commands.entity(*entity).remove::<YoleckEditMarker>();
+                                writer.send(YoleckEditorEvent::EntityDeselected(*entity));
                             }
                         }
                     }

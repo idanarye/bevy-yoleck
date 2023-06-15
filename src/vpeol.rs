@@ -230,6 +230,7 @@ fn handle_camera_state(
     mut query: Query<(&Camera, &mut VpeolCameraState)>,
     window_getter: WindowGetter,
     mouse_buttons: Res<Input<MouseButton>>,
+    keyboard: Res<Input<KeyCode>>,
     global_transform_query: Query<&GlobalTransform>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: EventWriter<YoleckDirective>,
@@ -275,7 +276,11 @@ fn handle_camera_state(
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
             (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
-                if let Some((knob_entity, cursor_pointing)) =
+                if keyboard.any_pressed([KeyCode::LShift, KeyCode::RShift]) {
+                    if let Some((entity, _)) = &camera_state.entity_under_cursor {
+                        directives_writer.send(YoleckDirective::toggle_selected(*entity));
+                    }
+                } else if let Some((knob_entity, cursor_pointing)) =
                     knob_query.iter().find_map(|knob_entity| {
                         Some((knob_entity, camera_state.pointing_at_entity(knob_entity)?))
                     })
