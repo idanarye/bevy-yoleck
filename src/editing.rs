@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bevy::ecs::query::{QuerySingleError, ReadOnlyWorldQuery, WorldQuery};
+use bevy::ecs::query::{QueryIter, QuerySingleError, ReadOnlyWorldQuery, WorldQuery};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -37,6 +37,26 @@ impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdi
         // This will return an error if multiple entities are selected (but only one fits F and Q)
         self.verification_query.get_single()?;
         Ok(single)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.query.is_empty()
+    }
+
+    pub fn has_nonmatching(&self) -> bool {
+        // Note - cannot use len for query.iter() because then F would be limited to archtype
+        // filters only.
+        self.query.iter().count() != self.verification_query.iter().len()
+    }
+
+    pub fn iter(
+        &mut self,
+    ) -> QueryIter<<Q as WorldQuery>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)> {
+        self.query.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> QueryIter<Q, (With<YoleckEditMarker>, F)> {
+        self.query.iter_mut()
     }
 }
 

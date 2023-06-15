@@ -278,7 +278,9 @@ fn control_player(
 #[derive(Component)]
 struct IsFruit;
 
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+#[derive(
+    Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Component, YoleckComponent, Debug,
+)]
 struct FruitType {
     index: usize,
 }
@@ -306,27 +308,21 @@ fn duplicate_fruit(
 
 fn edit_fruit_type(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(&mut FruitType, &Vpeol2dPosition)>,
+    mut edit: YoleckEdit<(Entity, &mut FruitType, &Vpeol2dPosition)>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((mut fruit_type, Vpeol2dPosition(position))) = edit.get_single_mut() else { return };
-    ui.horizontal(|ui| {
-        ui.label(format!("New Style:\n#{} chosen", fruit_type.index));
-        let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
-        for (index, rect) in rects.iter().enumerate() {
-            if ui
-                .add_enabled(
-                    index != fruit_type.index,
-                    egui::ImageButton::new(*texture_id, [100.0, 100.0]).uv(*rect),
-                )
-                .clicked()
-            {
-                fruit_type.index = index;
-            }
+    if edit.is_empty() {
+        return;
+    }
 
+    let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
+    let mut selected_fruit_types = vec![false; rects.len()];
+    for (entity, mut fruit_type, Vpeol2dPosition(position)) in edit.iter_mut() {
+        selected_fruit_types[fruit_type.index] = true;
+        for index in 0..rects.len() {
             if index != fruit_type.index {
-                let mut knob = knobs.knob(("select", index));
+                let mut knob = knobs.knob((entity, "select", index));
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
                 knob.cmd.insert(SpriteSheetBundle {
@@ -341,6 +337,33 @@ fn edit_fruit_type(
                     ..Default::default()
                 });
                 if knob.get_passed_data::<YoleckKnobClick>().is_some() {
+                    fruit_type.index = index;
+                }
+            }
+        }
+    }
+    if edit.has_nonmatching() {
+        // Only show the UI if _all_ the selected entities are fruits
+        return;
+    }
+    let selected_fruit_types = selected_fruit_types;
+    let are_multile_types_selected = 1 < selected_fruit_types
+        .iter()
+        .filter(|is_selected| **is_selected)
+        .count();
+
+    ui.horizontal(|ui| {
+        for (index, rect) in rects.iter().enumerate() {
+            if ui
+                .add_enabled(
+                    are_multile_types_selected || !selected_fruit_types[index],
+                    egui::ImageButton::new(*texture_id, [100.0, 100.0])
+                        .uv(*rect)
+                        .selected(selected_fruit_types[index]),
+                )
+                .clicked()
+            {
+                for (_, mut fruit_type, _) in edit.iter_mut() {
                     fruit_type.index = index;
                 }
             }

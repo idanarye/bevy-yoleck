@@ -501,12 +501,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             }
                             (None, false) | (Some(true), false) => {
                                 // Add to selection
-                                 commands.entity(*entity).insert(YoleckEditMarker);
+                                commands.entity(*entity).insert(YoleckEditMarker);
                                 writer.send(YoleckEditorEvent::EntitySelected(*entity));
                             }
                             (None, true) | (Some(false), true) => {
                                 // Remove from selection
-                                 commands.entity(*entity).remove::<YoleckEditMarker>();
+                                commands.entity(*entity).remove::<YoleckEditMarker>();
                                 writer.send(YoleckEditorEvent::EntityDeselected(*entity));
                             }
                         }
