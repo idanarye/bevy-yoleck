@@ -128,6 +128,7 @@ pub enum VpeolClicksOnObjectsState {
         prev_screen_pos: Vec2,
         /// Offset from the entity's center to the cursor's position on the drag plane.
         offset: Vec3,
+        select_on_mouse_release: bool,
     },
 }
 
@@ -232,6 +233,7 @@ fn handle_camera_state(
     mouse_buttons: Res<Input<MouseButton>>,
     keyboard: Res<Input<KeyCode>>,
     global_transform_query: Query<&GlobalTransform>,
+    selected_query: Query<(), With<YoleckEditMarker>>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: EventWriter<YoleckDirective>,
     global_drag_plane: Res<VpeolDragPlane>,
@@ -295,18 +297,23 @@ fn handle_camera_state(
                         entity: knob_entity,
                         prev_screen_pos: cursor_in_screen_pos,
                         offset: cursor_in_world_position - knob_transform.translation(),
+                        select_on_mouse_release: false,
                     }
                 } else {
                     camera_state.clicks_on_objects_state = if let Some((entity, cursor_pointing)) =
                         &camera_state.entity_under_cursor
                     {
                         let Ok(entity_transform) = global_transform_query.get(*entity) else { continue };
-                        directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                        let select_on_mouse_release = selected_query.contains(*entity);
+                        if !select_on_mouse_release {
+                            directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                        }
                         let Some(cursor_in_world_position) = calc_cursor_in_world_position(*entity, cursor_pointing.cursor_position_world_coords) else { continue };
                         VpeolClicksOnObjectsState::BeingDragged {
                             entity: *entity,
                             prev_screen_pos: cursor_in_screen_pos,
                             offset: cursor_in_world_position - entity_transform.translation(),
+                            select_on_mouse_release,
                         }
                     } else {
                         directives_writer.send(YoleckDirective::set_selected(None));
@@ -320,6 +327,7 @@ fn handle_camera_state(
                     entity,
                     prev_screen_pos,
                     offset,
+                    select_on_mouse_release: _,
                 },
             ) => {
                 if 0.1 <= prev_screen_pos.distance_squared(cursor_in_screen_pos) {
@@ -335,8 +343,21 @@ fn handle_camera_state(
                             entity: *entity,
                             prev_screen_pos: cursor_in_screen_pos,
                             offset: *offset,
+                            select_on_mouse_release: false,
                         };
                 }
+            }
+            (
+                MouseButtonOp::JustReleased,
+                VpeolClicksOnObjectsState::BeingDragged {
+                    entity,
+                    prev_screen_pos: _,
+                    offset: _,
+                    select_on_mouse_release: true,
+                },
+            ) => {
+                directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::Empty;
             }
             _ => {}
         }

@@ -90,6 +90,7 @@ use crate::vpeol::{
     VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet, WindowGetter,
 };
 use bevy::input::mouse::MouseWheel;
+use bevy::math::DVec2;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
@@ -504,14 +505,34 @@ fn vpeol_2d_edit_position(
     mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
     passed_data: Res<YoleckPassedData>,
 ) {
-    let Ok((entity, mut position)) = edit.get_single_mut() else { return };
-    if let Some(pos) = passed_data.get::<Vec3>(entity) {
-        position.0 = pos.truncate();
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
     }
+    // Use double precision to prevent rounding errors when there are many entities.
+    let mut average = DVec2::ZERO;
+    let mut num_entities = 0;
+    let mut transition = Vec2::ZERO;
+    for (entity, position) in edit.iter() {
+        if let Some(pos) = passed_data.get::<Vec3>(entity) {
+            transition = pos.truncate() - position.0;
+        }
+        average += position.0.as_dvec2();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
     ui.horizontal(|ui| {
-        ui.add(egui::DragValue::new(&mut position.0.x).prefix("X:"));
-        ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
+        let mut new_average = average;
+        ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
+        ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
+        transition += (new_average - average).as_vec2();
     });
+
+    if transition.is_finite() && transition != Vec2::ZERO {
+        for (_, mut position) in edit.iter_mut() {
+            position.0 += transition;
+        }
+    }
 }
 
 fn vpeol_2d_init_position(

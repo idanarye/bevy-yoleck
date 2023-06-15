@@ -102,6 +102,7 @@ use crate::vpeol::{
 };
 use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
 use bevy::input::mouse::MouseWheel;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
@@ -449,20 +450,84 @@ impl Default for Vpeol3dScale {
     }
 }
 
+enum CommonDragPlane {
+    NotDecidedYet,
+    WithNormal(Vec3),
+    NoSharedPlane,
+}
+
+impl CommonDragPlane {
+    fn consider(&mut self, normal: Vec3) {
+        *self = match self {
+            CommonDragPlane::NotDecidedYet => CommonDragPlane::WithNormal(normal),
+            CommonDragPlane::WithNormal(current_normal) => {
+                if *current_normal == normal {
+                    CommonDragPlane::WithNormal(normal)
+                } else {
+                    CommonDragPlane::NoSharedPlane
+                }
+            }
+            CommonDragPlane::NoSharedPlane => CommonDragPlane::NoSharedPlane,
+        }
+    }
+
+    fn shared_normal(&self) -> Option<Vec3> {
+        if let CommonDragPlane::WithNormal(normal) = self {
+            Some(*normal)
+        } else {
+            None
+        }
+    }
+}
+
 fn vpeol_3d_edit_position(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition)>,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
 ) {
-    let Ok((entity, mut position)) = edit.get_single_mut() else { return };
-    if let Some(pos) = passed_data.get::<Vec3>(entity) {
-        position.0 = *pos;
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    // Use double precision to prevent rounding errors when there are many entities.
+    let mut average = DVec3::ZERO;
+    let mut num_entities = 0;
+    let mut transition = Vec3::ZERO;
+
+    let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
+
+    for (entity, position, drag_plane) in edit.iter() {
+        let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        common_drag_plane.consider(drag_plane.normal);
+
+        if let Some(pos) = passed_data.get::<Vec3>(entity) {
+            transition = *pos - position.0;
+        }
+        average += position.0.as_dvec3();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
+    if common_drag_plane.shared_normal().is_none() {
+        transition = Vec3::ZERO;
+        ui.label(
+            egui::RichText::new("Drag plane differs - cannot drag together")
+                .color(egui::Color32::RED),
+        );
     }
     ui.horizontal(|ui| {
-        ui.add(egui::DragValue::new(&mut position.0.x).prefix("X:"));
-        ui.add(egui::DragValue::new(&mut position.0.y).prefix("Y:"));
-        ui.add(egui::DragValue::new(&mut position.0.z).prefix("Z:"));
+        let mut new_average = average;
+        ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
+        ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
+        ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:"));
+        transition += (new_average - average).as_vec3();
     });
+
+    if transition.is_finite() && transition != Vec3::ZERO {
+        for (_, mut position, _) in edit.iter_mut() {
+            position.0 += transition;
+        }
+    }
 }
 
 fn vpeol_3d_init_position(
@@ -511,7 +576,9 @@ fn vpeol_3d_edit_third_axis_with_knob(
     mut mesh_and_material: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
     mut directives_writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((entity, global_transform, third_axis_with_knob, drag_plane)) = edit.get_single_mut() else { return };
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
 
     let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
         (
@@ -525,43 +592,52 @@ fn vpeol_3d_edit_third_axis_with_knob(
         )
     });
 
-    let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
-    let entity_position = global_transform.translation();
+    let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
+    for (_, _, _, drag_plane) in edit.iter() {
+        let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        common_drag_plane.consider(drag_plane.normal);
+    }
+    let Some(drag_plane_normal) = common_drag_plane.shared_normal() else { return };
 
-    for (knob_name, drag_plane_normal) in [
-        ("vpeol-3d-third-axis-knob-positive", drag_plane.normal),
-        ("vpeol-3d-third-axis-knob-negative", -drag_plane.normal),
-    ] {
-        let mut knob = knobs.knob(knob_name);
-        let knob_offset = third_axis_with_knob.knob_distance * drag_plane_normal;
-        let knob_transform = Transform {
-            translation: entity_position + knob_offset,
-            rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
-            scale: third_axis_with_knob.knob_scale * Vec3::ONE,
-        };
-        knob.cmd.insert(VpeolDragPlane {
-            normal: drag_plane
-                .normal
-                .cross(Vec3::X)
-                .try_normalize()
-                .unwrap_or(Vec3::Y),
-        });
-        knob.cmd.insert(PbrBundle {
-            mesh: mesh.clone(),
-            material: material.clone(),
-            transform: knob_transform,
-            global_transform: knob_transform.into(),
-            ..Default::default()
-        });
-        if let Some(pos) = knob.get_passed_data::<Vec3>() {
-            let vector_from_entity = *pos - knob_offset - entity_position;
-            let along_drag_normal = vector_from_entity.dot(drag_plane.normal);
-            let vector_along_drag_normal = along_drag_normal * drag_plane.normal;
-            let position_along_drag_normal = entity_position + vector_along_drag_normal;
-            directives_writer.send(YoleckDirective::pass_to_entity(
-                entity,
-                position_along_drag_normal,
-            ));
+    for (entity, global_transform, third_axis_with_knob, _) in edit.iter() {
+        let entity_position = global_transform.translation();
+
+        for (knob_name, drag_plane_normal) in [
+            ("vpeol-3d-third-axis-knob-positive", drag_plane_normal),
+            ("vpeol-3d-third-axis-knob-negative", -drag_plane_normal),
+        ] {
+            let mut knob = knobs.knob((entity, knob_name));
+            let knob_offset = third_axis_with_knob.knob_distance * drag_plane_normal;
+            let knob_transform = Transform {
+                translation: entity_position + knob_offset,
+                rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
+                scale: third_axis_with_knob.knob_scale * Vec3::ONE,
+            };
+            knob.cmd.insert(VpeolDragPlane {
+                normal: drag_plane_normal
+                    .cross(Vec3::X)
+                    .try_normalize()
+                    .unwrap_or(Vec3::Y),
+            });
+            knob.cmd.insert(PbrBundle {
+                mesh: mesh.clone(),
+                material: material.clone(),
+                transform: knob_transform,
+                global_transform: knob_transform.into(),
+                ..Default::default()
+            });
+            if let Some(pos) = knob.get_passed_data::<Vec3>() {
+                let vector_from_entity = *pos - knob_offset - entity_position;
+                let along_drag_normal = vector_from_entity.dot(drag_plane_normal);
+                let vector_along_drag_normal = along_drag_normal * drag_plane_normal;
+                let position_along_drag_normal = entity_position + vector_along_drag_normal;
+                // NOTE: we don't need to send this to all the selected entities. This will be
+                // handled in the system that receives the passed data.
+                directives_writer.send(YoleckDirective::pass_to_entity(
+                    entity,
+                    position_along_drag_normal,
+                ));
+            }
         }
     }
 }
