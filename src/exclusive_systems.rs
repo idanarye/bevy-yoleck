@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use bevy::prelude::*;
 
 pub(crate) struct YoleckExclusiveSystemsPlugin;
@@ -26,7 +28,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 
 /// The currently pending exclusive systems.
 ///
-/// Other edit systems (exclusive or otherwise) may [`enqueue`](Self::enqueue) exclusive edit
+/// Other edit systems (exclusive or otherwise) may [`push_back`](Self::push_back) exclusive edit
 /// systems into this queue:
 ///
 /// ```no_run
@@ -45,7 +47,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 ///         return;
 ///     }
 ///     if ui.button("Look At").clicked() {
-///         exclusive_queue.enqueue(exclusive_system);
+///         exclusive_queue.push_back(exclusive_system);
 ///     }
 /// }
 ///
@@ -77,27 +79,38 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 /// }
 /// ```
 #[derive(Resource, Default)]
-pub struct YoleckExclusiveSystemsQueue(Vec<YoleckExclusiveSystem>);
+pub struct YoleckExclusiveSystemsQueue(VecDeque<YoleckExclusiveSystem>);
 
 impl YoleckExclusiveSystemsQueue {
     /// Add an exclusive system to be ran starting from the next frame.
     ///
     /// If there are already exclusive systems running or enqueued, the new one will run after they
     /// finish.
-    pub fn enqueue<P>(&mut self, system: impl IntoSystem<(), YoleckExclusiveSystemDirective, P>) {
-        self.0.push(Box::new(IntoSystem::into_system(system)));
+    pub fn push_back<P>(&mut self, system: impl IntoSystem<(), YoleckExclusiveSystemDirective, P>) {
+        self.0.push_back(Box::new(IntoSystem::into_system(system)));
     }
 
-    pub(crate) fn take(&mut self) -> Option<YoleckExclusiveSystem> {
-        if self.0.is_empty() {
-            None
-        } else {
-            Some(self.0.remove(0))
-        }
+    /// Add an exclusive system to be ran starting from the next frame.
+    ///
+    /// If there are already exclusive systems enqueued, the new one will run before them. If there
+    /// is an exclusive system already running, the new one will only run after it finishes.
+    pub fn push_front<P>(
+        &mut self,
+        system: impl IntoSystem<(), YoleckExclusiveSystemDirective, P>,
+    ) {
+        self.0.push_front(Box::new(IntoSystem::into_system(system)));
     }
 
-    pub(crate) fn set(&mut self, exclusive_systems: impl Iterator<Item = YoleckExclusiveSystem>) {
-        self.0 = exclusive_systems.collect();
+    /// Remove all enqueued exclusive systems.
+    ///
+    /// This does not affect an exclusive system that is already running. That system will keep
+    /// running until it returns [`Finished`](YoleckExclusiveSystemDirective::Finished).
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    pub(crate) fn pop_front(&mut self) -> Option<YoleckExclusiveSystem> {
+        self.0.pop_front()
     }
 }
 
@@ -111,39 +124,24 @@ pub(crate) struct YoleckActiveExclusiveSystem(pub YoleckExclusiveSystem);
 /// immediately when they do not apply, so that the next ones would run immediately
 #[derive(Default, Resource)]
 pub struct YoleckEntityCreationExclusiveSystems(
-    Vec<Box<dyn Sync + Send + Fn() -> YoleckExclusiveSystem>>,
+    #[allow(clippy::type_complexity)]
+    Vec<Box<dyn Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue)>>,
 );
 
 impl YoleckEntityCreationExclusiveSystems {
-    /// Add a new exclusive system that would run on entity creation.
-    ///
-    /// The system is provided as a closure that returns a system, and will run before all the
-    /// systems that were added before it.
-    pub fn push_first<P, T: IntoSystem<(), YoleckExclusiveSystemDirective, P>>(
+    /// Add a modification to the exclusive systems queue when new entities are created.
+    pub fn on_entity_creation(
         &mut self,
-        factory: impl 'static + Sync + Send + Fn() -> T,
+        dlg: impl 'static + Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue),
     ) {
-        self.0.insert(
-            0,
-            Box::new(move || Box::new(IntoSystem::into_system(factory()))),
-        );
+        self.0.push(Box::new(dlg));
     }
 
-    /// Add a new exclusive system that would run on entity creation.
-    ///
-    /// The system is provided as a closure that returns a system, and will run after all the
-    /// systems that were added before it.
-    pub fn push_last<P, T: IntoSystem<(), YoleckExclusiveSystemDirective, P>>(
-        &mut self,
-        factory: impl 'static + Sync + Send + Fn() -> T,
-    ) {
-        self.0.push(Box::new(move || {
-            Box::new(IntoSystem::into_system(factory()))
-        }));
-    }
-
-    /// Generate all the systems that are supposed to run when an entity is created.
-    pub fn generate(&self) -> impl '_ + Iterator<Item = YoleckExclusiveSystem> {
-        self.0.iter().map(|factory| factory())
+    pub(crate) fn create_queue(&self) -> YoleckExclusiveSystemsQueue {
+        let mut queue = YoleckExclusiveSystemsQueue::default();
+        for dlg in self.0.iter() {
+            dlg(&mut queue);
+        }
+        queue
     }
 }

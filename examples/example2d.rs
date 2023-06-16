@@ -300,7 +300,7 @@ fn duplicate_fruit(
             .with(FruitType {
                 index: fruit_type.index,
             })
-            .override_exclusive_systems(|| [])
+            .modify_exclusive_systems(|queue| queue.clear())
             .into(),
         );
     }

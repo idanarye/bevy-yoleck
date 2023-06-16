@@ -158,7 +158,7 @@ impl Plugin for Vpeol2dPluginForEditor {
         app.add_yoleck_edit_system(vpeol_2d_edit_position);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
-            .push_first(|| vpeol_2d_init_position);
+            .on_entity_creation(|queue| queue.push_back(vpeol_2d_init_position));
     }
 }
 

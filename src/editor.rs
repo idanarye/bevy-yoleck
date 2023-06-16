@@ -8,7 +8,7 @@ use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
 use crate::exclusive_systems::{
-    YoleckActiveExclusiveSystem, YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystem,
+    YoleckActiveExclusiveSystem, YoleckEntityCreationExclusiveSystems,
     YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue,
 };
 use crate::knobs::YoleckKnobsCache;
@@ -120,8 +120,8 @@ enum YoleckDirectiveInner {
         data: serde_json::Value,
         select_created_entity: bool,
         #[allow(clippy::type_complexity)]
-        override_exclusive_systems:
-            Option<Box<dyn Sync + Send + Fn() -> Box<dyn Iterator<Item = YoleckExclusiveSystem>>>>,
+        modify_exclusive_systems:
+            Option<Box<dyn Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue)>>,
     },
 }
 
@@ -193,7 +193,7 @@ impl YoleckDirective {
             type_name: type_name.to_string(),
             select_created_entity,
             data: Default::default(),
-            override_exclusive_systems: None,
+            modify_exclusive_systems: None,
         }
     }
 }
@@ -203,11 +203,11 @@ pub struct SpawnEntityBuilder {
     select_created_entity: bool,
     data: HashMap<&'static str, serde_json::Value>,
     #[allow(clippy::type_complexity)]
-    override_exclusive_systems:
-        Option<Box<dyn Sync + Send + Fn() -> Box<dyn Iterator<Item = YoleckExclusiveSystem>>>>,
+    modify_exclusive_systems: Option<Box<dyn Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue)>>,
 }
 
 impl SpawnEntityBuilder {
+    /// Override a component of the spawned entitiy.
     pub fn with<T: YoleckComponent>(mut self, component: T) -> Self {
         self.data.insert(
             T::KEY,
@@ -216,12 +216,12 @@ impl SpawnEntityBuilder {
         self
     }
 
-    pub fn override_exclusive_systems<const N: usize>(
+    /// Change the exclusive systems that will be running the entity is spawned.
+    pub fn modify_exclusive_systems(
         mut self,
-        exclusive_systems: impl 'static + Sync + Send + Fn() -> [YoleckExclusiveSystem; N],
+        dlg: impl 'static + Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue),
     ) -> Self {
-        self.override_exclusive_systems =
-            Some(Box::new(move || Box::new(exclusive_systems().into_iter())));
+        self.modify_exclusive_systems = Some(Box::new(dlg));
         self
     }
 }
@@ -232,7 +232,7 @@ impl From<SpawnEntityBuilder> for YoleckDirective {
             type_name: value.type_name,
             data: serde_json::to_value(value.data).expect("should always work"),
             select_created_entity: value.select_created_entity,
-            override_exclusive_systems: value.override_exclusive_systems,
+            modify_exclusive_systems: value.modify_exclusive_systems,
         })
     }
 }
@@ -318,7 +318,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
                         type_name: entity_type.name.clone(),
                         data: serde_json::Value::Object(Default::default()),
                         select_created_entity: true,
-                        override_exclusive_systems: None,
+                        modify_exclusive_systems: None,
                     }));
                     ui.memory_mut(|memory| memory.toggle_popup(popup_id));
                 }
@@ -515,7 +515,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         type_name,
                         data,
                         select_created_entity,
-                        override_exclusive_systems,
+                        modify_exclusive_systems: override_exclusive_systems,
                     } => {
                         if active_exclusive_system.is_some() {
                             continue;
@@ -537,11 +537,10 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                 writer
                                     .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
-                            if let Some(exclusive_systems) = override_exclusive_systems {
-                                exclusive_systems_queue.set(exclusive_systems());
-                            } else {
-                                exclusive_systems_queue
-                                    .set(entity_creation_exclusive_systems.generate());
+                            *exclusive_systems_queue =
+                                entity_creation_exclusive_systems.create_queue();
+                            if let Some(override_exclusive_systems) = override_exclusive_systems {
+                                override_exclusive_systems(exclusive_systems_queue.as_mut());
                             }
                             new_entity_created_this_frame = true;
                         }
@@ -619,7 +618,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
 
         let should_run_regular_systems = match behavior_for_exclusive_system {
             ActiveExclusiveSystemStatus::DidNotRun => loop {
-                let Some(mut new_exclusive_system) = world.resource_mut::<YoleckExclusiveSystemsQueue>().take() else { break true };
+                let Some(mut new_exclusive_system) = world.resource_mut::<YoleckExclusiveSystemsQueue>().pop_front() else { break true };
                 new_exclusive_system.initialize(world);
                 let first_run_result = new_exclusive_system.run((), world);
                 if new_entity_created_this_frame

@@ -195,7 +195,7 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
-            .push_first(|| vpeol_3d_init_position);
+            .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
         app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
     }
 }
