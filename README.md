@@ -21,6 +21,7 @@ own level editor.
     `vpeol_3d`.
 * A knobs mechanism for more visual editing.
 * Playtest the levels inside the editor.
+* Multiple entity selection in the editor with the Shift key.
 
 ## Examples:
 

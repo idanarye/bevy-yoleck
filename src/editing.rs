@@ -14,8 +14,9 @@ pub struct YoleckEditMarker;
 /// To future-proof for the multi-entity editing feature, use this instead of
 /// regular queries with `With<YoleckEditMarker>`.
 ///
-/// The methods of `YoleckEdit` delegate to the methods of a Bevy's `Query` with the same name, but
-/// if there are edited entities that do not fit the query they will act as if they found no match.
+/// The methods of `YoleckEdit` that have the same name as methods of a regular Bevy `Query`
+/// delegate to them, but if there are edited entities that do not fit the query they will act as
+/// if they found no match.
 #[derive(SystemParam)]
 pub struct YoleckEdit<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
     query: Query<'w, 's, Q, (With<YoleckEditMarker>, F)>,
@@ -43,19 +44,33 @@ impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdi
         self.query.is_empty()
     }
 
+    /// Check if some non-matching entities are selected for editing.
+    ///
+    /// Use this, together with [`is_empty`](Self::is_empty) for systems that can edit multiple
+    /// entities but want to not show their UI when some irrelevant entities are selected as well.
     pub fn has_nonmatching(&self) -> bool {
-        // Note - cannot use len for query.iter() because then F would be limited to archtype
+        // Note - cannot use len for query.iter() because then `F` would be limited to archetype
         // filters only.
         self.query.iter().count() != self.verification_query.iter().len()
     }
 
-    pub fn iter(
+    /// Iterate over all the matching entities, _even_ if some selected entities do not match.
+    ///
+    /// If both matching and non-matching entities are selected, this will iterate over the
+    /// matching entities only. If it is not desired to iterate at all in such cases,
+    /// check [`has_nonmatching`](Self::has_nonmatching) must be checked manually.
+    pub fn iter_matching(
         &mut self,
     ) -> QueryIter<<Q as WorldQuery>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)> {
         self.query.iter()
     }
 
-    pub fn iter_mut(&mut self) -> QueryIter<Q, (With<YoleckEditMarker>, F)> {
+    /// Iterate mutably over all the matching entities, _even_ if some selected entities do not match.
+    ///
+    /// If both matching and non-matching entities are selected, this will iterate over the
+    /// matching entities only. If it is not desired to iterate at all in such cases,
+    /// check [`has_nonmatching`](Self::has_nonmatching) must be checked manually.
+    pub fn iter_matching_mut(&mut self) -> QueryIter<Q, (With<YoleckEditMarker>, F)> {
         self.query.iter_mut()
     }
 }

@@ -496,7 +496,7 @@ fn vpeol_3d_edit_position(
 
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
-    for (entity, position, drag_plane) in edit.iter() {
+    for (entity, position, drag_plane) in edit.iter_matching() {
         let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
         common_drag_plane.consider(drag_plane.normal);
 
@@ -524,7 +524,7 @@ fn vpeol_3d_edit_position(
     });
 
     if transition.is_finite() && transition != Vec3::ZERO {
-        for (_, mut position, _) in edit.iter_mut() {
+        for (_, mut position, _) in edit.iter_matching_mut() {
             position.0 += transition;
         }
     }
@@ -593,13 +593,13 @@ fn vpeol_3d_edit_third_axis_with_knob(
     });
 
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
-    for (_, _, _, drag_plane) in edit.iter() {
+    for (_, _, _, drag_plane) in edit.iter_matching() {
         let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
         common_drag_plane.consider(drag_plane.normal);
     }
     let Some(drag_plane_normal) = common_drag_plane.shared_normal() else { return };
 
-    for (entity, global_transform, third_axis_with_knob, _) in edit.iter() {
+    for (entity, global_transform, third_axis_with_knob, _) in edit.iter_matching() {
         let entity_position = global_transform.translation();
 
         for (knob_name, drag_plane_normal) in [

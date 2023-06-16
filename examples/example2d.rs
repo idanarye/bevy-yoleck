@@ -318,7 +318,7 @@ fn edit_fruit_type(
 
     let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
     let mut selected_fruit_types = vec![false; rects.len()];
-    for (entity, mut fruit_type, Vpeol2dPosition(position)) in edit.iter_mut() {
+    for (entity, mut fruit_type, Vpeol2dPosition(position)) in edit.iter_matching_mut() {
         selected_fruit_types[fruit_type.index] = true;
         for index in 0..rects.len() {
             if index != fruit_type.index {
@@ -363,7 +363,7 @@ fn edit_fruit_type(
                 )
                 .clicked()
             {
-                for (_, mut fruit_type, _) in edit.iter_mut() {
+                for (_, mut fruit_type, _) in edit.iter_matching_mut() {
                     fruit_type.index = index;
                 }
             }

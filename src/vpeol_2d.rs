@@ -512,7 +512,7 @@ fn vpeol_2d_edit_position(
     let mut average = DVec2::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec2::ZERO;
-    for (entity, position) in edit.iter() {
+    for (entity, position) in edit.iter_matching() {
         if let Some(pos) = passed_data.get::<Vec3>(entity) {
             transition = pos.truncate() - position.0;
         }
@@ -529,7 +529,7 @@ fn vpeol_2d_edit_position(
     });
 
     if transition.is_finite() && transition != Vec2::ZERO {
-        for (_, mut position) in edit.iter_mut() {
+        for (_, mut position) in edit.iter_matching_mut() {
             position.0 += transition;
         }
     }

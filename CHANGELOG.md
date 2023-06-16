@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - An exclusive systems mechanism for edit systems that operate alone and can
   thus assume control over the input (e.g. mouse motion and clicks)
+- Multiple selection with the Shift key, and `YoleckEdit` methods for editing
+  multiple entities.
 
 ### Changed
 - When creating a new entity that uses `Vpeol*dPosition`, an exclusive system
