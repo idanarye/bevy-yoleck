@@ -176,9 +176,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: docs-and-demos-ghpages
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to GitHub Pages
