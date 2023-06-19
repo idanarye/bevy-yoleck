@@ -166,6 +166,9 @@ jobs:
           EOF
           done &&
           cp -R assets/ target/doc/demos/
+      - name: Add read permissions
+        run: |-
+          chmod --recursive +r target/doc
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
