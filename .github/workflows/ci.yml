@@ -10,6 +10,8 @@ permissions:
   pages: write
   id-token: write
   checks: write
+  deployments: write
+  actions: write
 
 jobs:
   ci:
