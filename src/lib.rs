@@ -73,22 +73,22 @@
 //!     let mut app = App::new();
 //!     app.add_plugins(DefaultPlugins);
 //!     if is_editor {
-//!         app.add_plugin(EguiPlugin);
-//!         app.add_plugin(YoleckPluginForEditor);
+//!         app.add_plugins(EguiPlugin);
+//!         app.add_plugins(YoleckPluginForEditor);
 //!         // Doesn't matter in this example, but a proper game would have systems that can work
 //!         // on the entity in `GameState::Game`, so while the level is edited we want to be in
 //!         // `GameState::Editor` - which can be treated as a pause state. When the editor wants
 //!         // to playtest the level we want to move to `GameState::Game` so that they can play it.
-//!         app.add_plugin(YoleckSyncWithEditorState {
+//!         app.add_plugins(YoleckSyncWithEditorState {
 //!             when_editor: GameState::Editor,
 //!             when_game: GameState::Game,
 //!         });
 //!     } else {
-//!         app.add_plugin(YoleckPluginForGame);
+//!         app.add_plugins(YoleckPluginForGame);
 //!         app.add_state::<GameState>();
 //!         // In editor mode Yoleck takes care of level loading. In game mode the game needs to
 //!         // tell yoleck which levels to load and when.
-//!         app.add_system(load_first_level.in_set(OnUpdate(GameState::Loading)));
+//!         app.add_systems(Update, load_first_level.run_if(in_state(GameState::Loading)));
 //!     }
 //!     app.add_startup_system(setup_camera);
 //!
@@ -97,7 +97,7 @@
 //!             .with::<Rectangle>()
 //!     });
 //!     app.add_yoleck_edit_system(edit_rectangle);
-//!     app.yoleck_populate_schedule_mut().add_system(populate_rectangle);
+//!     app.yoleck_populate_schedule_mut().add_systems(populate_rectangle);
 //!
 //!     app.run();
 //! }
@@ -142,7 +142,7 @@
 //!     });
 //! }
 //!
-//! fn edit_rectangle(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
+//! fn edit_rectangle(mut ui: NonSendMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
 //!     let Ok(mut rectangle) = edit.get_single_mut() else { return };
 //!     ui.add(egui::Slider::new(&mut rectangle.width, 50.0..=500.0).prefix("Width: "));
 //!     ui.add(egui::Slider::new(&mut rectangle.height, 50.0..=500.0).prefix("Height: "));
@@ -357,7 +357,7 @@ pub trait YoleckExtForApp {
     ///
     /// app.add_yoleck_edit_system(edit_component1);
     ///
-    /// fn edit_component1(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
+    /// fn edit_component1(mut ui: NonSendMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
     ///     let Ok(component1) = edit.get_single_mut() else { return };
     ///     // Edit `component1` with the `ui`
     /// }
@@ -376,7 +376,7 @@ pub trait YoleckExtForApp {
     /// # struct Component1;
     /// # let mut app = App::new();
     ///
-    /// app.yoleck_populate_schedule_mut().add_system(populate_component1);
+    /// app.yoleck_populate_schedule_mut().add_systems(populate_component1);
     ///
     /// fn populate_component1(mut populate: YoleckPopulate<&Component1>) {
     ///     populate.populate(|_ctx, mut cmd, component1| {

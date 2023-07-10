@@ -114,8 +114,9 @@ pub struct Vpeol3dPluginForGame;
 
 impl Plugin for Vpeol3dPluginForGame {
     fn build(&self, app: &mut App) {
-        app.yoleck_populate_schedule_mut().add_system(
-            vpeol_3d_populate_transform.in_base_set(YoleckSchedule::OverrideCommonComponents),
+        app.add_systems(
+            YoleckSchedule::OverrideCommonComponents,
+            vpeol_3d_populate_transform,
         );
     }
 }
@@ -165,31 +166,34 @@ impl Vpeol3dPluginForEditor {
 
 impl Plugin for Vpeol3dPluginForEditor {
     fn build(&self, app: &mut App) {
-        app.add_plugin(VpeolBasePlugin);
-        app.add_plugin(Vpeol3dPluginForGame);
+        app.add_plugins(VpeolBasePlugin);
+        app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane {
             normal: self.drag_plane_normal,
         });
 
         app.add_systems(
+            Update,
             (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
         );
         app.add_systems(
+            Update,
             (
                 camera_3d_pan,
                 camera_3d_move_along_plane_normal,
                 camera_3d_rotate,
             )
-                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+                .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
+            Update,
             (
-                apply_system_buffers,
+                apply_deferred,
                 handle_clickable_children_system::<With<Handle<Mesh>>, ()>,
-                apply_system_buffers,
+                apply_deferred,
             )
                 .chain()
-                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+                .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
         app.world
@@ -480,7 +484,7 @@ impl CommonDragPlane {
 }
 
 fn vpeol_3d_edit_position(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
@@ -531,7 +535,7 @@ fn vpeol_3d_edit_position(
 
 fn vpeol_3d_init_position(
     mut egui_context: EguiContexts,
-    ui: Res<YoleckUi>,
+    ui: NonSend<YoleckUi>,
     mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     cameras_query: Query<&VpeolCameraState>,

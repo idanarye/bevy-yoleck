@@ -52,6 +52,9 @@ required-features = [
     "vpeol_3d",
     "bevy/bevy_scene",
     "bevy/bevy_gltf",
+    "bevy/ktx2",
+    "bevy/zstd",
+    "bevy/tonemapping_luts",
 ]
 
 [package.metadata.docs.rs]

@@ -168,7 +168,7 @@ impl YoleckDirective {
     /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
     /// # struct Example;
     /// fn duplicate_example(
-    ///     mut ui: ResMut<YoleckUi>,
+    ///     mut ui: NonSendMut<YoleckUi>,
     ///     mut edit: YoleckEdit<&Vpeol2dPosition, With<Example>>,
     ///     mut writer: EventWriter<YoleckDirective>,
     /// ) {

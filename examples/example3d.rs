@@ -15,10 +15,11 @@ fn main() {
         // The egui plugin is not needed for the game itself, but GameAssets won't load without it
         // because it needs `EguiContexts` which cannot be `Option` because it's a custom
         // `SystemParam`.
-        app.add_plugin(EguiPlugin);
+        app.add_plugins(EguiPlugin);
 
-        app.add_plugin(YoleckPluginForGame);
-        app.add_startup_system(
+        app.add_plugins(YoleckPluginForGame);
+        app.add_systems(
+            Startup,
             move |asset_server: Res<AssetServer>,
                   mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
                 *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
@@ -26,18 +27,18 @@ fn main() {
                 );
             },
         );
-        app.add_plugin(Vpeol3dPluginForGame);
+        app.add_plugins(Vpeol3dPluginForGame);
     } else {
-        app.add_plugin(EguiPlugin);
-        app.add_plugin(YoleckPluginForEditor);
+        app.add_plugins(EguiPlugin);
+        app.add_plugins(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
         // example2d and example3d in the same repository so we use different directories.
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels3d"),
         ));
-        app.add_plugin(Vpeol3dPluginForEditor::topdown());
-        app.add_plugin(VpeolSelectionCuePlugin::default());
+        app.add_plugins(Vpeol3dPluginForEditor::topdown());
+        app.add_plugins(VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
         app.add_startup_system(
             |asset_server: Res<AssetServer>,
@@ -47,8 +48,8 @@ fn main() {
             },
         );
     }
-    app.add_startup_system(setup_camera);
-    app.add_startup_system(setup_arena);
+    app.add_systems(Startup, setup_camera);
+    app.add_systems(Startup, setup_arena);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Spaceship")
@@ -60,7 +61,7 @@ fn main() {
             })
     });
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_spaceship);
+        .add_systems(populate_spaceship);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Planet")
@@ -73,10 +74,11 @@ fn main() {
             })
     });
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_planet);
+        .add_systems(populate_planet);
 
     app.add_systems(
-        (control_spaceship, hit_planets).in_set(OnUpdate(YoleckEditorState::GameActive)),
+        Update,
+        (control_spaceship, hit_planets).run_if(in_state(YoleckEditorState::GameActive)),
     );
 
     app.run();
