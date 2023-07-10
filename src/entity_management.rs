@@ -136,6 +136,7 @@ pub(crate) fn yoleck_prepare_populate_schedule(
 
 pub(crate) fn yoleck_run_populate_schedule(world: &mut World) {
     world.run_schedule(YoleckSchedule::Populate);
+    world.run_schedule(YoleckSchedule::OverrideCommonComponents);
 }
 
 #[derive(Resource)]
