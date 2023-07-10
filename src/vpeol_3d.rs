@@ -100,7 +100,7 @@ use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet,
 };
-use crate::{prelude::*, YoleckDirective, YoleckPopulateBaseSet};
+use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -115,8 +115,7 @@ pub struct Vpeol3dPluginForGame;
 impl Plugin for Vpeol3dPluginForGame {
     fn build(&self, app: &mut App) {
         app.yoleck_populate_schedule_mut().add_system(
-            vpeol_3d_populate_transform
-                .in_base_set(YoleckPopulateBaseSet::OverrideCommonComponents),
+            vpeol_3d_populate_transform.in_base_set(YoleckSchedule::OverrideCommonComponents),
         );
     }
 }

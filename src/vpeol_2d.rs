@@ -99,16 +99,16 @@ use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::*, YoleckPopulateBaseSet};
+use crate::{prelude::*, YoleckSchedule};
 
 /// Add the systems required for loading levels that use vpeol_2d components
 pub struct Vpeol2dPluginForGame;
 
 impl Plugin for Vpeol2dPluginForGame {
     fn build(&self, app: &mut App) {
-        app.yoleck_populate_schedule_mut().add_system(
-            vpeol_2d_populate_transform
-                .in_base_set(YoleckPopulateBaseSet::OverrideCommonComponents),
+        app.add_systems(
+            YoleckSchedule::OverrideCommonComponents,
+            vpeol_2d_populate_transform,
         );
     }
 }
@@ -123,11 +123,12 @@ pub struct Vpeol2dPluginForEditor;
 
 impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
-        app.add_plugin(VpeolBasePlugin);
-        app.add_plugin(Vpeol2dPluginForGame);
+        app.add_plugins(VpeolBasePlugin);
+        app.add_plugins(Vpeol2dPluginForGame);
         app.insert_resource(VpeolDragPlane { normal: Vec3::Z });
 
         app.add_systems(
+            Update,
             (
                 update_camera_status_for_sprites,
                 update_camera_status_for_atlas_sprites,
@@ -137,11 +138,13 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .in_set(VpeolSystemSet::UpdateCameraState),
         );
         app.add_systems(
-            (camera_2d_pan, camera_2d_zoom).in_set(OnUpdate(YoleckEditorState::EditorActive)),
+            Update,
+            (camera_2d_pan, camera_2d_zoom).run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
+            Update,
             (
-                apply_system_buffers,
+                apply_deferred,
                 handle_clickable_children_system::<
                     Or<(
                         (With<Sprite>, With<Handle<Image>>),
@@ -150,10 +153,10 @@ impl Plugin for Vpeol2dPluginForEditor {
                     )>,
                     (),
                 >,
-                apply_system_buffers,
+                apply_deferred,
             )
                 .chain()
-                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+                .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_2d_edit_position);
         app.world
@@ -501,7 +504,7 @@ impl Default for Vpeol2dScale {
 }
 
 fn vpeol_2d_edit_position(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
     passed_data: Res<YoleckPassedData>,
 ) {
@@ -537,7 +540,7 @@ fn vpeol_2d_edit_position(
 
 fn vpeol_2d_init_position(
     mut egui_context: EguiContexts,
-    ui: Res<YoleckUi>,
+    ui: NonSend<YoleckUi>,
     mut edit: YoleckEdit<&mut Vpeol2dPosition>,
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<Input<MouseButton>>,

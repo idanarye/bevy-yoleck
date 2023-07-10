@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use bevy::asset::{AssetLoader, LoadedAsset};
 //use bevy::prelude::*;
-use bevy::reflect::TypeUuid;
+use bevy::reflect::{TypePath, TypeUuid};
 
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ pub struct YoleckLevelIndexEntry {
 ///     }
 /// }
 /// ```
-#[derive(TypeUuid, Debug, Serialize, Deserialize)]
+#[derive(TypeUuid, TypePath, Debug, Serialize, Deserialize)]
 #[uuid = "ca0c185d-eb75-4a19-a188-3bc633a76cf7"]
 pub struct YoleckLevelIndex(YoleckLevelIndexHeader, Vec<YoleckLevelIndexEntry>);
 

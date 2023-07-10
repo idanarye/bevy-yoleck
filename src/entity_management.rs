@@ -1,6 +1,6 @@
 use bevy::asset::{AssetLoader, LoadedAsset};
 use bevy::prelude::*;
-use bevy::reflect::TypeUuid;
+use bevy::reflect::{TypePath, TypeUuid};
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
@@ -84,7 +84,7 @@ pub(crate) fn yoleck_process_raw_entries(
                 handler.init_in_entity(raw_component_data, &mut cmd, &mut components_data);
             }
             for dlg in entity_type_info.on_init.iter() {
-                dlg(editor_state.0, &mut cmd);
+                dlg(*editor_state.get(), &mut cmd);
             }
         } else {
             error!("Entity type {:?} is not registered", raw_entry.header.name);
@@ -112,7 +112,7 @@ pub(crate) fn yoleck_prepare_populate_schedule(
         match yoleck_managed.lifecycle_status {
             YoleckEntityLifecycleStatus::Synchronized => {}
             YoleckEntityLifecycleStatus::JustCreated => {
-                let populate_reason = match editor_state.0 {
+                let populate_reason = match editor_state.get() {
                     YoleckEditorState::EditorActive => PopulateReason::EditorInit,
                     YoleckEditorState::GameActive => PopulateReason::RealGame,
                 };
@@ -197,7 +197,7 @@ pub enum YoleckLoadingCommand {
 pub(crate) struct YoleckLevelAssetLoader;
 
 /// Represents a level file.
-#[derive(TypeUuid, Debug, Serialize, Deserialize, Clone)]
+#[derive(TypeUuid, TypePath, Debug, Serialize, Deserialize, Clone)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
 pub struct YoleckRawLevel(
     pub(crate) YoleckRawLevelHeader,

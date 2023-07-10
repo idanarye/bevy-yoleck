@@ -14,8 +14,8 @@ use crate::exclusive_systems::{
 use crate::knobs::YoleckKnobsCache;
 use crate::prelude::{YoleckComponent, YoleckUi};
 use crate::{
-    BoxedArc, YoleckEditMarker, YoleckEditSystems, YoleckEntityConstructionSpecs, YoleckManaged,
-    YoleckSchedule, YoleckState,
+    BoxedArc, YoleckEditMarker, YoleckEditSystems, YoleckEntityConstructionSpecs,
+    YoleckInternalSchedule, YoleckManaged, YoleckState,
 };
 
 /// Whether or not the Yoleck editor is active.
@@ -80,15 +80,16 @@ where
     fn build(&self, app: &mut App) {
         app.add_state::<T>();
         let initial_state = self.when_editor.clone();
-        app.add_startup_system(move |mut game_state: ResMut<NextState<T>>| {
+        app.add_systems(Startup, move |mut game_state: ResMut<NextState<T>>| {
             game_state.set(initial_state.clone());
         });
         let when_editor = self.when_editor.clone();
         let when_game = self.when_game.clone();
-        app.add_system(
+        app.add_systems(
+            Update,
             move |editor_state: Res<State<YoleckEditorState>>,
                   mut game_state: ResMut<NextState<T>>| {
-                game_state.set(match editor_state.0 {
+                game_state.set(match editor_state.get() {
                     YoleckEditorState::EditorActive => when_editor.clone(),
                     YoleckEditorState::GameActive => when_game.clone(),
                 });
@@ -101,7 +102,7 @@ where
 ///
 /// Modules that provide editing overlays over the viewport (like [vpeol](crate::vpeol)) can
 /// use these events to update their status to match with the editor.
-#[derive(Debug)]
+#[derive(Debug, Event)]
 pub enum YoleckEditorEvent {
     EntitySelected(Entity),
     EntityDeselected(Entity),
@@ -126,6 +127,7 @@ enum YoleckDirectiveInner {
 }
 
 /// Event that can be sent to control Yoleck's editor.
+#[derive(Event)]
 pub struct YoleckDirective(YoleckDirectiveInner);
 
 impl YoleckDirective {
@@ -301,7 +303,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
             return;
         }
 
-        if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
+        if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
             return;
         }
 
@@ -354,7 +356,7 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
             return;
         }
 
-        if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
+        if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
             return;
         }
 
@@ -436,7 +438,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                 entity_creation_exclusive_systems,
             ) = system_state.get_mut(world);
 
-            if !matches!(editor_state.0, YoleckEditorState::EditorActive) {
+            if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
                 return;
             }
 
@@ -590,7 +592,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             &mut prepared.content_ui,
             ui.child_ui(egui::Rect::EVERYTHING, *ui.layout()),
         );
-        world.insert_resource(YoleckUi(content_ui));
+        world.insert_non_send_resource(YoleckUi(content_ui));
         world.insert_resource(passed_data);
 
         enum ActiveExclusiveSystemStatus {
@@ -638,13 +640,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             });
         }
         let YoleckUi(content_ui) = world
-            .remove_resource()
+            .remove_non_send_resource()
             .expect("The YoleckUi resource was put in the world by this very function");
         world.remove_resource::<YoleckPassedData>();
         prepared.content_ui = content_ui;
         prepared.end(ui);
 
         // Some systems may have edited the entries, so we need to update them
-        world.run_schedule(YoleckSchedule::UpdateManagedDataFromComponents);
+        world.run_schedule(YoleckInternalSchedule::UpdateManagedDataFromComponents);
     }
 }

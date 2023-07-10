@@ -58,19 +58,24 @@ pub struct VpeolBasePlugin;
 impl Plugin for VpeolBasePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
+            Update,
             (
-                VpeolSystemSet::PrepareCameraState,
-                VpeolSystemSet::UpdateCameraState,
-                VpeolSystemSet::HandleCameraState,
+                VpeolSystemSet::PrepareCameraState
+                    .run_if(in_state(YoleckEditorState::EditorActive)),
+                VpeolSystemSet::UpdateCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
+                VpeolSystemSet::HandleCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
             )
-                .chain()
-                .in_set(OnUpdate(YoleckEditorState::EditorActive)),
+                .chain(), // .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
+            Update,
             (prepare_camera_state, update_camera_world_position)
                 .in_set(VpeolSystemSet::PrepareCameraState),
         );
-        app.add_system(handle_camera_state.in_set(VpeolSystemSet::HandleCameraState));
+        app.add_systems(
+            Update,
+            handle_camera_state.in_set(VpeolSystemSet::HandleCameraState),
+        );
     }
 }
 
@@ -278,7 +283,7 @@ fn handle_camera_state(
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
             (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
-                if keyboard.any_pressed([KeyCode::LShift, KeyCode::RShift]) {
+                if keyboard.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
                     if let Some((entity, _)) = &camera_state.entity_under_cursor {
                         directives_writer.send(YoleckDirective::toggle_selected(*entity));
                     }
@@ -453,18 +458,16 @@ impl Default for VpeolSelectionCuePlugin {
 
 impl Plugin for VpeolSelectionCuePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(manage_selection_transform_components);
-        app.add_system({
+        app.add_systems(Update, manage_selection_transform_components);
+        app.add_systems(PostUpdate, {
             add_selection_cue_before_transform_propagate(
                 1.0 / self.effect_duration,
                 2.0 * self.effect_magnitude,
             )
-            .in_base_set(CoreSet::PostUpdate)
             .before(TransformSystem::TransformPropagate)
         });
-        app.add_system({
+        app.add_systems(PostUpdate, {
             restore_transform_from_cache_after_transform_propagate
-                .in_base_set(CoreSet::PostUpdate)
                 .after(TransformSystem::TransformPropagate)
         });
     }

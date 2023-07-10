@@ -7,7 +7,7 @@ use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::YoleckEditorState;
-use crate::{BoxedAny, YoleckEntityLifecycleStatus, YoleckManaged, YoleckSchedule};
+use crate::{BoxedAny, YoleckEntityLifecycleStatus, YoleckInternalSchedule, YoleckManaged};
 
 /// A component that Yoleck will write to and read from `.yol` files.
 ///
@@ -143,9 +143,9 @@ impl<T: YoleckComponent> YoleckComponentHandler for YoleckComponentHandlerImpl<T
 
     fn build_in_bevy_app(&self, app: &mut App) {
         if let Some(schedule) =
-            app.get_schedule_mut(YoleckSchedule::UpdateManagedDataFromComponents)
+            app.get_schedule_mut(YoleckInternalSchedule::UpdateManagedDataFromComponents)
         {
-            schedule.add_system(Self::update_data_from_components);
+            schedule.add_systems(Self::update_data_from_components);
         }
     }
 

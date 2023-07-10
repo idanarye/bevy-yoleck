@@ -19,10 +19,11 @@ fn main() {
         // The egui plugin is not needed for the game itself, but GameAssets won't load without it
         // because it needs `EguiContexts` which cannot be `Option` because it's a custom
         // `SystemParam`.
-        app.add_plugin(EguiPlugin);
+        app.add_plugins(EguiPlugin);
 
-        app.add_plugin(YoleckPluginForGame);
-        app.add_startup_system(
+        app.add_plugins(YoleckPluginForGame);
+        app.add_systems(
+            Startup,
             move |asset_server: Res<AssetServer>,
                   mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
                 *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
@@ -30,20 +31,21 @@ fn main() {
                 );
             },
         );
-        app.add_plugin(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
+        app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
     } else {
-        app.add_plugin(EguiPlugin);
-        app.add_plugin(YoleckPluginForEditor);
+        app.add_plugins(EguiPlugin);
+        app.add_plugins(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
         // example2d and example3d in the same repository so we use different directories.
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
-        app.add_plugin(Vpeol2dPluginForEditor);
-        app.add_plugin(VpeolSelectionCuePlugin::default());
+        app.add_plugins(Vpeol2dPluginForEditor);
+        app.add_plugins(VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
-        app.add_startup_system(
+        app.add_systems(
+            Startup,
             |asset_server: Res<AssetServer>,
              mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
                 *yoleck_loading_command =
@@ -53,11 +55,11 @@ fn main() {
     }
     app.init_resource::<GameAssets>();
 
-    app.add_plugin(YoleckEntityUpgradingPlugin {
+    app.add_plugins(YoleckEntityUpgradingPlugin {
         app_format_version: 1,
     });
 
-    app.add_startup_system(setup_camera);
+    app.add_systems(Startup, setup_camera);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Player")
@@ -67,7 +69,7 @@ fn main() {
     });
     app.add_yoleck_edit_system(edit_player);
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_player);
+        .add_systems(populate_player);
     app.add_yoleck_entity_upgrade_for(1, "Player", |data| {
         let mut old_data = data.as_object_mut().unwrap().remove("Player").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
@@ -81,7 +83,7 @@ fn main() {
     app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_fruit);
+        .add_systems(populate_fruit);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "Fruit" {
             return;
@@ -101,7 +103,8 @@ fn main() {
             .with::<TextContent>()
     });
     app.add_yoleck_edit_system(edit_text);
-    app.yoleck_populate_schedule_mut().add_system(populate_text);
+    app.yoleck_populate_schedule_mut()
+        .add_systems(populate_text);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "FloatingText" {
             return;
@@ -129,9 +132,12 @@ fn main() {
     });
     app.add_yoleck_edit_system(edit_triangle);
     app.yoleck_populate_schedule_mut()
-        .add_system(populate_triangle);
+        .add_systems(populate_triangle);
 
-    app.add_systems((control_player, eat_fruits).in_set(OnUpdate(YoleckEditorState::GameActive)));
+    app.add_systems(
+        Update,
+        (control_player, eat_fruits).run_if(in_state(YoleckEditorState::GameActive)),
+    );
     app.run();
 }
 
@@ -226,7 +232,7 @@ fn populate_player(mut populate: YoleckPopulate<(), With<IsPlayer>>, assets: Res
 }
 
 fn edit_player(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     mut edit: YoleckEdit<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation)>,
     mut knobs: YoleckKnobs,
 ) {
@@ -286,7 +292,7 @@ struct FruitType {
 }
 
 fn duplicate_fruit(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     edit: YoleckEdit<(&FruitType, &Vpeol2dPosition)>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
@@ -307,7 +313,7 @@ fn duplicate_fruit(
 }
 
 fn edit_fruit_type(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut FruitType, &Vpeol2dPosition)>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
@@ -450,7 +456,7 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAss
 }
 
 fn edit_text(
-    mut ui: ResMut<YoleckUi>,
+    mut ui: NonSendMut<YoleckUi>,
     mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
 ) {
     let Ok((mut content, mut scale)) = edit.get_single_mut() else { return };

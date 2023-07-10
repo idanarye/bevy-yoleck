@@ -246,6 +246,7 @@ impl Plugin for YoleckPluginBase {
         app.add_asset_loader(level_index::YoleckLevelIndexLoader);
 
         app.configure_sets(
+            Update,
             (
                 YoleckSystemSet::ProcessRawEntities,
                 YoleckSystemSet::RunPopulateSchedule,
@@ -254,15 +255,17 @@ impl Plugin for YoleckPluginBase {
         );
 
         app.add_systems(
+            Update,
             (
                 entity_management::yoleck_process_raw_entries,
-                apply_system_buffers,
+                apply_deferred,
             )
                 .chain()
                 .in_set(YoleckSystemSet::ProcessRawEntities),
         );
         app.insert_resource(EntitiesToPopulate(Default::default()));
         app.add_systems(
+            Update,
             (
                 entity_management::yoleck_prepare_populate_schedule,
                 entity_management::yoleck_run_populate_schedule.run_if(
@@ -274,22 +277,22 @@ impl Plugin for YoleckPluginBase {
                 .chain()
                 .in_set(YoleckSystemSet::RunPopulateSchedule),
         );
-        app.add_system(entity_management::yoleck_process_loading_command);
-        app.add_schedule(YoleckSchedule::Populate, {
-            let mut schedule = Schedule::new();
-            schedule.set_default_base_set(YoleckPopulateBaseSet::RunPopulateSystems);
-            schedule
-        });
+        app.add_systems(Update, entity_management::yoleck_process_loading_command);
+        app.add_schedule(YoleckSchedule::Populate, Schedule::new());
+        app.add_schedule(YoleckSchedule::OverrideCommonComponents, Schedule::new());
     }
 }
 
 impl Plugin for YoleckPluginForGame {
     fn build(&self, app: &mut App) {
         app.add_state::<YoleckEditorState>();
-        app.add_startup_system(|mut state: ResMut<NextState<YoleckEditorState>>| {
-            state.set(YoleckEditorState::GameActive);
-        });
-        app.add_plugin(YoleckPluginBase);
+        app.add_systems(
+            Startup,
+            |mut state: ResMut<NextState<YoleckEditorState>>| {
+                state.set(YoleckEditorState::GameActive);
+            },
+        );
+        app.add_plugins(YoleckPluginBase);
     }
 }
 
@@ -297,8 +300,8 @@ impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_state::<YoleckEditorState>();
         app.add_event::<YoleckEditorEvent>();
-        app.add_plugin(YoleckPluginBase);
-        app.add_plugin(YoleckExclusiveSystemsPlugin);
+        app.add_plugins(YoleckPluginBase);
+        app.add_plugins(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
         app.insert_resource(YoleckKnobsCache::default());
         app.insert_resource(YoleckState {
@@ -309,12 +312,13 @@ impl Plugin for YoleckPluginForEditor {
         ));
         app.insert_resource(YoleckEditorSections::default());
         app.add_event::<YoleckDirective>();
-        app.add_system(
+        app.add_systems(
+            Update,
             editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
         );
 
         app.add_schedule(
-            YoleckSchedule::UpdateManagedDataFromComponents,
+            YoleckInternalSchedule::UpdateManagedDataFromComponents,
             Schedule::new(),
         );
     }
@@ -541,7 +545,7 @@ impl YoleckEditSystems {
     pub(crate) fn run_systems(&mut self, world: &mut World) {
         for system in self.edit_systems.iter_mut() {
             system.run((), world);
-            system.apply_buffers(world);
+            system.apply_deferred(world);
         }
     }
 }
@@ -610,19 +614,16 @@ impl Default for YoleckEditorSections {
         ])
     }
 }
-
-#[derive(ScheduleLabel, Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) enum YoleckSchedule {
+#[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) enum YoleckInternalSchedule {
     UpdateManagedDataFromComponents,
-    Populate,
 }
 
-/// Base sets for [Yoleck's populate schedule](YoleckExtForApp::yoleck_populate_schedule_mut).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
-#[system_set(base)]
-pub enum YoleckPopulateBaseSet {
+/// Schedules for [Yoleck's populate schedule](YoleckExtForApp::yoleck_populate_schedule_mut).
+#[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum YoleckSchedule {
     /// This is where most user defined populate systems should reside.
-    RunPopulateSystems,
+    Populate,
     /// Since many bundles add their own transform and visibility components, systems that override
     /// them explicitly need to go here.
     OverrideCommonComponents,

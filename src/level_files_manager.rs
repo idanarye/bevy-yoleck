@@ -165,7 +165,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             }
         });
 
-        if matches!(editor_state.0, YoleckEditorState::EditorActive) {
+        if matches!(editor_state.get(), YoleckEditorState::EditorActive) {
             egui::CollapsingHeader::new("Files")
                 .default_open(true)
                 .show(ui, |ui| {
