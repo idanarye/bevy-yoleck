@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Upgrade Bevy to 0.11 (and bevy_egui to 0.21)
+- [**BREAKING**] `YoleckUi` is now a non-`Send` resource. See the [migration
+  guide](migration-guides/MIGRATION_TO_0.13.md).
 
 ## 0.12.0 - 2023-06-20
 ### Added
