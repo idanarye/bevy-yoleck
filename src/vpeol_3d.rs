@@ -10,13 +10,12 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugin(EguiPlugin);
-//! app.add_plugin(YoleckPluginForEditor);
-//!
+//! app.add_plugins((EguiPlugin,
+//!                  YoleckPluginForEditor,
 //! // - Use `Vpeol3dPluginForGame` instead when setting up for game.
 //! // - Use topdown is for games that utilize the XZ plane. There is also
 //! //   `Vpeol3dPluginForEditor::sidescroller` for games that mainly need the XY plane.
-//! app.add_plugin(Vpeol3dPluginForEditor::topdown());
+//!                  Vpeol3dPluginForEditor::topdown()));
 //! ```
 //!
 //! Add the following components to the camera entity:

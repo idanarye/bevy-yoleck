@@ -73,16 +73,18 @@
 //!     let mut app = App::new();
 //!     app.add_plugins(DefaultPlugins);
 //!     if is_editor {
-//!         app.add_plugins(EguiPlugin);
-//!         app.add_plugins(YoleckPluginForEditor);
 //!         // Doesn't matter in this example, but a proper game would have systems that can work
 //!         // on the entity in `GameState::Game`, so while the level is edited we want to be in
 //!         // `GameState::Editor` - which can be treated as a pause state. When the editor wants
 //!         // to playtest the level we want to move to `GameState::Game` so that they can play it.
-//!         app.add_plugins(YoleckSyncWithEditorState {
-//!             when_editor: GameState::Editor,
-//!             when_game: GameState::Game,
-//!         });
+//!         app.add_plugins((
+//!             YoleckSyncWithEditorState {
+//!                 when_editor: GameState::Editor,
+//!                 when_game: GameState::Game,
+//!             },
+//!             EguiPlugin,
+//!             YoleckPluginForEditor
+//!         ));
 //!     } else {
 //!         app.add_plugins(YoleckPluginForGame);
 //!         app.add_state::<GameState>();
@@ -90,7 +92,7 @@
 //!         // tell yoleck which levels to load and when.
 //!         app.add_systems(Update, load_first_level.run_if(in_state(GameState::Loading)));
 //!     }
-//!     app.add_startup_system(setup_camera);
+//!     app.add_systems(Startup, setup_camera);
 //!
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Rectangle")

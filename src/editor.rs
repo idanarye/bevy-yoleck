@@ -52,16 +52,15 @@ pub enum YoleckEditorState {
 /// # let executable_started_in_editor_mode = true;
 /// if executable_started_in_editor_mode {
 ///     // These two plugins are needed for editor mode:
-///     app.add_plugin(EguiPlugin);
-///     app.add_plugin(YoleckPluginForEditor);
-///
-///     app.add_plugin(YoleckSyncWithEditorState {
+///     app.add_plugins((EguiPlugin,
+///                      YoleckPluginForEditor,
+///                      YoleckSyncWithEditorState {
 ///         when_editor: GameState::Editor,
 ///         when_game: GameState::Game,
-///     });
+///     }));
 /// } else {
 ///     // This plugin is needed for game mode:
-///     app.add_plugin(YoleckPluginForGame);
+///     app.add_plugins(YoleckPluginForGame);
 ///
 ///     app.add_state::<GameState>();
 /// }

@@ -10,10 +10,10 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugin(EguiPlugin);
-//! app.add_plugin(YoleckPluginForEditor);
+//! app.add_plugins((EguiPlugin,
+//!                 YoleckPluginForEditor,
 //! // Use `Vpeol2dPluginForGame` instead when setting up for game.
-//! app.add_plugin(Vpeol2dPluginForEditor);
+//!                 Vpeol2dPluginForEditor));
 //! ```
 //!
 //! Add the following components to the camera entity:
