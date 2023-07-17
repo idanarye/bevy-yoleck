@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Upgrade Bevy to 0.11 (and bevy_egui to 0.21)
 - [**BREAKING**] `YoleckUi` is now a non-`Send` resource. See the [migration
-  guide](migration-guides/MIGRATION_TO_0.13.md).
+  guide](MIGRATION-GUIDES.md#migrating-to-yoleck-013).
 
 ## 0.12.0 - 2023-06-20
 ### Added
@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 0.9.0 - 2023-03-27
 ### Changed
 - [**BREAKING**] This entire release is a huge breaking change. See the
-  [migration guide](migration-guides/MIGRATION_TO_0.9.md).
+  [migration guide](MIGRATION-GUIDES.md#migrating-to-yoleck-09).
 - [**BREAKING**] Move to a new model, where each Yoleck entity can be composed
   of multiple `YoleckComponent`s.
 - [**BREAKING**] The syntax of edit systems and populate systems has
