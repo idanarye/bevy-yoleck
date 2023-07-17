@@ -180,7 +180,7 @@ pub mod level_files_upgrading;
 mod level_index;
 mod populating;
 mod specs_registration;
-// #[cfg(feature = "vpeol")]
+#[cfg(feature = "vpeol")]
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
 pub mod vpeol_2d;
