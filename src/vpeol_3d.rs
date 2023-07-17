@@ -221,7 +221,7 @@ fn update_camera_status_for_models(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
@@ -565,7 +565,7 @@ fn vpeol_3d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     }
 
-    return YoleckExclusiveSystemDirective::Listening;
+    YoleckExclusiveSystemDirective::Listening
 }
 
 fn vpeol_3d_edit_third_axis_with_knob(

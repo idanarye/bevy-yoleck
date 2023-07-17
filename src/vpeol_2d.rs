@@ -289,7 +289,7 @@ fn update_camera_status_for_2d_meshes(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
@@ -466,7 +466,7 @@ fn screen_pos_to_world_pos(
     // Code stolen from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
 
     // get the size of the window
-    let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+    let window_size = Vec2::new(wnd.width(), wnd.height());
 
     // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
     let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
@@ -567,7 +567,7 @@ fn vpeol_2d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     }
 
-    return YoleckExclusiveSystemDirective::Listening;
+    YoleckExclusiveSystemDirective::Listening
 }
 
 fn vpeol_2d_populate_transform(

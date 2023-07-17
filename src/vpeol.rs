@@ -571,7 +571,7 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
     }
 }
 
-fn iter_triangles<'a>(mesh: &'a Mesh) -> Option<impl 'a + Iterator<Item = Triangle>> {
+fn iter_triangles(mesh: &Mesh) -> Option<impl '_ + Iterator<Item = Triangle>> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
         return None;
     }
