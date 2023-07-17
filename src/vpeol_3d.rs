@@ -10,13 +10,12 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugin(EguiPlugin);
-//! app.add_plugin(YoleckPluginForEditor);
-//!
+//! app.add_plugins((EguiPlugin,
+//!                  YoleckPluginForEditor,
 //! // - Use `Vpeol3dPluginForGame` instead when setting up for game.
 //! // - Use topdown is for games that utilize the XZ plane. There is also
 //! //   `Vpeol3dPluginForEditor::sidescroller` for games that mainly need the XY plane.
-//! app.add_plugin(Vpeol3dPluginForEditor::topdown());
+//!                  Vpeol3dPluginForEditor::topdown()));
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -118,7 +117,17 @@ impl Plugin for Vpeol3dPluginForGame {
             YoleckSchedule::OverrideCommonComponents,
             vpeol_3d_populate_transform,
         );
+        #[cfg(feature = "bevy_reflect")]
+        register_reflect_types(app);
     }
+}
+
+#[cfg(feature = "bevy_reflect")]
+fn register_reflect_types(app: &mut App) {
+    app.register_type::<Vpeol3dPosition>();
+    app.register_type::<Vpeol3dRotatation>();
+    app.register_type::<Vpeol3dScale>();
+    app.register_type::<Vpeol3dCameraControl>();
 }
 
 /// Add the systems required for 3D editing.
@@ -222,7 +231,7 @@ fn update_camera_status_for_models(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
@@ -232,6 +241,7 @@ fn update_camera_status_for_models(
 
 /// Move and rotate a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
     /// Panning is done by dragging a plane with this as its origin.
     pub plane_origin: Vec3,
@@ -421,6 +431,7 @@ fn camera_3d_rotate(
 /// [`Vpeol3dThirdAxisWithKnob`].
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
 /// Add a knob for dragging the entity perpendicular to the [`VpeolDragPlane`].
@@ -440,11 +451,13 @@ pub struct Vpeol3dThirdAxisWithKnob {
 /// A rotation component that's populated (but not edited) by vpeol_3d.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dRotatation(pub Quat);
 
 /// A scale component that's populated (but not edited) by vpeol_3d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dScale(pub Vec3);
 
 impl Default for Vpeol3dScale {
@@ -562,7 +575,7 @@ fn vpeol_3d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     }
 
-    return YoleckExclusiveSystemDirective::Listening;
+    YoleckExclusiveSystemDirective::Listening
 }
 
 fn vpeol_3d_edit_third_axis_with_knob(

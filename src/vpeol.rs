@@ -1,7 +1,9 @@
 //! # Viewport Editing Overlay - utilities for editing entities from a viewport.
 //!
 //! This module does not do much, but provide common functionalities for more concrete modules like
-//! [`vpeol_2d`](crate::vpeol_2d).
+//! [`vpeol_2d`](crate::vpeol_2d) and [`vpeol_3d`](crate::vpeol_3d).
+//!
+//! `vpeol` modules also support `bevy_reflect::Reflect` by enabling the feature `beavy_reflect`.
 
 use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::ecs::system::SystemParam;
@@ -76,6 +78,8 @@ impl Plugin for VpeolBasePlugin {
             Update,
             handle_camera_state.in_set(VpeolSystemSet::HandleCameraState),
         );
+        #[cfg(feature = "bevy_reflect")]
+        app.register_type::<VpeolDragPlane>();
     }
 }
 
@@ -89,6 +93,7 @@ impl Plugin for VpeolBasePlugin {
 /// This configuration is only meaningful for 3D, but vpeol_2d still requires it resource.
 /// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
 #[derive(Component, Resource)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct VpeolDragPlane {
     /// The normal of the plane.
     pub normal: Vec3,
@@ -382,20 +387,20 @@ pub struct VpeolWillContainClickableChildren;
 
 /// Marker for viewport editor overlay plugins to route child interaction to parent entites.
 #[derive(Component)]
-pub struct YoleckRouteClickTo(pub Entity);
+pub struct VpeolRouteClickTo(pub Entity);
 
 /// Helper utility for finding the Yoleck controlled entity that's in charge of an entity the user
 /// points at.
 #[derive(SystemParam)]
 pub struct VpeolRootResolver<'w, 's> {
-    root_resolver: Query<'w, 's, &'static YoleckRouteClickTo>,
+    root_resolver: Query<'w, 's, &'static VpeolRouteClickTo>,
     has_managed_query: Query<'w, 's, Or<(With<YoleckManaged>, With<YoleckKnobMarker>)>>,
 }
 
 impl VpeolRootResolver<'_, '_> {
     /// Find the Yoleck controlled entity that's in charge of an entity the user points at.
     pub fn resolve_root(&self, entity: Entity) -> Option<Entity> {
-        if let Ok(YoleckRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
+        if let Ok(VpeolRouteClickTo(root_entity)) = self.root_resolver.get(entity) {
             Some(*root_entity)
         } else {
             self.has_managed_query.get(entity).ok()?;
@@ -404,7 +409,7 @@ impl VpeolRootResolver<'_, '_> {
     }
 }
 
-/// Add [`YoleckRouteClickTo`] of entities marked with [`VpeolWillContainClickableChildren`].
+/// Add [`VpeolRouteClickTo`] of entities marked with [`VpeolWillContainClickableChildren`].
 pub fn handle_clickable_children_system<F, B>(
     parents_query: Query<(Entity, &Children), With<VpeolWillContainClickableChildren>>,
     children_query: Query<&Children>,
@@ -427,7 +432,7 @@ pub fn handle_clickable_children_system<F, B>(
             if should_add_query.get(child).is_ok() {
                 commands
                     .entity(child)
-                    .insert((YoleckRouteClickTo(parent), B::default()));
+                    .insert((VpeolRouteClickTo(parent), B::default()));
                 any_added = true;
             }
         }
@@ -570,7 +575,7 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
     }
 }
 
-fn iter_triangles<'a>(mesh: &'a Mesh) -> Option<impl 'a + Iterator<Item = Triangle>> {
+fn iter_triangles(mesh: &Mesh) -> Option<impl '_ + Iterator<Item = Triangle>> {
     if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
         return None;
     }

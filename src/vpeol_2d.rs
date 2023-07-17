@@ -10,10 +10,10 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugin(EguiPlugin);
-//! app.add_plugin(YoleckPluginForEditor);
+//! app.add_plugins((EguiPlugin,
+//!                 YoleckPluginForEditor,
 //! // Use `Vpeol2dPluginForGame` instead when setting up for game.
-//! app.add_plugin(Vpeol2dPluginForEditor);
+//!                 Vpeol2dPluginForEditor));
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -110,7 +110,17 @@ impl Plugin for Vpeol2dPluginForGame {
             YoleckSchedule::OverrideCommonComponents,
             vpeol_2d_populate_transform,
         );
+        #[cfg(feature = "bevy_reflect")]
+        register_reflect_types(app);
     }
+}
+
+#[cfg(feature = "bevy_reflect")]
+fn register_reflect_types(app: &mut App) {
+    app.register_type::<Vpeol2dPosition>();
+    app.register_type::<Vpeol2dRotatation>();
+    app.register_type::<Vpeol2dScale>();
+    app.register_type::<Vpeol2dCameraControl>();
 }
 
 /// Add the systems required for 2D editing.
@@ -289,7 +299,7 @@ fn update_camera_status_for_2d_meshes(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, &mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
@@ -321,6 +331,7 @@ fn update_camera_status_for_text_2d(
 
 /// Pan and zoom a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dCameraControl {
     /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.
     pub zoom_per_scroll_line: f32,
@@ -465,7 +476,7 @@ fn screen_pos_to_world_pos(
     // Code stolen from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
 
     // get the size of the window
-    let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
+    let window_size = Vec2::new(wnd.width(), wnd.height());
 
     // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
     let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
@@ -483,6 +494,7 @@ fn screen_pos_to_world_pos(
 /// A position component that's edited and populated by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dPosition(pub Vec2);
 
 /// A rotation component that's populated (but not edited) by vpeol_2d.
@@ -490,11 +502,13 @@ pub struct Vpeol2dPosition(pub Vec2);
 /// The rotation is in radians around the Z axis.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dRotatation(pub f32);
 
 /// A scale component that's populated (but not edited) by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dScale(pub Vec2);
 
 impl Default for Vpeol2dScale {
@@ -563,7 +577,7 @@ fn vpeol_2d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     }
 
-    return YoleckExclusiveSystemDirective::Listening;
+    YoleckExclusiveSystemDirective::Listening
 }
 
 fn vpeol_2d_populate_transform(

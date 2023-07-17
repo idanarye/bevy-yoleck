@@ -10,7 +10,7 @@ use crate::YoleckRawLevel;
 /// # use bevy::prelude::*;
 /// # use bevy_yoleck::prelude::*;
 /// # let mut app = App::new();
-/// app.add_plugin(YoleckEntityUpgradingPlugin {
+/// app.add_plugins(YoleckEntityUpgradingPlugin {
 ///     app_format_version: 5,
 /// });
 ///

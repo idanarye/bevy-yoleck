@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        rust: [1.70.0, nightly]
+        rust: [1.71.0, nightly]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -55,7 +55,7 @@ jobs:
      - uses: actions-rs/toolchain@v1
        with:
          profile: minimal
-         toolchain: 1.70.0
+         toolchain: 1.71.0
          override: true
          components: rustfmt
      - name: Run fmt --all -- --check
@@ -72,7 +72,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.70.0
+          toolchain: 1.71.0
           override: true
           components: clippy
       - name: Install dependencies
@@ -96,7 +96,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.70.0
+          toolchain: 1.71.0
           override: true
       - name: Install dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libudev-dev
@@ -128,7 +128,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           target: wasm32-unknown-unknown
-          toolchain: 1.70.0
+          toolchain: 1.71.0
           override: true
       - name: Build docs
         env:
