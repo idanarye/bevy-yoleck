@@ -117,7 +117,17 @@ impl Plugin for Vpeol3dPluginForGame {
             YoleckSchedule::OverrideCommonComponents,
             vpeol_3d_populate_transform,
         );
+        #[cfg(feature = "bevy_reflect")]
+        register_reflect_types(app);
     }
+}
+
+#[cfg(feature = "bevy_reflect")]
+fn register_reflect_types(app: &mut App) {
+    app.register_type::<Vpeol3dPosition>();
+    app.register_type::<Vpeol3dRotatation>();
+    app.register_type::<Vpeol3dScale>();
+    app.register_type::<Vpeol3dCameraControl>();
 }
 
 /// Add the systems required for 3D editing.

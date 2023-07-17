@@ -110,7 +110,17 @@ impl Plugin for Vpeol2dPluginForGame {
             YoleckSchedule::OverrideCommonComponents,
             vpeol_2d_populate_transform,
         );
+        #[cfg(feature = "bevy_reflect")]
+        register_reflect_types(app);
     }
+}
+
+#[cfg(feature = "bevy_reflect")]
+fn register_reflect_types(app: &mut App) {
+    app.register_type::<Vpeol2dPosition>();
+    app.register_type::<Vpeol2dRotatation>();
+    app.register_type::<Vpeol2dScale>();
+    app.register_type::<Vpeol2dCameraControl>();
 }
 
 /// Add the systems required for 2D editing.
