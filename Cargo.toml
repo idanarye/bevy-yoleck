@@ -4,7 +4,7 @@ members = ["macros"]
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.13.0"
+version = "0.13.1"
 edition = "2021"
 authors = ["IdanArye <idanarye@gmail.com>"]
 license = "MIT/Apache-2.0"
@@ -28,6 +28,7 @@ serde = "^1"
 serde_json = "^1"
 
 [features]
+bevy_reflect = []
 vpeol = []
 vpeol_2d = [
     "vpeol",

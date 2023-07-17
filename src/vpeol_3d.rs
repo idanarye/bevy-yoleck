@@ -232,6 +232,7 @@ fn update_camera_status_for_models(
 
 /// Move and rotate a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
     /// Panning is done by dragging a plane with this as its origin.
     pub plane_origin: Vec3,
@@ -421,6 +422,7 @@ fn camera_3d_rotate(
 /// [`Vpeol3dThirdAxisWithKnob`].
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
 /// Add a knob for dragging the entity perpendicular to the [`VpeolDragPlane`].
@@ -440,11 +442,13 @@ pub struct Vpeol3dThirdAxisWithKnob {
 /// A rotation component that's populated (but not edited) by vpeol_3d.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dRotatation(pub Quat);
 
 /// A scale component that's populated (but not edited) by vpeol_3d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dScale(pub Vec3);
 
 impl Default for Vpeol3dScale {

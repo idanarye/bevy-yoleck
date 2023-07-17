@@ -321,6 +321,7 @@ fn update_camera_status_for_text_2d(
 
 /// Pan and zoom a camera entity with the mouse while inisde the editor.
 #[derive(Component)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dCameraControl {
     /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.
     pub zoom_per_scroll_line: f32,
@@ -483,6 +484,7 @@ fn screen_pos_to_world_pos(
 /// A position component that's edited and populated by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dPosition(pub Vec2);
 
 /// A rotation component that's populated (but not edited) by vpeol_2d.
@@ -490,11 +492,13 @@ pub struct Vpeol2dPosition(pub Vec2);
 /// The rotation is in radians around the Z axis.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dRotatation(pub f32);
 
 /// A scale component that's populated (but not edited) by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dScale(pub Vec2);
 
 impl Default for Vpeol2dScale {
