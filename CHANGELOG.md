@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [**BREAKING**] Rename `YoleckRouteClickTo` to `VpeolRouteClickTo`.
+
+### Added
+- `#[derive(Reflect)]` to several components. Requires the `bevy_reflect` flag.
 
 ## 0.13.0 - 2023-07-11
 ### Changed
