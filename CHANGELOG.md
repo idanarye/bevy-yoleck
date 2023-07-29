@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.14.1 - 2023-07-30
 ### Fixed
 - `Vpeol2dCameraControl` reversing the Y axis when panning and zooming.
 
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
      are supposed to be equivalent.
   3. `vpeol_2d` is useless without `VpeolCameraState`, so I'm not expecting
      anyone to not be using it just so that they can use the camera controls.
+
   So having `Vpeol2dCameraControl` work without `VpeolCameraState` was an
   undocumented feature, and I'm going to release this as a bugfix version, not
   a minor version.
