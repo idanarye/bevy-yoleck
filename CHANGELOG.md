@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `Vpeol2dCameraControl` reversing the Y axis when panning and zooming.
+
+  Note that the implementation of this fix requires that the camera entity will
+  have the `VpeolCameraState` component - without it `Vpeol2dCameraControl`
+  will not work at all. I do not consider it a breaking change though, because:
+  1. The documentation do imply that you need `VpeolCameraState`.
+  2. `Vpeol3dCameraControl` was already requiring `VpeolCameraState`, and they
+     are supposed to be equivalent.
+  3. `vpeol_2d` is useless without `VpeolCameraState`, so I'm not expecting
+     anyone to not be using it just so that they can use the camera controls.
+  So having `Vpeol2dCameraControl` work without `VpeolCameraState` was an
+  undocumented feature, and I'm going to release this as a bugfix version, not
+  a minor version.
 
 ## 0.14.0 - 2023-07-18
 ### Changed

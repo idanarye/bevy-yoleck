@@ -350,10 +350,9 @@ impl Default for Vpeol2dCameraControl {
 
 fn camera_2d_pan(
     mut egui_context: EguiContexts,
-    window_getter: WindowGetter,
     mouse_buttons: Res<Input<MouseButton>>,
     mut cameras_query: Query<
-        (Entity, &mut Transform, &GlobalTransform, &Camera),
+        (Entity, &mut Transform, &VpeolCameraState),
         With<Vpeol2dCameraControl>,
     >,
     mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec2>>,
@@ -375,32 +374,18 @@ fn camera_2d_pan(
         return;
     };
 
-    for (camera_entity, mut camera_transform, camera_global_transform, camera) in
-        cameras_query.iter_mut()
-    {
-        let window = if let RenderTarget::Window(window_ref) = camera.target {
-            window_getter.get_window(window_ref).unwrap()
-        } else {
-            continue;
-        };
-        if let Some(screen_pos) = window.cursor_position() {
-            let world_pos = screen_pos_to_world_pos(
-                screen_pos,
-                window,
-                &camera_global_transform.compute_matrix(),
-                camera,
-            );
+    for (camera_entity, mut camera_transform, camera_state) in cameras_query.iter_mut() {
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let world_pos = cursor_ray.origin.truncate();
 
-            match mouse_button_op {
-                MouseButtonOp::JustPressed => {
-                    last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
-                }
-                MouseButtonOp::BeingPressed => {
-                    if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity)
-                    {
-                        let movement = *prev_pos - world_pos;
-                        camera_transform.translation += movement.extend(0.0);
-                    }
+        match mouse_button_op {
+            MouseButtonOp::JustPressed => {
+                last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
+            }
+            MouseButtonOp::BeingPressed => {
+                if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity) {
+                    let movement = *prev_pos - world_pos;
+                    camera_transform.translation += movement.extend(0.0);
                 }
             }
         }
@@ -412,7 +397,7 @@ fn camera_2d_zoom(
     window_getter: WindowGetter,
     mut cameras_query: Query<(
         &mut Transform,
-        &GlobalTransform,
+        &VpeolCameraState,
         &Camera,
         &Vpeol2dCameraControl,
     )>,
@@ -422,9 +407,10 @@ fn camera_2d_zoom(
         return;
     }
 
-    for (mut camera_transform, camera_global_transform, camera, camera_control) in
-        cameras_query.iter_mut()
-    {
+    for (mut camera_transform, camera_state, camera, camera_control) in cameras_query.iter_mut() {
+        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let world_pos = cursor_ray.origin.truncate();
+
         let zoom_amount: f32 = wheel_events_reader
             .iter()
             .map(|wheel_event| match wheel_event.unit {
@@ -448,47 +434,13 @@ fn camera_2d_zoom(
         } else {
             continue;
         };
-        if let Some(screen_pos) = window.cursor_position() {
-            let camera_global_transform_matrix = camera_global_transform.compute_matrix();
-            let world_pos = screen_pos_to_world_pos(
-                screen_pos,
-                window,
-                &camera_global_transform_matrix,
-                camera,
-            );
-            camera_transform.scale.x *= scale_by;
-            camera_transform.scale.y *= scale_by;
-            let new_global_transform_matrix = camera_global_transform_matrix
-                .mul_mat4(&Mat4::from_scale(Vec3::new(scale_by, scale_by, 1.0)));
-            let new_world_pos =
-                screen_pos_to_world_pos(screen_pos, window, &new_global_transform_matrix, camera);
-            camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
-        }
+        camera_transform.scale.x *= scale_by;
+        camera_transform.scale.y *= scale_by;
+        let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
+        let Some(new_cursor_ray) = camera.viewport_to_world(&camera_transform.as_ref().clone().into(), cursor_in_screen_pos) else { continue };
+        let new_world_pos = new_cursor_ray.origin.truncate();
+        camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
     }
-}
-
-fn screen_pos_to_world_pos(
-    screen_pos: Vec2,
-    wnd: &Window,
-    camera_transform_matrix: &Mat4,
-    camera: &Camera,
-) -> Vec2 {
-    // Code stolen from https://bevy-cheatbook.github.io/cookbook/cursor2world.html
-
-    // get the size of the window
-    let window_size = Vec2::new(wnd.width(), wnd.height());
-
-    // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
-    let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-
-    // matrix for undoing the projection and camera transform
-    let ndc_to_world = camera_transform_matrix.mul_mat4(&camera.projection_matrix().inverse());
-
-    // use it to convert ndc to world-space coordinates
-    let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-    // reduce it to a 2D value
-    world_pos.truncate()
 }
 
 /// A position component that's edited and populated by vpeol_2d.
