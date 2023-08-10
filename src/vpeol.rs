@@ -45,7 +45,7 @@ pub enum VpeolSystemSet {
     ///
     /// * Clear all pointing.
     /// * Update [`entities_of_interest`](VpeolCameraState::entities_of_interest).
-    /// * Update cursor position (can be overriden later if needed)
+    /// * Update cursor position (can be overridden later if needed)
     PrepareCameraState,
     /// Mostly used by the backend to iterate over the entities and determine which ones are
     /// being pointed (using [`consider`](VpeolCameraState::consider))
@@ -385,7 +385,7 @@ pub struct YoleckKnobClick;
 #[derive(Component)]
 pub struct VpeolWillContainClickableChildren;
 
-/// Marker for viewport editor overlay plugins to route child interaction to parent entites.
+/// Marker for viewport editor overlay plugins to route child interaction to parent entities.
 #[derive(Component)]
 pub struct VpeolRouteClickTo(pub Entity);
 

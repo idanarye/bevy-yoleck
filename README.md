@@ -58,7 +58,7 @@ the metadata is needed to parse the data.
 Yoleck generates another JSON file in the same directory as the `.yol` files
 called `index.yoli`. The purpose of this file is to let the game know what
 level are available to it (in WASM, for example, the asset server cannot look
-at a directory's contents). The index file containes a tuple of two values:
+at a directory's contents). The index file contains a tuple of two values:
 
 * Index metadata - e.g. Yoleck version.
 * List of objects, each contain a path to a level file relative to the index

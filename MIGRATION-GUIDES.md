@@ -67,7 +67,7 @@ app.add_yoleck_entity_type({
 });
 ```
 
-Unlike `YoleckTypeHandler`, that specifiy the one data structure used by the
+Unlike `YoleckTypeHandler`, that specifies the one data structure used by the
 entity and all the edit and populate systems it'll have, `YoleckEntityType` can
 specify multiple components and no systems. Systems are registered separately,
 and are not bound to a single entity type:

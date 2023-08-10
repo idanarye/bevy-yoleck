@@ -208,7 +208,7 @@ pub struct SpawnEntityBuilder {
 }
 
 impl SpawnEntityBuilder {
-    /// Override a component of the spawned entitiy.
+    /// Override a component of the spawned entity.
     pub fn with<T: YoleckComponent>(mut self, component: T) -> Self {
         self.data.insert(
             T::KEY,
