@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Upgrade Bevy to 0.10 (and bevy_egui to 0.20)
 - [**BREAKING**] `VpeolSystemLabel` becomes `VpeolSystemSet`, and uses Bevy's
-  new system set semantics instead of the removed systme label semantics. All
+  new system set semantics instead of the removed system label semantics. All
   sets of that system are configured to run during the `EditorActive` state.
 
 ### Added
