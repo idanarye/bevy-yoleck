@@ -76,6 +76,7 @@ impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdi
 }
 
 /// An handle for the egui UI frame used in editing systems.
+#[derive(Resource)]
 pub struct YoleckUi(pub egui::Ui);
 
 impl Deref for YoleckUi {

@@ -232,11 +232,13 @@ fn populate_player(mut populate: YoleckPopulate<(), With<IsPlayer>>, assets: Res
 }
 
 fn edit_player(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation)>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((_, Vpeol2dPosition(position), mut rotation)) = edit.get_single_mut() else { return };
+    let Ok((_, Vpeol2dPosition(position), mut rotation)) = edit.get_single_mut() else {
+        return;
+    };
     use std::f32::consts::PI;
     ui.add(egui::Slider::new(&mut rotation.0, PI..=-PI).prefix("Angle: "));
     // TODO: do this in vpeol_2d?
@@ -292,11 +294,13 @@ struct FruitType {
 }
 
 fn duplicate_fruit(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     edit: YoleckEdit<(&FruitType, &Vpeol2dPosition)>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((fruit_type, Vpeol2dPosition(position))) = edit.get_single() else { return };
+    let Ok((fruit_type, Vpeol2dPosition(position))) = edit.get_single() else {
+        return;
+    };
     if ui.button("Duplicate").clicked() {
         writer.send(
             YoleckDirective::spawn_entity(
@@ -313,7 +317,7 @@ fn duplicate_fruit(
 }
 
 fn edit_fruit_type(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut FruitType, &Vpeol2dPosition)>,
     assets: Res<GameAssets>,
     mut knobs: YoleckKnobs,
@@ -363,9 +367,12 @@ fn edit_fruit_type(
             if ui
                 .add_enabled(
                     are_multile_types_selected || !selected_fruit_types[index],
-                    egui::ImageButton::new(*texture_id, [100.0, 100.0])
-                        .uv(*rect)
-                        .selected(selected_fruit_types[index]),
+                    egui::ImageButton::new(egui::load::SizedTexture {
+                        id: *texture_id,
+                        size: egui::Vec2::new(100.0, 100.0),
+                    })
+                    .uv(*rect)
+                    .selected(selected_fruit_types[index]),
                 )
                 .clicked()
             {
@@ -456,10 +463,12 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAss
 }
 
 fn edit_text(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
 ) {
-    let Ok((mut content, mut scale)) = edit.get_single_mut() else { return };
+    let Ok((mut content, mut scale)) = edit.get_single_mut() else {
+        return;
+    };
     ui.text_edit_multiline(&mut content.text);
     // TODO: do this in vpeol_2d?
     ui.add(egui::Slider::new(&mut scale.0.x, 0.5..=5.0).logarithmic(true));
@@ -487,7 +496,9 @@ fn edit_triangle(
     mut edit: YoleckEdit<(&mut TriangleVertices, &GlobalTransform)>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((mut triangle, triangle_transform)) = edit.get_single_mut() else { return };
+    let Ok((mut triangle, triangle_transform)) = edit.get_single_mut() else {
+        return;
+    };
     for (index, vertex) in triangle.vertices.iter_mut().enumerate() {
         let mut knob = knobs.knob(("move-vertex", index));
         if let Some(move_to) = knob.get_passed_data::<Vec3>() {

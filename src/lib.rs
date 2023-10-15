@@ -144,7 +144,7 @@
 //!     });
 //! }
 //!
-//! fn edit_rectangle(mut ui: NonSendMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
+//! fn edit_rectangle(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
 //!     let Ok(mut rectangle) = edit.get_single_mut() else { return };
 //!     ui.add(egui::Slider::new(&mut rectangle.width, 50.0..=500.0).prefix("Width: "));
 //!     ui.add(egui::Slider::new(&mut rectangle.height, 50.0..=500.0).prefix("Height: "));
@@ -359,7 +359,7 @@ pub trait YoleckExtForApp {
     ///
     /// app.add_yoleck_edit_system(edit_component1);
     ///
-    /// fn edit_component1(mut ui: NonSendMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
+    /// fn edit_component1(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
     ///     let Ok(component1) = edit.get_single_mut() else { return };
     ///     // Edit `component1` with the `ui`
     /// }

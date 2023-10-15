@@ -219,10 +219,14 @@ fn update_camera_status_for_models(
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
         {
-            let Some(mesh) = mesh_assets.get(mesh) else { continue };
+            let Some(mesh) = mesh_assets.get(mesh) else {
+                continue;
+            };
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
@@ -231,9 +235,13 @@ fn update_camera_status_for_models(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
+                continue;
+            };
 
-            let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+            let Some(root_entity) = root_resolver.resolve_root(entity) else {
+                continue;
+            };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
         }
     }
@@ -327,15 +335,21 @@ fn camera_3d_pan(
     for (camera_entity, mut camera_transform, camera_state, camera_control) in
         cameras_query.iter_mut()
     {
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         match mouse_button_op {
             MouseButtonOp::JustPressed => {
-                let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else { continue };
+                let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
+                    continue;
+                };
                 last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
             }
             MouseButtonOp::BeingPressed => {
                 if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity) {
-                    let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else { continue };
+                    let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
+                        continue;
+                    };
                     let movement = *prev_pos - world_pos;
                     camera_transform.translation += movement;
                 }
@@ -405,8 +419,12 @@ fn camera_3d_rotate(
     for (camera_entity, mut camera_transform, camera_state, camera_control) in
         cameras_query.iter_mut()
     {
-        let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else { continue };
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else {
+            continue;
+        };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         match mouse_button_op {
             MouseButtonOp::JustPressed => {
                 last_cursor_ray_by_camera.insert(camera_entity, cursor_ray);
@@ -497,7 +515,7 @@ impl CommonDragPlane {
 }
 
 fn vpeol_3d_edit_position(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
@@ -548,7 +566,7 @@ fn vpeol_3d_edit_position(
 
 fn vpeol_3d_init_position(
     mut egui_context: EguiContexts,
-    ui: NonSend<YoleckUi>,
+    ui: Res<YoleckUi>,
     mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     cameras_query: Query<&VpeolCameraState>,
@@ -558,7 +576,10 @@ fn vpeol_3d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     };
 
-    let Some(cursor_ray) = cameras_query.iter().find_map(|camera_state| camera_state.cursor_ray) else {
+    let Some(cursor_ray) = cameras_query
+        .iter()
+        .find_map(|camera_state| camera_state.cursor_ray)
+    else {
         return YoleckExclusiveSystemDirective::Listening;
     };
 
@@ -613,7 +634,9 @@ fn vpeol_3d_edit_third_axis_with_knob(
         let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
         common_drag_plane.consider(drag_plane.normal);
     }
-    let Some(drag_plane_normal) = common_drag_plane.shared_normal() else { return };
+    let Some(drag_plane_normal) = common_drag_plane.shared_normal() else {
+        return;
+    };
 
     for (entity, global_transform, third_axis_with_knob, _) in edit.iter_matching() {
         let entity_position = global_transform.translation();

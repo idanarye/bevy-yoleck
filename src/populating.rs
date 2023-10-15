@@ -123,7 +123,9 @@ impl YoleckMarking<'_, '_> {
     pub fn despawn_marked(&self, cmd: &mut EntityCommands) {
         let mut marked_children_map: HashMap<Entity, Vec<Entity>> = Default::default();
         for child in self.children_query.iter_descendants(cmd.id()) {
-            let Ok((parent, marker)) = self.marked_query.get(child) else { continue };
+            let Ok((parent, marker)) = self.marked_query.get(child) else {
+                continue;
+            };
             if *marker == *self.designated_marker {
                 marked_children_map
                     .entry(parent.get())

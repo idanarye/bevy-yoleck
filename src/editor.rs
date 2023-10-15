@@ -167,7 +167,7 @@ impl YoleckDirective {
     /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
     /// # struct Example;
     /// fn duplicate_example(
-    ///     mut ui: NonSendMut<YoleckUi>,
+    ///     mut ui: ResMut<YoleckUi>,
     ///     mut edit: YoleckEdit<&Vpeol2dPosition, With<Example>>,
     ///     mut writer: EventWriter<YoleckDirective>,
     /// ) {
@@ -591,7 +591,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             &mut prepared.content_ui,
             ui.child_ui(egui::Rect::EVERYTHING, *ui.layout()),
         );
-        world.insert_non_send_resource(YoleckUi(content_ui));
+        world.insert_resource(YoleckUi(content_ui));
         world.insert_resource(passed_data);
 
         enum ActiveExclusiveSystemStatus {
@@ -619,7 +619,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
 
         let should_run_regular_systems = match behavior_for_exclusive_system {
             ActiveExclusiveSystemStatus::DidNotRun => loop {
-                let Some(mut new_exclusive_system) = world.resource_mut::<YoleckExclusiveSystemsQueue>().pop_front() else { break true };
+                let Some(mut new_exclusive_system) = world
+                    .resource_mut::<YoleckExclusiveSystemsQueue>()
+                    .pop_front()
+                else {
+                    break true;
+                };
                 new_exclusive_system.initialize(world);
                 let first_run_result = new_exclusive_system.run((), world);
                 if new_entity_created_this_frame
@@ -639,7 +644,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             });
         }
         let YoleckUi(content_ui) = world
-            .remove_non_send_resource()
+            .remove_resource()
             .expect("The YoleckUi resource was put in the world by this very function");
         world.remove_resource::<YoleckPassedData>();
         prepared.content_ui = content_ui;

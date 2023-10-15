@@ -1,3 +1,11 @@
+# Migrating to Yoleck 0.15
+
+## Accessing the YoleckUi
+
+Now that https://github.com/emilk/egui/pull/3233 got in to egui 0.23, and bevy_egui 0.22 was released with that new version of egui, `YoleckUi` can be made a regular resource again.
+
+`YoleckUi` can no longer be accessed with `NonSend`/`NonSendMut`, and must be accessed with the regular `Res`/`ResMut`.
+
 # Migrating to Yoleck 0.13
 
 ## Accessing the YoleckUi

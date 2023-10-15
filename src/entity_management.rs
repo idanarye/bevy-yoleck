@@ -73,10 +73,11 @@ pub(crate) fn yoleck_process_raw_entries(
             construction_specs.get_entity_type_info(&raw_entry.header.type_name)
         {
             for component_name in entity_type_info.components.iter() {
-                let Some(handler) = construction_specs.component_handlers.get(component_name) else {
-                        error!("Component type {:?} is not registered", component_name);
-                        continue;
-                    };
+                let Some(handler) = construction_specs.component_handlers.get(component_name)
+                else {
+                    error!("Component type {:?} is not registered", component_name);
+                    continue;
+                };
                 let raw_component_data = raw_entry
                     .data
                     .get_mut(handler.key())

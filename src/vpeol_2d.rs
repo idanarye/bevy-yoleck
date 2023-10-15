@@ -222,7 +222,9 @@ fn update_camera_status_for_sprites(
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else {
+            continue;
+        };
 
         for (entity, entity_transform, sprite, texture) in
             entities_query.iter_many(&visible_entities.entities)
@@ -236,7 +238,9 @@ fn update_camera_status_for_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                let Some(root_entity) = root_resolver.resolve_root(entity) else {
+                    continue;
+                };
                 camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
@@ -257,7 +261,9 @@ fn update_camera_status_for_atlas_sprites(
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else {
+            continue;
+        };
 
         for (entity, entity_transform, sprite, texture) in
             entities_query.iter_many(&visible_entities.entities)
@@ -271,7 +277,9 @@ fn update_camera_status_for_atlas_sprites(
             };
             if cursor.check_square(entity_transform, &sprite.anchor, size) {
                 let z_depth = entity_transform.translation().z;
-                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                let Some(root_entity) = root_resolver.resolve_root(entity) else {
+                    continue;
+                };
                 camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
@@ -287,10 +295,14 @@ fn update_camera_status_for_2d_meshes(
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
         {
-            let Some(mesh) = mesh_assets.get(&mesh.0) else { continue };
+            let Some(mesh) = mesh_assets.get(&mesh.0) else {
+                continue;
+            };
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
@@ -299,9 +311,13 @@ fn update_camera_status_for_2d_meshes(
                 direction: inverse_transform.transform_vector3(cursor_ray.direction),
             };
 
-            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else { continue };
+            let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
+                continue;
+            };
 
-            let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+            let Some(root_entity) = root_resolver.resolve_root(entity) else {
+                continue;
+            };
             camera_state.consider(root_entity, -distance, || cursor_ray.get_point(distance));
         }
     }
@@ -313,14 +329,18 @@ fn update_camera_status_for_text_2d(
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else { continue };
+        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else {
+            continue;
+        };
 
         for (entity, entity_transform, text_layout_info, anchor) in
             entities_query.iter_many(&visible_entities.entities)
         {
             if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
-                let Some(root_entity) = root_resolver.resolve_root(entity) else { continue };
+                let Some(root_entity) = root_resolver.resolve_root(entity) else {
+                    continue;
+                };
                 camera_state.consider(root_entity, z_depth, || {
                     cursor.cursor_in_world_pos.extend(z_depth)
                 });
@@ -375,7 +395,9 @@ fn camera_2d_pan(
     };
 
     for (camera_entity, mut camera_transform, camera_state) in cameras_query.iter_mut() {
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         let world_pos = cursor_ray.origin.truncate();
 
         match mouse_button_op {
@@ -408,7 +430,9 @@ fn camera_2d_zoom(
     }
 
     for (mut camera_transform, camera_state, camera, camera_control) in cameras_query.iter_mut() {
-        let Some(cursor_ray) = camera_state.cursor_ray else { continue };
+        let Some(cursor_ray) = camera_state.cursor_ray else {
+            continue;
+        };
         let world_pos = cursor_ray.origin.truncate();
 
         let zoom_amount: f32 = wheel_events_reader
@@ -436,8 +460,15 @@ fn camera_2d_zoom(
         };
         camera_transform.scale.x *= scale_by;
         camera_transform.scale.y *= scale_by;
-        let Some(cursor_in_screen_pos) = window.cursor_position() else { continue };
-        let Some(new_cursor_ray) = camera.viewport_to_world(&camera_transform.as_ref().clone().into(), cursor_in_screen_pos) else { continue };
+        let Some(cursor_in_screen_pos) = window.cursor_position() else {
+            continue;
+        };
+        let Some(new_cursor_ray) = camera.viewport_to_world(
+            &camera_transform.as_ref().clone().into(),
+            cursor_in_screen_pos,
+        ) else {
+            continue;
+        };
         let new_world_pos = new_cursor_ray.origin.truncate();
         camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
     }
@@ -470,7 +501,7 @@ impl Default for Vpeol2dScale {
 }
 
 fn vpeol_2d_edit_position(
-    mut ui: NonSendMut<YoleckUi>,
+    mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
     passed_data: Res<YoleckPassedData>,
 ) {
@@ -506,7 +537,7 @@ fn vpeol_2d_edit_position(
 
 fn vpeol_2d_init_position(
     mut egui_context: EguiContexts,
-    ui: NonSend<YoleckUi>,
+    ui: Res<YoleckUi>,
     mut edit: YoleckEdit<&mut Vpeol2dPosition>,
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<Input<MouseButton>>,
@@ -515,7 +546,10 @@ fn vpeol_2d_init_position(
         return YoleckExclusiveSystemDirective::Finished;
     };
 
-    let Some(cursor_ray) = cameras_query.iter().find_map(|camera_state| camera_state.cursor_ray) else {
+    let Some(cursor_ray) = cameras_query
+        .iter()
+        .find_map(|camera_state| camera_state.cursor_ray)
+    else {
         return YoleckExclusiveSystemDirective::Listening;
     };
 
