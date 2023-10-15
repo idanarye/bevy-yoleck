@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.15.0 - 2023-10-15
 ### Changed
 - Upgrade bevy_egui to 0.22
 - [**BREAKING**] `YoleckUi` is a regular resource again. See the [migration
