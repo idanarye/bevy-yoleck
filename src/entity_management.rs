@@ -1,11 +1,13 @@
-use bevy::asset::{AssetLoader, LoadedAsset};
+use bevy::asset::io::Reader;
+use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::{TypePath, TypeUuid};
-use bevy::utils::HashMap;
+use bevy::utils::{BoxedFuture, HashMap};
 use serde::{Deserialize, Serialize};
 
 use crate::editor::YoleckEditorState;
 use crate::entity_upgrading::YoleckEntityUpgrading;
+use crate::errors::YoleckAssetLoaderError;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::populating::PopulateReason;
 use crate::{
@@ -199,7 +201,7 @@ pub enum YoleckLoadingCommand {
 pub(crate) struct YoleckLevelAssetLoader;
 
 /// Represents a level file.
-#[derive(TypeUuid, TypePath, Debug, Serialize, Deserialize, Clone)]
+#[derive(Asset, TypeUuid, TypePath, Debug, Serialize, Deserialize, Clone)]
 #[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
 pub struct YoleckRawLevel(
     pub(crate) YoleckRawLevelHeader,
@@ -239,22 +241,28 @@ impl YoleckRawLevel {
 }
 
 impl AssetLoader for YoleckLevelAssetLoader {
-    fn load<'a>(
-        &'a self,
-        bytes: &'a [u8],
-        load_context: &'a mut bevy::asset::LoadContext,
-    ) -> bevy::asset::BoxedFuture<'a, Result<(), anyhow::Error>> {
-        Box::pin(async move {
-            let json = std::str::from_utf8(bytes)?;
-            let level: serde_json::Value = serde_json::from_str(json)?;
-            let level = upgrade_level_file(level)?;
-            let level: YoleckRawLevel = serde_json::from_value(level)?;
-            load_context.set_default_asset(LoadedAsset::new(level));
-            Ok(())
-        })
-    }
+    type Asset = YoleckRawLevel;
+    type Settings = ();
+    type Error = YoleckAssetLoaderError;
 
     fn extensions(&self) -> &[&str] {
         &["yol"]
+    }
+
+    fn load<'a>(
+        &'a self,
+        reader: &'a mut Reader,
+        _settings: &'a Self::Settings,
+        _load_context: &'a mut LoadContext,
+    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+        Box::pin(async {
+            let mut bytes = Vec::new();
+            reader.read_to_end(&mut bytes).await?;
+            let json = std::str::from_utf8(&bytes)?;
+            let level: serde_json::Value = serde_json::from_str(json)?;
+            let level = upgrade_level_file(level)?;
+            let level: YoleckRawLevel = serde_json::from_value(level)?;
+            Ok(level)
+        })
     }
 }

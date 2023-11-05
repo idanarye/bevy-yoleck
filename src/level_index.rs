@@ -1,10 +1,12 @@
 use std::ops::Deref;
 
-use bevy::asset::{AssetLoader, LoadedAsset};
-//use bevy::prelude::*;
+use bevy::asset::{AssetLoader, AsyncReadExt};
+use bevy::prelude::*;
 use bevy::reflect::{TypePath, TypeUuid};
 
 use serde::{Deserialize, Serialize};
+
+use crate::errors::YoleckAssetLoaderError;
 
 /// Describes a level in the index.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -32,7 +34,7 @@ pub struct YoleckLevelIndexEntry {
 ///     }
 /// }
 /// ```
-#[derive(TypeUuid, TypePath, Debug, Serialize, Deserialize)]
+#[derive(Asset, TypeUuid, TypePath, Debug, Serialize, Deserialize)]
 #[uuid = "ca0c185d-eb75-4a19-a188-3bc633a76cf7"]
 pub struct YoleckLevelIndex(YoleckLevelIndexHeader, Vec<YoleckLevelIndexEntry>);
 
@@ -62,16 +64,22 @@ impl Deref for YoleckLevelIndex {
 pub(crate) struct YoleckLevelIndexLoader;
 
 impl AssetLoader for YoleckLevelIndexLoader {
+    type Asset = YoleckLevelIndex;
+    type Settings = ();
+    type Error = YoleckAssetLoaderError;
+
     fn load<'a>(
         &'a self,
-        bytes: &'a [u8],
-        load_context: &'a mut bevy::asset::LoadContext,
-    ) -> bevy::asset::BoxedFuture<'a, anyhow::Result<(), anyhow::Error>> {
-        Box::pin(async move {
-            let json = std::str::from_utf8(bytes)?;
+        reader: &'a mut bevy::asset::io::Reader,
+        _settings: &'a Self::Settings,
+        _load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+        Box::pin(async {
+            let mut bytes = Vec::new();
+            reader.read_to_end(&mut bytes).await?;
+            let json = std::str::from_utf8(&bytes)?;
             let level_index: YoleckLevelIndex = serde_json::from_str(json)?;
-            load_context.set_default_asset(LoadedAsset::new(level_index));
-            Ok(())
+            Ok(level_index)
         })
     }
 

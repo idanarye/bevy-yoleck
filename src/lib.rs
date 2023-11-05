@@ -54,8 +54,8 @@
 //!   * Use [`YoleckLoadingCommand`] to load the level.
 //!
 //! To support picking and moving entities in the viewport with the mouse, check out the
-//! [`vpeol_2d`](crate::vpeol_2d) and [`vpeol_3d`](crate::vpeol_3d) modules. After adding the
-//! appropriate feature flag (`vpeol_2d`/`vpeol_3d`), import their types from
+//! [`vpeol_2d`] and [`vpeol_3d`] modules. After adding the appropriate feature flag
+//! (`vpeol_2d`/`vpeol_3d`), import their types from
 //! [`bevy_yoleck::vpeol::prelude::*`](crate::vpeol::prelude).
 //!
 //! # Example
@@ -173,6 +173,7 @@ mod editor;
 mod editor_window;
 mod entity_management;
 mod entity_upgrading;
+mod errors;
 pub mod exclusive_systems;
 pub mod knobs;
 mod level_files_manager;
@@ -242,10 +243,10 @@ impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
         app.init_resource::<YoleckEntityConstructionSpecs>();
         app.insert_resource(YoleckLoadingCommand::NoCommand);
-        app.add_asset::<YoleckRawLevel>();
-        app.add_asset_loader(entity_management::YoleckLevelAssetLoader);
-        app.add_asset::<YoleckLevelIndex>();
-        app.add_asset_loader(level_index::YoleckLevelIndexLoader);
+        app.register_asset_loader(entity_management::YoleckLevelAssetLoader);
+        app.init_asset::<YoleckRawLevel>();
+        app.register_asset_loader(level_index::YoleckLevelIndexLoader);
+        app.init_asset::<YoleckLevelIndex>();
 
         app.configure_sets(
             Update,
@@ -280,8 +281,8 @@ impl Plugin for YoleckPluginBase {
                 .in_set(YoleckSystemSet::RunPopulateSchedule),
         );
         app.add_systems(Update, entity_management::yoleck_process_loading_command);
-        app.add_schedule(YoleckSchedule::Populate, Schedule::new());
-        app.add_schedule(YoleckSchedule::OverrideCommonComponents, Schedule::new());
+        app.add_schedule(Schedule::new(YoleckSchedule::Populate));
+        app.add_schedule(Schedule::new(YoleckSchedule::OverrideCommonComponents));
     }
 }
 
@@ -319,10 +320,9 @@ impl Plugin for YoleckPluginForEditor {
             editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
         );
 
-        app.add_schedule(
+        app.add_schedule(Schedule::new(
             YoleckInternalSchedule::UpdateManagedDataFromComponents,
-            Schedule::new(),
-        );
+        ));
     }
 }
 

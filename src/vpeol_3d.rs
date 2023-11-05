@@ -369,7 +369,7 @@ fn camera_3d_move_along_plane_normal(
 
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
         let zoom_amount: f32 = wheel_events_reader
-            .iter()
+            .read()
             .map(|wheel_event| match wheel_event.unit {
                 bevy::input::mouse::MouseScrollUnit::Line => {
                     wheel_event.y * camera_control.proximity_per_scroll_line

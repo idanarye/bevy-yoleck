@@ -53,7 +53,9 @@ fn main() {
             },
         );
     }
-    app.init_resource::<GameAssets>();
+    app.add_systems(Startup, |world: &mut World| {
+        world.init_resource::<GameAssets>();
+    });
 
     app.add_plugins(YoleckEntityUpgradingPlugin {
         app_format_version: 1,
@@ -152,7 +154,6 @@ fn setup_camera(mut commands: Commands) {
 
 #[derive(Resource)]
 struct GameAssets {
-    player_sprite: Handle<Image>,
     fruits_sprite_sheet: Handle<TextureAtlas>,
     fruits_sprite_sheet_egui: (egui::TextureId, Vec<egui::Rect>),
     font: Handle<Font>,
@@ -199,7 +200,6 @@ impl FromWorld for GameAssets {
             )
         };
         Self {
-            player_sprite: asset_server.load("sprites/player.png"),
             fruits_sprite_sheet: texture_atlas_assets.add(fruits_atlas),
             fruits_sprite_sheet_egui: fruits_egui,
             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
@@ -218,14 +218,17 @@ struct Player {
     rotation: f32,
 }
 
-fn populate_player(mut populate: YoleckPopulate<(), With<IsPlayer>>, assets: Res<GameAssets>) {
+fn populate_player(
+    mut populate: YoleckPopulate<(), With<IsPlayer>>,
+    asset_server: Res<AssetServer>,
+) {
     populate.populate(|_ctx, mut cmd, ()| {
         cmd.insert((SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            texture: assets.player_sprite.clone(),
+            texture: asset_server.load("sprites/player.png"),
             ..Default::default()
         },));
     });

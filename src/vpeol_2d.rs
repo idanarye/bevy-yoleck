@@ -232,7 +232,7 @@ fn update_camera_status_for_sprites(
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
             } else if let Some(texture) = image_assets.get(texture) {
-                texture.size()
+                texture.size().as_vec2()
             } else {
                 continue;
             };
@@ -336,7 +336,7 @@ fn update_camera_status_for_text_2d(
         for (entity, entity_transform, text_layout_info, anchor) in
             entities_query.iter_many(&visible_entities.entities)
         {
-            if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
+            if cursor.check_square(entity_transform, anchor, text_layout_info.logical_size) {
                 let z_depth = entity_transform.translation().z;
                 let Some(root_entity) = root_resolver.resolve_root(entity) else {
                     continue;
@@ -436,7 +436,7 @@ fn camera_2d_zoom(
         let world_pos = cursor_ray.origin.truncate();
 
         let zoom_amount: f32 = wheel_events_reader
-            .iter()
+            .read()
             .map(|wheel_event| match wheel_event.unit {
                 bevy::input::mouse::MouseScrollUnit::Line => {
                     wheel_event.y * camera_control.zoom_per_scroll_line

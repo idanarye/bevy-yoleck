@@ -443,7 +443,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
 
             let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, BoxedArc>> =
                 Default::default();
-            for directive in directives_reader.iter() {
+            for directive in directives_reader.read() {
                 match &directive.0 {
                     YoleckDirectiveInner::PassToEntity(entity, type_id, data) => {
                         if false {
