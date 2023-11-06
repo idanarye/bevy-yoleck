@@ -40,7 +40,7 @@ fn main() {
         app.add_plugins(Vpeol3dPluginForEditor::topdown());
         app.add_plugins(VpeolSelectionCuePlugin::default());
         #[cfg(target_arch = "wasm32")]
-        app.add_startup_system(
+        app.add_systems(Startup,
             |asset_server: Res<AssetServer>,
              mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
                 *yoleck_loading_command =
