@@ -193,7 +193,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use bevy::ecs::schedule::ScheduleLabel;
-use bevy::ecs::system::EntityCommands;
+use bevy::ecs::system::{EntityCommands, SystemId};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -366,7 +366,7 @@ pub trait YoleckExtForApp {
     /// ```
     ///
     /// See [`YoleckEdit`](crate::editing::YoleckEdit).
-    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>);
+    fn add_yoleck_edit_system<P>(&mut self, system: impl 'static + IntoSystem<(), (), P>);
 
     /// Get a Bevy schedule to add Yoleck populate systems on.
     ///
@@ -462,13 +462,12 @@ impl YoleckExtForApp for App {
         }
     }
 
-    fn add_yoleck_edit_system<P>(&mut self, system: impl IntoSystem<(), (), P>) {
-        let mut system = IntoSystem::into_system(system);
-        system.initialize(&mut self.world);
+    fn add_yoleck_edit_system<P>(&mut self, system: impl 'static + IntoSystem<(), (), P>) {
+        let system_id = self.world.register_system(system);
         let mut edit_systems = self
             .world
             .get_resource_or_insert_with(YoleckEditSystems::default);
-        edit_systems.edit_systems.push(Box::new(system));
+        edit_systems.edit_systems.push(system_id);
     }
 
     fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule {
@@ -540,14 +539,16 @@ pub enum YoleckEntityLifecycleStatus {
 
 #[derive(Default, Resource)]
 struct YoleckEditSystems {
-    edit_systems: Vec<Box<dyn System<In = (), Out = ()>>>,
+    edit_systems: Vec<SystemId>,
 }
 
 impl YoleckEditSystems {
     pub(crate) fn run_systems(&mut self, world: &mut World) {
-        for system in self.edit_systems.iter_mut() {
-            system.run((), world);
-            system.apply_deferred(world);
+        for system_id in self.edit_systems.iter() {
+            world
+                .run_system(*system_id)
+                .expect("edit systems handled by Yoleck - system should been properly handled");
+            apply_deferred(world);
         }
     }
 }
