@@ -169,14 +169,6 @@ pub(crate) fn yoleck_process_loading_command(
                 *yoleck_loading_command = YoleckLoadingCommand::FromAsset(handle);
             }
         }
-        YoleckLoadingCommand::FromData(mut level) => {
-            if let Some(entity_upgrading) = entity_upgrading {
-                entity_upgrading.upgrade_raw_level_file(&mut level);
-            }
-            for entry in level.into_entries() {
-                commands.spawn(entry);
-            }
-        }
     }
 }
 
@@ -195,7 +187,6 @@ pub(crate) fn yoleck_process_loading_command(
 pub enum YoleckLoadingCommand {
     NoCommand,
     FromAsset(Handle<YoleckRawLevel>),
-    FromData(YoleckRawLevel),
 }
 
 pub(crate) struct YoleckLevelAssetLoader;

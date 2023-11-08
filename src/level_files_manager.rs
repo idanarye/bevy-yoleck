@@ -49,6 +49,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
+        ResMut<Assets<YoleckRawLevel>>,
         ResMut<YoleckLoadingCommand>,
         Option<Res<YoleckEntityUpgrading>>,
         Option<Res<YoleckActiveExclusiveSystem>>,
@@ -78,6 +79,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             editor_state,
             mut next_editor_state,
             mut knobs_cache,
+            mut level_assets,
             mut loading_command,
             entity_upgrading,
             active_exclusive_system,
@@ -145,12 +147,14 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 let finish_playtest_response = ui.button("Finish Playtest");
                 if ui.button("Restart Playtest").clicked() {
                     clear_level(&mut commands);
-                    *loading_command = YoleckLoadingCommand::FromData(level.clone());
+                    let level_asset_handle = level_assets.add(level.clone());
+                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::EditorActive);
-                    *loading_command = YoleckLoadingCommand::FromData(level.clone());
+                    let level_asset_handle = level_assets.add(level.clone());
+                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
                     level_being_playtested = None;
                 }
             } else {
@@ -159,7 +163,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     let level = gen_raw_level_file();
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::GameActive);
-                    *loading_command = YoleckLoadingCommand::FromData(level.clone());
+                    let level_asset_handle = level_assets.add(level.clone());
+                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
                     level_being_playtested = Some(level);
                 }
             }
@@ -285,8 +290,12 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                     Ok(level) => {
                                                         let level: YoleckRawLevel =
                                                             serde_json::from_value(level).unwrap();
+                                                        let level_asset_handle =
+                                                            level_assets.add(level);
                                                         *loading_command =
-                                                            YoleckLoadingCommand::FromData(level);
+                                                            YoleckLoadingCommand::FromAsset(
+                                                                level_asset_handle,
+                                                            );
                                                     }
                                                     Err(err) => {
                                                         warn!(
