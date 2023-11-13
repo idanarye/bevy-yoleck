@@ -21,17 +21,26 @@ pub struct YoleckLevelIndexEntry {
 /// # use bevy::prelude::*;
 /// # use bevy_yoleck::prelude::*;
 /// fn load_level_system(
+///     mut level_index_handle: Local<Option<Handle<YoleckLevelIndex>>>,
 ///     asset_server: Res<AssetServer>,
 ///     level_index_assets: Res<Assets<YoleckLevelIndex>>,
 ///     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
 /// ) {
 ///     # let level_number: usize = todo!();
-///     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
-///     if let Some(level_index) = level_index_assets.get(&level_index_handle) {
-///         let level_to_load = level_index[level_number];
-///         let level_handle: Handle<YoleckRawLevel> = asset_server.load(&format!("levels/{}", level_to_load.filename));
-///         *yoleck_loading_command = YoleckLoadingCommand::FromAsset(level_handle);
-///     }
+///     // Keep the handle in local resource, so that Bevy will not unload the level index asset
+///     // between frames.
+///     let level_index_handle = level_index_handle
+///         .get_or_insert_with(|| asset_server.load("levels/index.yoli"))
+///         .clone();
+///     let Some(level_index) = level_index_assets.get(level_index_handle) else {
+///         // During the first invocation of this system, the level index asset is not going to be
+///         // loaded just yet. Since this system is going to run on every frame during the Loading
+///         // state, it just has to keep trying until it starts in a frame where it is loaded.
+///         return;
+///     };
+///     let level_to_load = level_index[level_number];
+///     let level_handle: Handle<YoleckRawLevel> = asset_server.load(&format!("levels/{}", level_to_load.filename));
+///     *yoleck_loading_command = YoleckLoadingCommand::FromAsset(level_handle);
 /// }
 /// ```
 #[derive(Asset, TypeUuid, TypePath, Debug, Serialize, Deserialize)]

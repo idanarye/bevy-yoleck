@@ -151,20 +151,29 @@
 //! }
 //!
 //! fn load_first_level(
+//!     mut level_index_handle: Local<Option<Handle<YoleckLevelIndex>>>,
 //!     asset_server: Res<AssetServer>,
 //!     level_index_assets: Res<Assets<YoleckLevelIndex>>,
 //!     mut loading_command: ResMut<YoleckLoadingCommand>,
 //!     mut game_state: ResMut<NextState<GameState>>,
 //! ) {
-//!     let level_index_handle: Handle<YoleckLevelIndex> = asset_server.load("levels/index.yoli");
-//!     if let Some(level_index) = level_index_assets.get(&level_index_handle) {
-//!         // A proper game would have a proper level progression system, but here we are just
-//!         // taking the first level and loading it.
-//!         let level_handle: Handle<YoleckRawLevel> =
-//!             asset_server.load(&format!("levels/{}", level_index[0].filename));
-//!         *loading_command = YoleckLoadingCommand::FromAsset(level_handle);
-//!         game_state.set(GameState::Game);
-//!     }
+//!     // Keep the handle in local resource, so that Bevy will not unload the level index asset
+//!     // between frames.
+//!     let level_index_handle = level_index_handle
+//!         .get_or_insert_with(|| asset_server.load("levels/index.yoli"))
+//!         .clone();
+//!     let Some(level_index) = level_index_assets.get(level_index_handle) else {
+//!         // During the first invocation of this system, the level index asset is not going to be
+//!         // loaded just yet. Since this system is going to run on every frame during the Loading
+//!         // state, it just has to keep trying until it starts in a frame where it is loaded.
+//!         return;
+//!     };
+//!     // A proper game would have a proper level progression system, but here we are just
+//!     // taking the first level and loading it.
+//!     let level_handle: Handle<YoleckRawLevel> =
+//!         asset_server.load(&format!("levels/{}", level_index[0].filename));
+//!     *loading_command = YoleckLoadingCommand::FromAsset(level_handle);
+//!     game_state.set(GameState::Game);
 //! }
 //! ```
 
