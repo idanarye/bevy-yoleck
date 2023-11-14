@@ -14,8 +14,8 @@ use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::prelude::YoleckEditorState;
 use crate::{
-    YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckLevelIndex, YoleckLoadingCommand,
-    YoleckManaged, YoleckRawLevel, YoleckState,
+    YoleckBelongsToLevel, YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelIndex,
+    YoleckLoadingCommand, YoleckManaged, YoleckRawLevel, YoleckState,
 };
 
 const EXTENSION: &str = ".yol";
@@ -43,6 +43,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         Commands,
         ResMut<YoleckState>,
         ResMut<YoleckEditorLevelsDirectoryPath>,
+        ResMut<YoleckEditableLevels>,
         Res<YoleckEntityConstructionSpecs>,
         Query<&YoleckManaged>,
         Query<Entity, With<YoleckBelongsToLevel>>,
@@ -73,6 +74,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut commands,
             mut yoleck,
             mut levels_directory,
+            mut editable_levels,
             construction_specs,
             yoleck_managed_query,
             belongs_to_level_query,
@@ -213,7 +215,27 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
 
                     if should_list_files {
                         should_list_files = false;
-                        loaded_files_index = fs::read_dir(&levels_directory.0).and_then(|files| {
+
+                        let editable_levels_update_result = fs::read_dir(&levels_directory.0)
+                            .and_then(|files| {
+                                editable_levels.levels = files
+                                    .filter_map(|file| {
+                                        let file = match file {
+                                            Ok(file) => file,
+                                            Err(err) => return Some(Err(err)),
+                                        };
+                                        if file.path().extension()
+                                            != Some(std::ffi::OsStr::new(EXTENSION_WITHOUT_DOT))
+                                        {
+                                            return None;
+                                        }
+                                        Some(Ok(file.file_name().to_string_lossy().into()))
+                                    })
+                                    .collect::<Result<_, _>>()?;
+                                Ok(())
+                            });
+
+                        loaded_files_index = editable_levels_update_result.and_then(|()| {
                             let index_file = mk_files_index();
                             let mut files_index: Vec<YoleckLevelIndexEntry> =
                                 match fs::File::open(&index_file) {
@@ -230,16 +252,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                 .iter()
                                 .map(|file| file.filename.clone())
                                 .collect();
-                            for file in files {
-                                let file = file?;
-                                if file.path().extension()
-                                    != Some(std::ffi::OsStr::new(EXTENSION_WITHOUT_DOT))
-                                {
-                                    continue;
-                                }
-                                let filename = file.file_name().to_string_lossy().into();
-                                if !existing_files.remove(&filename) {
-                                    files_index.push(YoleckLevelIndexEntry { filename });
+                            for filename in editable_levels.names() {
+                                if !existing_files.remove(filename) {
+                                    files_index.push(YoleckLevelIndexEntry {
+                                        filename: filename.to_owned(),
+                                    });
                                 }
                             }
                             files_index.retain(|file| !existing_files.contains(&file.filename));

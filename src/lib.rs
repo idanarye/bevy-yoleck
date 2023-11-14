@@ -190,6 +190,7 @@ pub mod level_files_upgrading;
 mod level_index;
 mod populating;
 mod specs_registration;
+mod util;
 #[cfg(feature = "vpeol")]
 pub mod vpeol;
 #[cfg(feature = "vpeol_2d")]
@@ -232,9 +233,11 @@ use self::entity_upgrading::YoleckEntityUpgrading;
 use self::exclusive_systems::YoleckExclusiveSystemsPlugin;
 use self::knobs::YoleckKnobsCache;
 pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
+pub use self::level_index::YoleckEditableLevels;
 use self::level_index::YoleckLevelIndex;
 pub use self::populating::{YoleckPopulateContext, YoleckSystemMarker};
 use self::specs_registration::{YoleckComponentHandler, YoleckEntityType};
+use self::util::EditSpecificResources;
 pub use bevy_egui;
 pub use bevy_egui::egui;
 
@@ -323,6 +326,9 @@ impl Plugin for YoleckPluginForEditor {
             Path::new(".").join("assets").join("levels"),
         ));
         app.insert_resource(YoleckEditorSections::default());
+        app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
+            levels: Default::default(),
+        }));
         app.add_event::<YoleckDirective>();
         app.add_systems(
             Update,

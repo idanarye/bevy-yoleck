@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `ResMut<Assets<YoleckRawLevel>>` first and pass the handle to
   `YoleckLoadingCommand::FromAsset`.
 
+### Added
+- `YoleckEditableLevels` resource (accessible only from edit systems) that
+  provides the list of level file names.
+
 ## 0.16.0 - 2023-09-06
 ### Changed
 - Upgrade Bevy to 0.12 (and bevy_egui to 0.23)

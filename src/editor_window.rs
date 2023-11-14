@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext};
 
+use crate::util::EditSpecificResources;
 use crate::YoleckEditorSections;
 
 pub(crate) fn yoleck_editor_window(
@@ -19,9 +20,13 @@ pub(crate) fn yoleck_editor_window(
         .show(borrowed_egui.get_mut(), |ui| {
             world.resource_scope(
                 |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
-                    for section in yoleck_editor_sections.0.iter_mut() {
-                        section.0.invoke(world, ui);
-                    }
+                    world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
+                        edit_specific.inject_to_world(world);
+                        for section in yoleck_editor_sections.0.iter_mut() {
+                            section.0.invoke(world, ui);
+                        }
+                        edit_specific.take_from_world(world);
+                    });
                 },
             );
         });

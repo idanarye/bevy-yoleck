@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::ops::Deref;
 
 use bevy::asset::{AssetLoader, AsyncReadExt};
@@ -94,5 +95,18 @@ impl AssetLoader for YoleckLevelIndexLoader {
 
     fn extensions(&self) -> &[&str] {
         &["yoli"]
+    }
+}
+
+/// Accessible only to edit systems - provides information about available levels.
+#[derive(Resource)]
+pub struct YoleckEditableLevels {
+    pub(crate) levels: BTreeSet<String>,
+}
+
+impl YoleckEditableLevels {
+    /// The names of the level files (relative to the levels directory, not the assets directory)
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.levels.iter().map(|l| l.as_str())
     }
 }
