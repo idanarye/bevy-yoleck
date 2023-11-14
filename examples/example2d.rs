@@ -9,8 +9,10 @@ use bevy::utils::Uuid;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
-use bevy_yoleck::vpeol::prelude::*;
-use bevy_yoleck::{prelude::*, YoleckDirective};
+use bevy_yoleck::vpeol::{prelude::*, vpeol_read_click_on_entity};
+use bevy_yoleck::{
+    prelude::*, yoleck_exclusive_system_cancellable, yoleck_map_entity_to_uuid, YoleckDirective,
+};
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -581,52 +583,43 @@ fn edit_laser_pointer(
     mut edit: YoleckEdit<&mut LaserPointer>,
     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 ) {
-    let Ok(laser_pointer) = edit.get_single_mut() else {
+    let Ok(mut laser_pointer) = edit.get_single_mut() else {
         return;
     };
 
-    let button = if let Some(target) = laser_pointer.target {
-        ui.button(format!("{:?}", target))
-    } else {
-        ui.button("No Target")
-    };
-    if button.clicked() {
-        exclusive_queue.push_back(pick_laser_pointer_target);
-    }
-}
+    ui.horizontal(|ui| {
+        let button = if let Some(target) = laser_pointer.target {
+            ui.button(format!("Target: {:?}", target))
+        } else {
+            ui.button("No Target")
+        };
+        if button.clicked() {
+            exclusive_queue.push_back(
+                vpeol_read_click_on_entity::<&YoleckEntityUuid>
+                    .pipe(yoleck_map_entity_to_uuid)
+                    .pipe(
+                        |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
+                            let Ok(mut laser_pointer) = edit.get_single_mut() else {
+                                return YoleckExclusiveSystemDirective::Finished;
+                            };
 
-fn pick_laser_pointer_target(
-    mut edit: YoleckEdit<&mut LaserPointer>,
-    cameras_query: Query<&VpeolCameraState>,
-    ui: ResMut<YoleckUi>,
-    buttons: Res<Input<MouseButton>>,
-    uuid_query: Query<&YoleckEntityUuid>,
-) -> YoleckExclusiveSystemDirective {
-    let Ok(mut laser_pointer) = edit.get_single_mut() else {
-        return YoleckExclusiveSystemDirective::Finished;
-    };
-
-    if ui.ctx().is_pointer_over_area() {
-        return YoleckExclusiveSystemDirective::Listening;
-    }
-
-    let Some(target) = cameras_query
-        .iter()
-        .find_map(|camera_state| Some(camera_state.entity_under_cursor.as_ref()?.0))
-    else {
-        return YoleckExclusiveSystemDirective::Listening;
-    };
-
-    let Ok(uuid) = uuid_query.get(target) else {
-        return YoleckExclusiveSystemDirective::Listening;
-    };
-
-    if buttons.just_released(MouseButton::Left) {
-        laser_pointer.target = Some(**uuid);
-        return YoleckExclusiveSystemDirective::Finished;
-    }
-
-    YoleckExclusiveSystemDirective::Listening
+                            if let Some(target) = target {
+                                laser_pointer.target = Some(target);
+                                YoleckExclusiveSystemDirective::Finished
+                            } else {
+                                YoleckExclusiveSystemDirective::Listening
+                            }
+                        },
+                    )
+                    .pipe(yoleck_exclusive_system_cancellable),
+            );
+        }
+        if laser_pointer.target.is_some() {
+            if ui.button("Clear").clicked() {
+                laser_pointer.target = None;
+            }
+        }
+    });
 }
 
 fn draw_laser_pointers(

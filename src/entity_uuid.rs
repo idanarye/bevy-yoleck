@@ -5,6 +5,12 @@ use bevy::utils::{HashMap, Uuid};
 #[derive(Component, Deref, Debug)]
 pub struct YoleckEntityUuid(pub(crate) Uuid);
 
+impl YoleckEntityUuid {
+    pub fn get(&self) -> Uuid {
+        self.0
+    }
+}
+
 #[derive(Resource)]
 pub struct YoleckUuidRegistry(pub(crate) HashMap<Uuid, Entity>);
 

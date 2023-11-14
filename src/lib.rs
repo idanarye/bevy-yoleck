@@ -189,6 +189,7 @@ pub mod knobs;
 mod level_files_manager;
 pub mod level_files_upgrading;
 mod level_index;
+mod picking_helpers;
 mod populating;
 mod specs_registration;
 mod util;
@@ -229,6 +230,7 @@ pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
 use self::editor::YoleckEditorState;
 pub use self::editor_window::YoleckEditorSection;
+pub use self::picking_helpers::*;
 
 use self::entity_management::{EntitiesToPopulate, YoleckLoadingCommand, YoleckRawLevel};
 use self::entity_upgrading::YoleckEntityUpgrading;
@@ -253,6 +255,9 @@ enum YoleckSystemSet {
     ProcessRawEntities,
     RunPopulateSchedule,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
+pub(crate) struct YoleckRunEditSystemsSystemSet;
 
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
@@ -334,9 +339,13 @@ impl Plugin for YoleckPluginForEditor {
             levels: Default::default(),
         }));
         app.add_event::<YoleckDirective>();
+        app.configure_sets(
+            Update,
+            YoleckRunEditSystemsSystemSet.after(YoleckSystemSet::ProcessRawEntities),
+        );
         app.add_systems(
             Update,
-            editor_window::yoleck_editor_window.after(YoleckSystemSet::ProcessRawEntities),
+            editor_window::yoleck_editor_window.in_set(YoleckRunEditSystemsSystemSet),
         );
 
         app.add_schedule(Schedule::new(

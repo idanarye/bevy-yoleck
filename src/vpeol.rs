@@ -18,8 +18,8 @@ use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
 use crate::knobs::YoleckKnobMarker;
-use crate::prelude::YoleckEditorState;
-use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged};
+use crate::prelude::{YoleckEditorState, YoleckUi};
+use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged, YoleckRunEditSystemsSystemSet};
 
 pub mod prelude {
     pub use crate::vpeol::{
@@ -66,6 +66,7 @@ impl Plugin for VpeolBasePlugin {
                     .run_if(in_state(YoleckEditorState::EditorActive)),
                 VpeolSystemSet::UpdateCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
                 VpeolSystemSet::HandleCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
+                YoleckRunEditSystemsSystemSet,
             )
                 .chain(), // .run_if(in_state(YoleckEditorState::EditorActive)),
         );
@@ -650,4 +651,51 @@ impl Triangle {
             None
         }
     }
+}
+
+pub fn vpeol_read_click_on_entity<Filter: ReadOnlyWorldQuery>(
+    mut ui: ResMut<YoleckUi>,
+    cameras_query: Query<&VpeolCameraState>,
+    yoleck_managed_query: Query<&YoleckManaged>,
+    filter_query: Query<(), Filter>,
+    buttons: Res<Input<MouseButton>>,
+    mut candidate: Local<Option<Entity>>,
+) -> Option<Entity> {
+    let target = if ui.ctx().is_pointer_over_area() {
+        None
+    } else {
+        cameras_query
+            .iter()
+            .find_map(|camera_state| Some(camera_state.entity_under_cursor.as_ref()?.0))
+    };
+
+    let Some(target) = target else {
+        ui.label("No Target");
+        return None;
+    };
+
+    let Ok(yoleck_managed) = yoleck_managed_query.get(target) else {
+        ui.label("No Target");
+        return None;
+    };
+
+    if !filter_query.contains(target) {
+        ui.label(format!("Invalid Target ({})", yoleck_managed.type_name));
+        return None;
+    }
+    ui.label(format!(
+        "Targeting {:?} ({})",
+        target, yoleck_managed.type_name
+    ));
+
+    if buttons.just_pressed(MouseButton::Left) {
+        *candidate = Some(target);
+    } else if buttons.just_released(MouseButton::Left) {
+        if let Some(candidate) = candidate.take() {
+            if candidate == target {
+                return Some(target);
+            }
+        }
+    }
+    None
 }
