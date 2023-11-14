@@ -33,6 +33,7 @@ pub struct YoleckEntityType {
     #[allow(clippy::type_complexity)]
     pub(crate) on_init:
         Vec<Box<dyn 'static + Sync + Send + Fn(YoleckEditorState, &mut EntityCommands)>>,
+    pub has_uuid: bool,
 }
 
 impl YoleckEntityType {
@@ -41,6 +42,7 @@ impl YoleckEntityType {
             name: name.to_string(),
             components: Default::default(),
             on_init: Default::default(),
+            has_uuid: false,
         }
     }
 
@@ -89,6 +91,12 @@ impl YoleckEntityType {
                 cmd.insert(bundle_maker());
             }
         }));
+        self
+    }
+
+    /// Annotate that the entity has a UUID
+    pub fn with_uuid(mut self) -> Self {
+        self.has_uuid = true;
         self
     }
 }

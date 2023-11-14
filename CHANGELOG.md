@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - `YoleckEditableLevels` resource (accessible only from edit systems) that
   provides the list of level file names.
+- Entity reference with `YoleckEntityUuid` and `YoleckUuidRegistry`.
 
 ## 0.16.0 - 2023-09-06
 ### Changed

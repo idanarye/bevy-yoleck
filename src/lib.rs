@@ -182,6 +182,7 @@ mod editor;
 mod editor_window;
 mod entity_management;
 mod entity_upgrading;
+mod entity_uuid;
 mod errors;
 pub mod exclusive_systems;
 pub mod knobs;
@@ -212,6 +213,7 @@ pub mod prelude {
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckLoadingCommand, YoleckRawLevel};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
+    pub use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
     pub use crate::knobs::YoleckKnobs;
     pub use crate::level_index::{YoleckLevelIndex, YoleckLevelIndexEntry};
     pub use crate::populating::{YoleckMarking, YoleckPopulate};
@@ -236,6 +238,7 @@ pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::YoleckEditableLevels;
 use self::level_index::YoleckLevelIndex;
 pub use self::populating::{YoleckPopulateContext, YoleckSystemMarker};
+use self::prelude::YoleckUuidRegistry;
 use self::specs_registration::{YoleckComponentHandler, YoleckEntityType};
 use self::util::EditSpecificResources;
 pub use bevy_egui;
@@ -255,6 +258,7 @@ impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
         app.init_resource::<YoleckEntityConstructionSpecs>();
         app.insert_resource(YoleckLoadingCommand::NoCommand);
+        app.insert_resource(YoleckUuidRegistry(Default::default()));
         app.register_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.init_asset::<YoleckRawLevel>();
         app.register_asset_loader(level_index::YoleckLevelIndexLoader);
@@ -457,6 +461,7 @@ impl YoleckExtForApp for App {
             name: entity_type.name.clone(),
             components: component_type_ids,
             on_init: entity_type.on_init,
+            has_uuid: entity_type.has_uuid,
         };
 
         let mut construction_specs = self
@@ -574,6 +579,7 @@ pub(crate) struct YoleckEntityTypeInfo {
     #[allow(clippy::type_complexity)]
     pub(crate) on_init:
         Vec<Box<dyn 'static + Sync + Send + Fn(YoleckEditorState, &mut EntityCommands)>>,
+    pub has_uuid: bool,
 }
 
 #[derive(Default, Resource)]

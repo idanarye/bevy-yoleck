@@ -525,6 +525,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             header: YoleckEntryHeader {
                                 type_name: type_name.clone(),
                                 name: "".to_owned(),
+                                uuid: None,
                             },
                             data: data.clone(),
                         });

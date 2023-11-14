@@ -46,7 +46,7 @@ bevy = { version = "^0.12", default-features = false, features = ["bevy_sprite",
 
 [[example]]
 name = "example2d"
-required-features = ["vpeol_2d", "bevy/png"]
+required-features = ["vpeol_2d", "bevy/png", "bevy/bevy_gizmos"]
 
 [[example]]
 name = "example3d"

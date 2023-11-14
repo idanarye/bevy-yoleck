@@ -5,8 +5,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::sprite::Mesh2dHandle;
+use bevy::utils::Uuid;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
+use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckDirective};
 use serde::{Deserialize, Serialize};
@@ -79,6 +81,7 @@ fn main() {
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
+            .with_uuid()
             .with::<Vpeol2dPosition>()
             .with::<FruitType>()
     });
@@ -103,6 +106,7 @@ fn main() {
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dScale>()
             .with::<TextContent>()
+            .with::<LaserPointer>()
     });
     app.add_yoleck_edit_system(edit_text);
     app.yoleck_populate_schedule_mut()
@@ -135,6 +139,9 @@ fn main() {
     app.add_yoleck_edit_system(edit_triangle);
     app.yoleck_populate_schedule_mut()
         .add_systems(populate_triangle);
+
+    app.add_yoleck_edit_system(edit_laser_pointer);
+    app.add_systems(Update, draw_laser_pointers);
 
     app.add_systems(
         Update,
@@ -560,4 +567,88 @@ fn populate_triangle(
         }
         mesh.set_indices(Some(Indices::U32(indices)));
     });
+}
+
+#[derive(
+    Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Component, YoleckComponent, Debug,
+)]
+struct LaserPointer {
+    target: Option<Uuid>,
+}
+
+fn edit_laser_pointer(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<&mut LaserPointer>,
+    mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
+) {
+    let Ok(laser_pointer) = edit.get_single_mut() else {
+        return;
+    };
+
+    let button = if let Some(target) = laser_pointer.target {
+        ui.button(format!("{:?}", target))
+    } else {
+        ui.button("No Target")
+    };
+    if button.clicked() {
+        exclusive_queue.push_back(pick_laser_pointer_target);
+    }
+}
+
+fn pick_laser_pointer_target(
+    mut edit: YoleckEdit<&mut LaserPointer>,
+    cameras_query: Query<&VpeolCameraState>,
+    ui: ResMut<YoleckUi>,
+    buttons: Res<Input<MouseButton>>,
+    uuid_query: Query<&YoleckEntityUuid>,
+) -> YoleckExclusiveSystemDirective {
+    let Ok(mut laser_pointer) = edit.get_single_mut() else {
+        return YoleckExclusiveSystemDirective::Finished;
+    };
+
+    if ui.ctx().is_pointer_over_area() {
+        return YoleckExclusiveSystemDirective::Listening;
+    }
+
+    let Some(target) = cameras_query
+        .iter()
+        .find_map(|camera_state| Some(camera_state.entity_under_cursor.as_ref()?.0))
+    else {
+        return YoleckExclusiveSystemDirective::Listening;
+    };
+
+    let Ok(uuid) = uuid_query.get(target) else {
+        return YoleckExclusiveSystemDirective::Listening;
+    };
+
+    if buttons.just_released(MouseButton::Left) {
+        laser_pointer.target = Some(**uuid);
+        return YoleckExclusiveSystemDirective::Finished;
+    }
+
+    YoleckExclusiveSystemDirective::Listening
+}
+
+fn draw_laser_pointers(
+    lasers_query: Query<(&LaserPointer, &GlobalTransform)>,
+    uuid_registry: Res<YoleckUuidRegistry>,
+    targets_query: Query<&GlobalTransform>,
+    mut gizmos: Gizmos,
+) {
+    for (laser_pointer, laser_transform) in lasers_query.iter() {
+        let Some(target_entity) = laser_pointer
+            .target
+            .and_then(|uuid| uuid_registry.get(uuid))
+        else {
+            continue;
+        };
+        let Ok(target_transform) = targets_query.get(target_entity) else {
+            continue;
+        };
+        gizmos.line(
+            laser_transform.translation(),
+            target_transform.translation(),
+            Color::GREEN,
+        );
+    }
 }

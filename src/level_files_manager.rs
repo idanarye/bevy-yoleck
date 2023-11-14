@@ -12,7 +12,7 @@ use crate::exclusive_systems::YoleckActiveExclusiveSystem;
 use crate::knobs::YoleckKnobsCache;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
-use crate::prelude::YoleckEditorState;
+use crate::prelude::{YoleckEditorState, YoleckEntityUuid};
 use crate::{
     YoleckBelongsToLevel, YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelIndex,
     YoleckLoadingCommand, YoleckManaged, YoleckRawLevel, YoleckState,
@@ -45,7 +45,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<YoleckEditorLevelsDirectoryPath>,
         ResMut<YoleckEditableLevels>,
         Res<YoleckEntityConstructionSpecs>,
-        Query<&YoleckManaged>,
+        Query<(&YoleckManaged, Option<&YoleckEntityUuid>)>,
         Query<Entity, With<YoleckBelongsToLevel>>,
         Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
@@ -100,10 +100,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             YoleckRawLevel::new(app_format_version, {
                 yoleck_managed_query
                     .iter()
-                    .map(|yoleck_managed| YoleckRawEntry {
+                    .map(|(yoleck_managed, entity_uuid)| YoleckRawEntry {
                         header: YoleckEntryHeader {
                             type_name: yoleck_managed.type_name.clone(),
                             name: yoleck_managed.name.clone(),
+                            uuid: entity_uuid.map(|entity_uuid| **entity_uuid),
                         },
                         data: {
                             if let Some(entity_type_info) =

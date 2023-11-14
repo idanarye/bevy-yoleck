@@ -2,7 +2,7 @@ use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::{TypePath, TypeUuid};
-use bevy::utils::{BoxedFuture, HashMap};
+use bevy::utils::{BoxedFuture, HashMap, Uuid};
 use serde::{Deserialize, Serialize};
 
 use crate::editor::YoleckEditorState;
@@ -10,6 +10,7 @@ use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::errors::YoleckAssetLoaderError;
 use crate::level_files_upgrading::upgrade_level_file;
 use crate::populating::PopulateReason;
+use crate::prelude::{YoleckEntityUuid, YoleckUuidRegistry};
 use crate::{
     YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus,
     YoleckManaged, YoleckSchedule, YoleckState,
@@ -25,6 +26,13 @@ pub struct YoleckEntryHeader {
     /// This is for level editors' convenience only - it will not be used in the games.
     #[serde(default)]
     pub name: String,
+
+    /// A persistable way to identify the specific entity.
+    ///
+    /// Will be set automatically if the entity type was defined with
+    /// [`with_uuid`](crate::YoleckEntityType::with_uuid).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub uuid: Option<Uuid>,
 }
 
 /// An entry for a Yoleck entity, as it appears in level files.
@@ -59,6 +67,7 @@ pub(crate) fn yoleck_process_raw_entries(
     mut commands: Commands,
     mut raw_entries_query: Query<(Entity, &mut YoleckRawEntry)>,
     construction_specs: Res<YoleckEntityConstructionSpecs>,
+    mut uuid_registry: ResMut<YoleckUuidRegistry>,
 ) {
     let mut entities_by_type = HashMap::<String, Vec<Entity>>::new();
     for (entity, mut raw_entry) in raw_entries_query.iter_mut() {
@@ -74,6 +83,11 @@ pub(crate) fn yoleck_process_raw_entries(
         if let Some(entity_type_info) =
             construction_specs.get_entity_type_info(&raw_entry.header.type_name)
         {
+            if entity_type_info.has_uuid {
+                let uuid = raw_entry.header.uuid.unwrap_or_else(Uuid::new_v4);
+                cmd.insert(YoleckEntityUuid(uuid));
+                uuid_registry.0.insert(uuid, cmd.id());
+            }
             for component_name in entity_type_info.components.iter() {
                 let Some(handler) = construction_specs.component_handlers.get(component_name)
                 else {
