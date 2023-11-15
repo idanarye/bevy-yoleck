@@ -104,7 +104,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                         header: YoleckEntryHeader {
                             type_name: yoleck_managed.type_name.clone(),
                             name: yoleck_managed.name.clone(),
-                            uuid: entity_uuid.map(|entity_uuid| **entity_uuid),
+                            uuid: entity_uuid.map(|entity_uuid| entity_uuid.get()),
                         },
                         data: {
                             if let Some(entity_type_info) =

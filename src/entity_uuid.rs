@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use bevy::utils::{HashMap, Uuid};
 
-#[derive(Component, Deref, Debug)]
+#[derive(Component, Debug)]
 pub struct YoleckEntityUuid(pub(crate) Uuid);
 
 impl YoleckEntityUuid {
