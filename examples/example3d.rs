@@ -1,11 +1,13 @@
 use std::path::Path;
 
 use bevy::prelude::*;
+use bevy::utils::Uuid;
 use bevy_egui::EguiPlugin;
 
-use bevy_yoleck::prelude::*;
-use bevy_yoleck::vpeol::prelude::*;
-// use serde::{Deserialize, Serialize};
+use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
+use bevy_yoleck::vpeol::{prelude::*, vpeol_read_click_on_entity};
+use bevy_yoleck::{prelude::*, yoleck_exclusive_system_cancellable, yoleck_map_entity_to_uuid};
+use serde::{Deserialize, Serialize};
 
 fn main() {
     let mut app = App::new();
@@ -66,6 +68,7 @@ fn main() {
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Planet")
+            .with_uuid()
             .with::<Vpeol3dPosition>()
             .insert_on_init(|| IsPlanet)
             .insert_on_init_during_editor(|| VpeolDragPlane::XY)
@@ -76,6 +79,23 @@ fn main() {
     });
     app.yoleck_populate_schedule_mut()
         .add_systems(populate_planet);
+
+    app.add_yoleck_entity_type({
+        YoleckEntityType::new("PlanetPointer")
+            .with::<Vpeol3dPosition>()
+            .with::<LaserPointer>()
+            .insert_on_init(|| SimpleSphere)
+            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
+                knob_distance: 2.0,
+                knob_scale: 0.5,
+            })
+    });
+
+    app.yoleck_populate_schedule_mut()
+        .add_systems(populate_simple_sphere);
+
+    app.add_yoleck_edit_system(edit_laser_pointer);
+    app.add_systems(Update, draw_laser_pointers);
 
     app.add_systems(
         Update,
@@ -201,5 +221,113 @@ fn hit_planets(
                 commands.entity(planet_entity).despawn_recursive();
             }
         }
+    }
+}
+
+#[derive(Component)]
+struct SimpleSphere;
+
+fn populate_simple_sphere(
+    mut populate: YoleckPopulate<(), With<SimpleSphere>>,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut mesh: Local<Option<Handle<Mesh>>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+    mut material: Local<Option<Handle<StandardMaterial>>>,
+) {
+    populate.populate(|ctx, mut cmd, ()| {
+        if ctx.is_first_time() {
+            let mesh = mesh
+                .get_or_insert_with(|| {
+                    mesh_assets.add(Mesh::from(shape::UVSphere {
+                        radius: 1.0,
+                        sectors: 10,
+                        stacks: 10,
+                    }))
+                })
+                .clone();
+            let material = material
+                .get_or_insert_with(|| material_assets.add(Color::YELLOW.into()))
+                .clone();
+            cmd.insert(PbrBundle {
+                mesh,
+                material,
+                ..Default::default()
+            });
+        }
+    });
+}
+
+#[derive(
+    Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Component, YoleckComponent, Debug,
+)]
+struct LaserPointer {
+    target: Option<Uuid>,
+}
+
+fn edit_laser_pointer(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<&mut LaserPointer>,
+    mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
+) {
+    let Ok(mut laser_pointer) = edit.get_single_mut() else {
+        return;
+    };
+
+    ui.horizontal(|ui| {
+        let button = if let Some(target) = laser_pointer.target {
+            ui.button(format!("Target: {:?}", target))
+        } else {
+            ui.button("No Target")
+        };
+        if button.clicked() {
+            exclusive_queue.push_back(
+                vpeol_read_click_on_entity::<&YoleckEntityUuid>
+                    .pipe(yoleck_map_entity_to_uuid)
+                    .pipe(
+                        |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
+                            let Ok(mut laser_pointer) = edit.get_single_mut() else {
+                                return YoleckExclusiveSystemDirective::Finished;
+                            };
+
+                            if let Some(target) = target {
+                                laser_pointer.target = Some(target);
+                                YoleckExclusiveSystemDirective::Finished
+                            } else {
+                                YoleckExclusiveSystemDirective::Listening
+                            }
+                        },
+                    )
+                    .pipe(yoleck_exclusive_system_cancellable),
+            );
+        }
+        if laser_pointer.target.is_some() {
+            if ui.button("Clear").clicked() {
+                laser_pointer.target = None;
+            }
+        }
+    });
+}
+
+fn draw_laser_pointers(
+    lasers_query: Query<(&LaserPointer, &GlobalTransform)>,
+    uuid_registry: Res<YoleckUuidRegistry>,
+    targets_query: Query<&GlobalTransform>,
+    mut gizmos: Gizmos,
+) {
+    for (laser_pointer, laser_transform) in lasers_query.iter() {
+        let Some(target_entity) = laser_pointer
+            .target
+            .and_then(|uuid| uuid_registry.get(uuid))
+        else {
+            continue;
+        };
+        let Ok(target_transform) = targets_query.get(target_entity) else {
+            continue;
+        };
+        gizmos.line(
+            laser_transform.translation(),
+            target_transform.translation(),
+            Color::GREEN,
+        );
     }
 }

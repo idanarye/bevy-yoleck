@@ -57,6 +57,7 @@ required-features = [
     "bevy/ktx2",
     "bevy/zstd",
     "bevy/tonemapping_luts",
+    "bevy/bevy_gizmos",
 ]
 
 [package.metadata.docs.rs]
