@@ -22,11 +22,10 @@ fn main() {
         app.add_plugins(YoleckPluginForGame);
         app.add_systems(
             Startup,
-            move |asset_server: Res<AssetServer>,
-                  mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
-                *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
+            move |asset_server: Res<AssetServer>, mut commands: Commands| {
+                commands.spawn(YoleckLoadLevel(
                     asset_server.load(Path::new("levels3d").join(&level)),
-                );
+                ));
             },
         );
         app.add_plugins(Vpeol3dPluginForGame);
@@ -44,10 +43,8 @@ fn main() {
         #[cfg(target_arch = "wasm32")]
         app.add_systems(
             Startup,
-            |asset_server: Res<AssetServer>,
-             mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
-                *yoleck_loading_command =
-                    YoleckLoadingCommand::FromAsset(asset_server.load("levels3d/example.yol"));
+            |asset_server: Res<AssetServer>, mut commands: Commands| {
+                commands.spawn(YoleckLoadLevel(asset_server.load("levels3d/example.yol")));
             },
         );
     }

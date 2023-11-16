@@ -28,11 +28,10 @@ fn main() {
         app.add_plugins(YoleckPluginForGame);
         app.add_systems(
             Startup,
-            move |asset_server: Res<AssetServer>,
-                  mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
-                *yoleck_loading_command = YoleckLoadingCommand::FromAsset(
+            move |asset_server: Res<AssetServer>, mut commands: Commands| {
+                commands.spawn(YoleckLoadLevel(
                     asset_server.load(Path::new("levels2d").join(&level)),
-                );
+                ));
             },
         );
         app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
@@ -50,10 +49,8 @@ fn main() {
         #[cfg(target_arch = "wasm32")]
         app.add_systems(
             Startup,
-            |asset_server: Res<AssetServer>,
-             mut yoleck_loading_command: ResMut<YoleckLoadingCommand>| {
-                *yoleck_loading_command =
-                    YoleckLoadingCommand::FromAsset(asset_server.load("levels2d/example.yol"));
+            |asset_server: Res<AssetServer>, mut commands: Commands| {
+                commands.spawn(YoleckLoadLevel(asset_server.load("levels2d/example.yol")));
             },
         );
     }
@@ -307,16 +304,18 @@ struct FruitType {
 
 fn duplicate_fruit(
     mut ui: ResMut<YoleckUi>,
-    edit: YoleckEdit<(&FruitType, &Vpeol2dPosition)>,
+    edit: YoleckEdit<(&YoleckBelongsToLevel, &FruitType, &Vpeol2dPosition)>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((fruit_type, Vpeol2dPosition(position))) = edit.get_single() else {
+    let Ok((belongs_to_level, fruit_type, Vpeol2dPosition(position))) = edit.get_single() else {
         return;
     };
     if ui.button("Duplicate").clicked() {
         writer.send(
             YoleckDirective::spawn_entity(
-                "Fruit", true, // select_created_entity
+                belongs_to_level.level,
+                "Fruit",
+                true, // select_created_entity
             )
             .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
             .with(FruitType {

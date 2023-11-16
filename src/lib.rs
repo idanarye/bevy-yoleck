@@ -51,7 +51,10 @@
 //! * If the application starts in game mode:
 //!   * Add the [`YoleckPluginForGame`] plugin.
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
-//!   * Use [`YoleckLoadingCommand`] to load the level.
+//!   * Spawn an entity with the [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) component
+//!     to load the level. Note that the level can be unloaded by despawning that entity or by
+//!     removing the [`YoleckKeepLevel`](entity_management::YoleckKeepLevel) component that will
+//!     automatically be added to it.
 //!
 //! To support picking and moving entities in the viewport with the mouse, check out the
 //! [`vpeol_2d`] and [`vpeol_3d`] modules. After adding the appropriate feature flag
@@ -154,7 +157,7 @@
 //!     mut level_index_handle: Local<Option<Handle<YoleckLevelIndex>>>,
 //!     asset_server: Res<AssetServer>,
 //!     level_index_assets: Res<Assets<YoleckLevelIndex>>,
-//!     mut loading_command: ResMut<YoleckLoadingCommand>,
+//!     mut commands: Commands,
 //!     mut game_state: ResMut<NextState<GameState>>,
 //! ) {
 //!     // Keep the handle in local resource, so that Bevy will not unload the level index asset
@@ -172,7 +175,7 @@
 //!     // taking the first level and loading it.
 //!     let level_handle: Handle<YoleckRawLevel> =
 //!         asset_server.load(&format!("levels/{}", level_index[0].filename));
-//!     *loading_command = YoleckLoadingCommand::FromAsset(level_handle);
+//!     commands.spawn(YoleckLoadLevel(level_handle));
 //!     game_state.set(GameState::Game);
 //! }
 //! ```
@@ -212,7 +215,7 @@ use bevy::utils::HashMap;
 pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
-    pub use crate::entity_management::{YoleckLoadingCommand, YoleckRawLevel};
+    pub use crate::entity_management::{YoleckKeepLevel, YoleckLoadLevel, YoleckRawLevel};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
     pub use crate::knobs::YoleckKnobs;
@@ -232,7 +235,7 @@ use self::editor::YoleckEditorState;
 pub use self::editor_window::YoleckEditorSection;
 pub use self::picking_helpers::*;
 
-use self::entity_management::{EntitiesToPopulate, YoleckLoadingCommand, YoleckRawLevel};
+use self::entity_management::{EntitiesToPopulate, YoleckRawLevel};
 use self::entity_upgrading::YoleckEntityUpgrading;
 use self::exclusive_systems::YoleckExclusiveSystemsPlugin;
 use self::knobs::YoleckKnobsCache;
@@ -240,7 +243,7 @@ pub use self::level_files_manager::YoleckEditorLevelsDirectoryPath;
 pub use self::level_index::YoleckEditableLevels;
 use self::level_index::YoleckLevelIndex;
 pub use self::populating::{YoleckPopulateContext, YoleckSystemMarker};
-use self::prelude::YoleckUuidRegistry;
+use self::prelude::{YoleckKeepLevel, YoleckUuidRegistry};
 use self::specs_registration::{YoleckComponentHandler, YoleckEntityType};
 use self::util::EditSpecificResources;
 pub use bevy_egui;
@@ -262,7 +265,6 @@ pub(crate) struct YoleckRunEditSystemsSystemSet;
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
         app.init_resource::<YoleckEntityConstructionSpecs>();
-        app.insert_resource(YoleckLoadingCommand::NoCommand);
         app.insert_resource(YoleckUuidRegistry(Default::default()));
         app.register_asset_loader(entity_management::YoleckLevelAssetLoader);
         app.init_asset::<YoleckRawLevel>();
@@ -301,7 +303,13 @@ impl Plugin for YoleckPluginBase {
                 .chain()
                 .in_set(YoleckSystemSet::RunPopulateSchedule),
         );
-        app.add_systems(Update, entity_management::yoleck_process_loading_command);
+        app.add_systems(
+            Update,
+            (
+                entity_management::process_loading_command,
+                entity_management::process_unloading_command,
+            ),
+        );
         app.add_schedule(Schedule::new(YoleckSchedule::Populate));
         app.add_schedule(Schedule::new(YoleckSchedule::OverrideCommonComponents));
     }
@@ -328,7 +336,9 @@ impl Plugin for YoleckPluginForEditor {
         app.add_plugins(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
         app.insert_resource(YoleckKnobsCache::default());
+        let level_being_edited = app.world.spawn(YoleckKeepLevel).id();
         app.insert_resource(YoleckState {
+            level_being_edited,
             level_needs_saving: false,
         });
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
@@ -548,17 +558,21 @@ pub struct YoleckManaged {
 /// A marker for entities that belongs to the Yoleck level and should be despawned with it.
 ///
 /// Yoleck already adds this automatically to entities created from the editor. The game itself
-/// should this to entities created during gameplay, like bullets or spawned enemeis, so that
+/// should add this to entities created during gameplay, like bullets or spawned enemeis, so that
 /// they'll be despawned when a playtest is finished or restarted.
 ///
-/// When despawning a level as part of the game's flow (e.g. - before loading the next level), use
-/// this marker to decide which entities to `despawn_recursive`.
+/// When removing a [`YoleckKeepLevel`](entity_management::YoleckKeepLevel) from entity (or
+/// removing the entire entity), Yoleck will automatically despawn all the entities that have this
+/// component and point to that level.
 ///
 /// There is no need to add this to child entities of entities that already has this marker,
-/// because Yoleck will use `despawn_recursive` internally and so should actual games when
-/// despawning these entities.
+/// because Yoleck will use `despawn_recursive` when despawning these entities.
 #[derive(Component)]
-pub struct YoleckBelongsToLevel;
+pub struct YoleckBelongsToLevel {
+    /// The entity which was used with [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) to
+    /// load the level that this entity belongs to.
+    pub level: Entity,
+}
 
 pub enum YoleckEntityLifecycleStatus {
     Synchronized,
@@ -607,6 +621,7 @@ impl YoleckEntityConstructionSpecs {
 /// Fields of the Yoleck editor.
 #[derive(Resource)]
 pub(crate) struct YoleckState {
+    level_being_edited: Entity,
     level_needs_saving: bool,
 }
 

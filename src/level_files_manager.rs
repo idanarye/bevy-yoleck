@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_egui::egui;
 
-use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+use crate::entity_management::{
+    YoleckEntryHeader, YoleckKeepLevel, YoleckLoadLevel, YoleckRawEntry,
+};
 use crate::entity_upgrading::YoleckEntityUpgrading;
 use crate::exclusive_systems::YoleckActiveExclusiveSystem;
 use crate::knobs::YoleckKnobsCache;
@@ -14,8 +16,8 @@ use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::prelude::{YoleckEditorState, YoleckEntityUuid};
 use crate::{
-    YoleckBelongsToLevel, YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelIndex,
-    YoleckLoadingCommand, YoleckManaged, YoleckRawLevel, YoleckState,
+    YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelIndex, YoleckManaged,
+    YoleckRawLevel, YoleckState,
 };
 
 const EXTENSION: &str = ".yol";
@@ -46,12 +48,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ResMut<YoleckEditableLevels>,
         Res<YoleckEntityConstructionSpecs>,
         Query<(&YoleckManaged, Option<&YoleckEntityUuid>)>,
-        Query<Entity, With<YoleckBelongsToLevel>>,
+        Query<Entity, With<YoleckKeepLevel>>,
         Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
         ResMut<Assets<YoleckRawLevel>>,
-        ResMut<YoleckLoadingCommand>,
         Option<Res<YoleckEntityUpgrading>>,
         Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
@@ -77,12 +78,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
             mut editable_levels,
             construction_specs,
             yoleck_managed_query,
-            belongs_to_level_query,
+            keep_levels_query,
             editor_state,
             mut next_editor_state,
             mut knobs_cache,
             mut level_assets,
-            mut loading_command,
             entity_upgrading,
             active_exclusive_system,
         ) = system_state.get_mut(world);
@@ -137,8 +137,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         };
 
         let mut clear_level = |commands: &mut Commands| {
-            for entity in belongs_to_level_query.iter() {
-                commands.entity(entity).despawn_recursive();
+            for level_entity in keep_levels_query.iter() {
+                commands.entity(level_entity).despawn_recursive();
             }
             for knob_entity in knobs_cache.drain() {
                 commands.entity(knob_entity).despawn_recursive();
@@ -151,13 +151,15 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 if ui.button("Restart Playtest").clicked() {
                     clear_level(&mut commands);
                     let level_asset_handle = level_assets.add(level.clone());
-                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
+                    yoleck.level_being_edited =
+                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::EditorActive);
                     let level_asset_handle = level_assets.add(level.clone());
-                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
+                    yoleck.level_being_edited =
+                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
                     level_being_playtested = None;
                 }
             } else {
@@ -167,7 +169,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::GameActive);
                     let level_asset_handle = level_assets.add(level.clone());
-                    *loading_command = YoleckLoadingCommand::FromAsset(level_asset_handle);
+                    yoleck.level_being_edited =
+                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
                     level_being_playtested = Some(level);
                 }
             }
@@ -296,6 +299,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             {
                                                 swap_with_previous = Some(index + 1);
                                             }
+                                            let yoleck = yoleck.as_mut();
                                             let mut load_level = || {
                                                 clear_level(&mut commands);
                                                 let fd = fs::File::open(
@@ -310,10 +314,11 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                             serde_json::from_value(level).unwrap();
                                                         let level_asset_handle =
                                                             level_assets.add(level);
-                                                        *loading_command =
-                                                            YoleckLoadingCommand::FromAsset(
+                                                        yoleck.level_being_edited = commands
+                                                            .spawn(YoleckLoadLevel(
                                                                 level_asset_handle,
-                                                            );
+                                                            ))
+                                                            .id();
                                                     }
                                                     Err(err) => {
                                                         warn!(
@@ -411,6 +416,8 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             clear_level(&mut commands);
                                             selected_level_file =
                                                 SelectedLevelFile::Unsaved(String::new());
+                                            yoleck.level_being_edited =
+                                                commands.spawn(YoleckKeepLevel).id();
                                         }
                                     }
                                 }

@@ -25,7 +25,7 @@ pub struct YoleckLevelIndexEntry {
 ///     mut level_index_handle: Local<Option<Handle<YoleckLevelIndex>>>,
 ///     asset_server: Res<AssetServer>,
 ///     level_index_assets: Res<Assets<YoleckLevelIndex>>,
-///     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+///     mut commands: Commands,
 /// ) {
 ///     # let level_number: usize = todo!();
 ///     // Keep the handle in local resource, so that Bevy will not unload the level index asset
@@ -41,7 +41,7 @@ pub struct YoleckLevelIndexEntry {
 ///     };
 ///     let level_to_load = level_index[level_number];
 ///     let level_handle: Handle<YoleckRawLevel> = asset_server.load(&format!("levels/{}", level_to_load.filename));
-///     *yoleck_loading_command = YoleckLoadingCommand::FromAsset(level_handle);
+///     commands.spawn(YoleckLoadLevel(level_handle));
 /// }
 /// ```
 #[derive(Asset, TypeUuid, TypePath, Debug, Serialize, Deserialize)]

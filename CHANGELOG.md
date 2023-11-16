@@ -6,15 +6,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Removed
-- [**BREAKING**] `YoleckLoadingCommand::FromData` is removed. If it is
-  necessary to load a level from memory, add it to
-  `ResMut<Assets<YoleckRawLevel>>` first and pass the handle to
-  `YoleckLoadingCommand::FromAsset`.
+- [**BREAKING**] The `YoleckLoadingCommand` resource is removed, in favor of a `YoleckLoadLevel` component.
+  - Note that unlike `YoleckLoadingCommand` that had could load the level from
+    either an asset or a value, `YoleckLoadLevel` can only load from an asset.
+    If it is necessary to load a level from memory, add it to
+    `ResMut<Assets<YoleckRawLevel>>` first and pass the handle to
+    `YoleckLoadLevel`.
 
 ### Added
 - `YoleckEditableLevels` resource (accessible only from edit systems) that
   provides the list of level file names.
 - Entity reference with `YoleckEntityUuid` and `YoleckUuidRegistry`.
+- Load multiple levels with `YoleckLoadLevel` (which is a component, that can
+  be placed on multiple entities)
+- Unload levels by removing the `YoleckKeepLevel` component from the entity
+  that was used to load the level - or by despawning that entity entirely.
+
+### Change
+- `YoleckBelongsToLevel` now points to a level entity.
+- `YoleckDirective::spawn_entity` needs to know which level entity to create
+  the component on.
 
 ## 0.16.0 - 2023-09-06
 ### Changed

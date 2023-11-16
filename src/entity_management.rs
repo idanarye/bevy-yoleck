@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::prelude::*;
@@ -65,7 +67,7 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
 pub(crate) fn yoleck_process_raw_entries(
     editor_state: Res<State<YoleckEditorState>>,
     mut commands: Commands,
-    mut raw_entries_query: Query<(Entity, &mut YoleckRawEntry)>,
+    mut raw_entries_query: Query<(Entity, &mut YoleckRawEntry), With<YoleckBelongsToLevel>>,
     construction_specs: Res<YoleckEntityConstructionSpecs>,
     mut uuid_registry: ResMut<YoleckUuidRegistry>,
 ) {
@@ -113,7 +115,6 @@ pub(crate) fn yoleck_process_raw_entries(
             lifecycle_status: YoleckEntityLifecycleStatus::JustCreated,
             components_data,
         });
-        cmd.insert(YoleckBelongsToLevel);
     }
 }
 
@@ -159,49 +160,72 @@ pub(crate) fn yoleck_run_populate_schedule(world: &mut World) {
 #[derive(Resource)]
 pub(crate) struct EntitiesToPopulate(pub Vec<(Entity, PopulateReason)>);
 
-pub(crate) fn yoleck_process_loading_command(
-    mut commands: Commands,
-    mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+pub(crate) fn process_loading_command(
+    query: Query<(Entity, &YoleckLoadLevel)>,
     mut raw_levels_assets: ResMut<Assets<YoleckRawLevel>>,
     entity_upgrading: Option<Res<YoleckEntityUpgrading>>,
+    mut commands: Commands,
 ) {
-    match core::mem::replace(
-        yoleck_loading_command.as_mut(),
-        YoleckLoadingCommand::NoCommand,
-    ) {
-        YoleckLoadingCommand::NoCommand => {}
-        YoleckLoadingCommand::FromAsset(handle) => {
-            if let Some(level) = raw_levels_assets.get_mut(&handle) {
-                if let Some(entity_upgrading) = entity_upgrading {
-                    entity_upgrading.upgrade_raw_level_file(level);
-                }
-                for entry in level.entries() {
-                    commands.spawn(entry.clone());
-                }
-            } else {
-                // Restore the loading command so that it can be re-chekced in the next frame.
-                *yoleck_loading_command = YoleckLoadingCommand::FromAsset(handle);
+    for (level_entity, load_level) in query.iter() {
+        if let Some(raw_level) = raw_levels_assets.get_mut(&load_level.0) {
+            if let Some(entity_upgrading) = &entity_upgrading {
+                entity_upgrading.upgrade_raw_level_file(raw_level);
+            }
+            commands
+                .entity(level_entity)
+                .remove::<YoleckLoadLevel>()
+                .insert(YoleckKeepLevel);
+            for entry in raw_level.entries() {
+                commands.spawn((
+                    entry.clone(),
+                    YoleckBelongsToLevel {
+                        level: level_entity,
+                    },
+                ));
             }
         }
     }
 }
 
-/// Command Yoleck to load a level, represented as an asset to an handle.
+pub(crate) fn process_unloading_command(
+    mut removed_levels: RemovedComponents<YoleckKeepLevel>,
+    level_owned_entities_query: Query<(Entity, &YoleckBelongsToLevel)>,
+    mut commands: Commands,
+) {
+    if removed_levels.is_empty() {
+        return;
+    }
+    let removed_levels: BTreeSet<Entity> = removed_levels.read().collect();
+    for (entity, belongs_to_level) in level_owned_entities_query.iter() {
+        if removed_levels.contains(&belongs_to_level.level) {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+/// Command Yoleck to load a level.
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
 /// # use bevy_yoleck::prelude::*;
 /// fn level_loading_system(
 ///     asset_server: Res<AssetServer>,
-///     mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+///     mut commands: Commands,
 /// ) {
-///     *yoleck_loading_command = YoleckLoadingCommand::FromAsset(asset_server.load("levels/level1.yol"));
+///     commands.spawn(YoleckLoadLevel(asset_server.load("levels/level1.yol")));
 /// }
-#[derive(Resource)]
-pub enum YoleckLoadingCommand {
-    NoCommand,
-    FromAsset(Handle<YoleckRawLevel>),
-}
+/// ```
+///
+/// After the level is loaded, `YoleckLoadLevel` will be removed and [`YoleckKeepLevel`] will be
+/// added instead. To unload the level, either remove `YoleckKeepLevel` or despawn the entire level
+/// entity.
+///
+/// Note that the entities inside the level will _not_ be children of the level entity.
+#[derive(Component)]
+pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
+
+#[derive(Component)]
+pub struct YoleckKeepLevel;
 
 pub(crate) struct YoleckLevelAssetLoader;
 

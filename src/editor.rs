@@ -14,8 +14,8 @@ use crate::exclusive_systems::{
 use crate::knobs::YoleckKnobsCache;
 use crate::prelude::{YoleckComponent, YoleckUi};
 use crate::{
-    BoxedArc, YoleckEditMarker, YoleckEditSystems, YoleckEntityConstructionSpecs,
-    YoleckInternalSchedule, YoleckManaged, YoleckState,
+    BoxedArc, YoleckBelongsToLevel, YoleckEditMarker, YoleckEditSystems,
+    YoleckEntityConstructionSpecs, YoleckInternalSchedule, YoleckManaged, YoleckState,
 };
 
 /// Whether or not the Yoleck editor is active.
@@ -116,6 +116,7 @@ enum YoleckDirectiveInner {
     },
     PassToEntity(Entity, TypeId, BoxedArc),
     SpawnEntity {
+        level: Entity,
         type_name: String,
         data: serde_json::Value,
         select_created_entity: bool,
@@ -187,10 +188,12 @@ impl YoleckDirective {
     /// }
     /// ```
     pub fn spawn_entity(
+        level: Entity,
         type_name: impl ToString,
         select_created_entity: bool,
     ) -> SpawnEntityBuilder {
         SpawnEntityBuilder {
+            level,
             type_name: type_name.to_string(),
             select_created_entity,
             data: Default::default(),
@@ -200,6 +203,7 @@ impl YoleckDirective {
 }
 
 pub struct SpawnEntityBuilder {
+    level: Entity,
     type_name: String,
     select_created_entity: bool,
     data: HashMap<&'static str, serde_json::Value>,
@@ -230,6 +234,7 @@ impl SpawnEntityBuilder {
 impl From<SpawnEntityBuilder> for YoleckDirective {
     fn from(value: SpawnEntityBuilder) -> Self {
         YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+            level: value.level,
             type_name: value.type_name,
             data: serde_json::to_value(value.data).expect("should always work"),
             select_created_entity: value.select_created_entity,
@@ -290,13 +295,14 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
     let mut system_state = SystemState::<(
         Res<YoleckEntityConstructionSpecs>,
+        Res<YoleckState>,
         Res<State<YoleckEditorState>>,
         EventWriter<YoleckDirective>,
         Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
     move |world, ui| {
-        let (construction_specs, editor_state, mut writer, active_exclusive_system) =
+        let (construction_specs, yoleck, editor_state, mut writer, active_exclusive_system) =
             system_state.get_mut(world);
         if active_exclusive_system.is_some() {
             return;
@@ -316,6 +322,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
             for entity_type in construction_specs.entity_types.iter() {
                 if ui.button(&entity_type.name).clicked() {
                     writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                        level: yoleck.level_being_edited,
                         type_name: entity_type.name.clone(),
                         data: serde_json::Value::Object(Default::default()),
                         select_created_entity: true,
@@ -513,6 +520,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         }
                     }
                     YoleckDirectiveInner::SpawnEntity {
+                        level,
                         type_name,
                         data,
                         select_created_entity,
@@ -521,14 +529,17 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         if active_exclusive_system.is_some() {
                             continue;
                         }
-                        let mut cmd = commands.spawn(YoleckRawEntry {
-                            header: YoleckEntryHeader {
-                                type_name: type_name.clone(),
-                                name: "".to_owned(),
-                                uuid: None,
+                        let mut cmd = commands.spawn((
+                            YoleckRawEntry {
+                                header: YoleckEntryHeader {
+                                    type_name: type_name.clone(),
+                                    name: "".to_owned(),
+                                    uuid: None,
+                                },
+                                data: data.clone(),
                             },
-                            data: data.clone(),
-                        });
+                            YoleckBelongsToLevel { level: *level },
+                        ));
                         if *select_created_entity {
                             writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
                             cmd.insert(YoleckEditMarker);
