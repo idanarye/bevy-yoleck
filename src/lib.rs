@@ -53,8 +53,7 @@
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
 //!   * Spawn an entity with the [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) component
 //!     to load the level. Note that the level can be unloaded by despawning that entity or by
-//!     removing the [`YoleckKeepLevel`](entity_management::YoleckKeepLevel) component that will
-//!     automatically be added to it.
+//!     removing the [`YoleckKeepLevel`] component that will automatically be added to it.
 //!
 //! To support picking and moving entities in the viewport with the mouse, check out the
 //! [`vpeol_2d`] and [`vpeol_3d`] modules. After adding the appropriate feature flag
@@ -561,9 +560,8 @@ pub struct YoleckManaged {
 /// should add this to entities created during gameplay, like bullets or spawned enemeis, so that
 /// they'll be despawned when a playtest is finished or restarted.
 ///
-/// When removing a [`YoleckKeepLevel`](entity_management::YoleckKeepLevel) from entity (or
-/// removing the entire entity), Yoleck will automatically despawn all the entities that have this
-/// component and point to that level.
+/// When removing a [`YoleckKeepLevel`] from entity (or removing the entire entity), Yoleck will
+/// automatically despawn all the entities that have this component and point to that level.
 ///
 /// There is no need to add this to child entities of entities that already has this marker,
 /// because Yoleck will use `despawn_recursive` when despawning these entities.

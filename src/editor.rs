@@ -169,13 +169,14 @@ impl YoleckDirective {
     /// # struct Example;
     /// fn duplicate_example(
     ///     mut ui: ResMut<YoleckUi>,
-    ///     mut edit: YoleckEdit<&Vpeol2dPosition, With<Example>>,
+    ///     mut edit: YoleckEdit<(&YoleckBelongsToLevel, &Vpeol2dPosition), With<Example>>,
     ///     mut writer: EventWriter<YoleckDirective>,
     /// ) {
-    ///     let Ok(position) = edit.get_single() else { return };
+    ///     let Ok((belongs_to_level, position)) = edit.get_single() else { return };
     ///     if ui.button("Duplicate").clicked() {
     ///         writer.send(
     ///             YoleckDirective::spawn_entity(
+    ///                 belongs_to_level.level,
     ///                 "Example",
     ///                 // Automatically select the newly created entity:
     ///                 true,
