@@ -224,6 +224,12 @@ pub(crate) fn process_unloading_command(
 #[derive(Component)]
 pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
 
+/// Marks an entity that represents a level. Its removal will unload the level.
+///
+/// This component is created automatically on entities that use [`YoleckLoadLevel`] when the level
+/// is loaded.
+///
+/// To unload the level, either despawn the entity or remove this component from it.
 #[derive(Component)]
 pub struct YoleckKeepLevel;
 
