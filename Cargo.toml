@@ -60,6 +60,10 @@ required-features = [
     "bevy/bevy_gizmos",
 ]
 
+[[example3d]]
+name = "doors_to_other_levels"
+required-features = ["vpeol_2d", "bevy/png"]
+
 [package.metadata.docs.rs]
 
 all-features = true

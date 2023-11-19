@@ -1,7 +1,13 @@
 /target
+
 assets/levels2d/*.yol
 assets/levels2d/*.yoli
 !assets/levels2d/example.yol
+
 assets/levels3d/*.yol
 assets/levels3d/*.yoli
 !assets/levels3d/example.yol
+
+assets/levels_doors/*.yol
+assets/levels_doors/*.yoli
+!assets/levels_doors/example.yol
