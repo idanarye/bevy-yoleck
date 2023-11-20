@@ -1,7 +1,11 @@
 /target
+
 assets/levels2d/*.yol
 assets/levels2d/*.yoli
 !assets/levels2d/example.yol
+
 assets/levels3d/*.yol
 assets/levels3d/*.yoli
 !assets/levels3d/example.yol
+
+# No ignored level files in levels_doors
