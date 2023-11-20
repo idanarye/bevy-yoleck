@@ -290,6 +290,7 @@ impl Plugin for YoleckPluginBase {
                     entity_management::yoleck_remove_just_loaded_marker_from_levels,
                     apply_deferred,
                 )
+                    .chain()
                     .run_if(
                         |freshly_loaded_level_entities: Query<
                             (),
@@ -317,7 +318,9 @@ impl Plugin for YoleckPluginBase {
         app.add_systems(
             Update,
             (
-                entity_management::process_loading_command,
+                (entity_management::process_loading_command, apply_deferred)
+                    .chain()
+                    .before(YoleckSystemSet::ProcessRawEntities),
                 entity_management::process_unloading_command,
             ),
         );

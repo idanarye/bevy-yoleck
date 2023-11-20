@@ -87,7 +87,8 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet, WindowGetter,
+    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
+    WindowGetter,
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec2;
@@ -571,19 +572,32 @@ fn vpeol_2d_populate_transform(
         &Vpeol2dPosition,
         Option<&Vpeol2dRotatation>,
         Option<&Vpeol2dScale>,
+        &YoleckBelongsToLevel,
     )>,
+    levels_query: Query<&VpeolRepositionLevel>,
 ) {
-    populate.populate(|_ctx, mut cmd, (position, rotation, scale)| {
-        let mut transform = Transform::from_translation(position.0.extend(0.0));
-        if let Some(Vpeol2dRotatation(rotation)) = rotation {
-            transform = transform.with_rotation(Quat::from_rotation_z(*rotation));
-        }
-        if let Some(Vpeol2dScale(scale)) = scale {
-            transform = transform.with_scale(scale.extend(1.0));
-        }
-        cmd.insert(TransformBundle {
-            local: transform,
-            global: transform.into(),
-        });
-    })
+    populate.populate(
+        |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
+            let mut transform = Transform::from_translation(position.0.extend(0.0));
+            if let Some(Vpeol2dRotatation(rotation)) = rotation {
+                transform = transform.with_rotation(Quat::from_rotation_z(*rotation));
+            }
+            if let Some(Vpeol2dScale(scale)) = scale {
+                transform = transform.with_scale(scale.extend(1.0));
+            }
+
+            if let Ok(VpeolRepositionLevel(level_transform)) =
+                levels_query.get(belongs_to_level.level)
+            {
+                info!("Before {:?}", transform.translation);
+                transform = level_transform.mul_transform(transform);
+                info!("After {:?}", transform.translation);
+            }
+
+            cmd.insert(TransformBundle {
+                local: transform,
+                global: transform.into(),
+            });
+        },
+    )
 }

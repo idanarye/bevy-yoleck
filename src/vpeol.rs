@@ -23,7 +23,7 @@ use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged, YoleckRunEditSyste
 
 pub mod prelude {
     pub use crate::vpeol::{
-        VpeolCameraState, VpeolDragPlane, VpeolSelectionCuePlugin,
+        VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolSelectionCuePlugin,
         VpeolWillContainClickableChildren, YoleckKnobClick,
     };
     #[cfg(feature = "vpeol_2d")]
@@ -699,3 +699,6 @@ pub fn vpeol_read_click_on_entity<Filter: ReadOnlyWorldQuery>(
     }
     None
 }
+
+#[derive(Component)]
+pub struct VpeolRepositionLevel(pub Transform);

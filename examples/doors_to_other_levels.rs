@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use bevy::math::{Affine3A, Vec3A};
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 use bevy_yoleck::vpeol::prelude::*;
@@ -66,11 +67,17 @@ fn main() {
     app.yoleck_populate_schedule_mut()
         .add_systems(populate_doorway);
 
-    app.add_systems(YoleckSchedule::LevelLoaded, add_player);
+    app.add_systems(
+        YoleckSchedule::LevelLoaded,
+        (
+            remove_players_from_opened_door_levels,
+            position_level_from_opened_door,
+        ),
+    );
 
     app.add_systems(
         Update,
-        (control_player,).run_if(in_state(YoleckEditorState::GameActive)),
+        (control_player, handle_door_opening).run_if(in_state(YoleckEditorState::GameActive)),
     );
 
     app.run();
@@ -79,6 +86,7 @@ fn main() {
 fn setup_camera(mut commands: Commands) {
     let mut camera = Camera2dBundle::default();
     camera.transform.translation.z = 100.0;
+    camera.transform.scale *= 2.0 * (Vec3::X + Vec3::Y) + Vec3::Z;
     commands
         .spawn(camera)
         .insert(VpeolCameraState::default())
@@ -181,7 +189,7 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
     });
 }
 
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent, Debug)]
 struct Doorway {
     target_level: String,
     marker: String,
@@ -258,16 +266,108 @@ fn populate_doorway(
     });
 }
 
-fn add_player(
-    levels_query: Query<Entity, With<YoleckLevelJustLoaded>>,
-    players_query: Query<(Entity, &YoleckBelongsToLevel, Has<IsPlayer>)>,
+#[derive(Component)]
+struct LevelFromOpenedDoor {
+    exit_door: Entity,
+}
+
+fn remove_players_from_opened_door_levels(
+    levels_query: Query<Entity, With<LevelFromOpenedDoor>>,
+    players_query: Query<(Entity, &YoleckBelongsToLevel), With<IsPlayer>>,
+    mut commands: Commands,
 ) {
-    // Need to figure out why it doesn't always capture IsPlayer
-    for (player_entity, belongs_to_level, is_player) in players_query.iter() {
-        let belongs_to_freshly_created_level = levels_query.contains(belongs_to_level.level);
+    for (player_entity, belongs_to_level) in players_query.iter() {
+        if !levels_query.contains(belongs_to_level.level) {
+            continue;
+        }
+        commands.entity(player_entity).despawn_recursive();
+    }
+}
+
+#[derive(Component)]
+struct DoorIsOpen;
+
+fn handle_door_opening(
+    players_query: Query<&GlobalTransform, With<IsPlayer>>,
+    doors_query: Query<(Entity, &GlobalTransform, &Doorway), Without<DoorIsOpen>>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    for player_transform in players_query.iter() {
+        for (door_entity, door_transform, doorway) in doors_query.iter() {
+            let distance_sq = player_transform
+                .translation()
+                .distance_squared(door_transform.translation());
+            if distance_sq < 10000.0 {
+                commands.entity(door_entity).insert(DoorIsOpen);
+                commands.spawn((
+                    YoleckLoadLevel(
+                        asset_server.load(format!("levels_doors/{}", doorway.target_level)),
+                    ),
+                    LevelFromOpenedDoor {
+                        exit_door: door_entity,
+                    },
+                ));
+            }
+        }
+    }
+}
+
+fn position_level_from_opened_door(
+    levels_query: Query<(Entity, &LevelFromOpenedDoor), With<YoleckLevelJustLoaded>>,
+    doors_query: Query<(
+        Entity,
+        &YoleckBelongsToLevel,
+        Option<&GlobalTransform>,
+        &Doorway,
+        &Vpeol2dPosition,
+        &Vpeol2dRotatation,
+    )>,
+    mut commands: Commands,
+) {
+    for (level_entity, level_from_opened_door) in levels_query.iter() {
         info!(
-            "{:?} belongs to level {:?}. Was it just created? {}. Is it player? {}",
-            player_entity, belongs_to_level.level, belongs_to_freshly_created_level, is_player
+            "Level {:?} from {:?}",
+            level_entity, level_from_opened_door.exit_door
         );
+        let Ok((_, _, Some(exit_door_transform), exit_doorway, _, _)) =
+            doors_query.get(level_from_opened_door.exit_door)
+        else {
+            continue;
+        };
+        let exit_door_affine = exit_door_transform.affine();
+        info!(
+            "Exit door at {:?} - is {:?}",
+            exit_door_affine, exit_doorway
+        );
+        let (entry_door_entity, _, _, entry_doorway, entry_door_position, entry_door_rotation) =
+            doors_query
+                .iter()
+                .find(|(_, belongs_to_level, _, entry_doorway, _, _)| {
+                    belongs_to_level.level == level_entity
+                        && entry_doorway.marker == exit_doorway.marker
+                })
+                .expect(&format!(
+                    "Cannot find a door marked as {:?} in {:?}",
+                    exit_doorway.marker, exit_doorway.target_level
+                ));
+        let entry_door_affine = Affine3A::from_rotation_translation(
+            Quat::from_rotation_z(entry_door_rotation.0),
+            entry_door_position.0.extend(0.0),
+        );
+        info!(
+            "Entry door {:?} at {:?} - is {:?}",
+            entry_door_entity, entry_door_affine, entry_doorway
+        );
+        let mut exit_door_affine = exit_door_affine;
+        exit_door_affine.translation += exit_door_affine.transform_vector3a(100.0 * Vec3A::X);
+        let level_transformation = exit_door_affine * entry_door_affine.inverse();
+        info!("Need to move to {:?}", level_transformation);
+        let level_transformation = Transform::from_matrix(level_transformation.into());
+
+        commands.entity(entry_door_entity).insert(DoorIsOpen);
+        commands
+            .entity(level_entity)
+            .insert(VpeolRepositionLevel(level_transformation));
     }
 }
