@@ -8,7 +8,4 @@ assets/levels3d/*.yol
 assets/levels3d/*.yoli
 !assets/levels3d/example.yol
 
-assets/levels_doors/*.yol
-assets/levels_doors/*.yoli
-!assets/levels_doors/example.yol
-!assets/levels_doors/example*.yol
+# No ignored level files in levels_doors

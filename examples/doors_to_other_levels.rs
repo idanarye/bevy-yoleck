@@ -132,7 +132,11 @@ fn edit_doorway(
 
     ui.horizontal(|ui| {
         egui::ComboBox::from_id_source("doorway-level")
-            .selected_text("<terget level>")
+            .selected_text(
+                Some(doorway.target_level.as_str())
+                    .filter(|l| !l.is_empty())
+                    .unwrap_or("<target level>"),
+            )
             .show_ui(ui, |ui| {
                 for level in levels.names() {
                     ui.selectable_value(&mut doorway.target_level, level.to_owned(), level);
