@@ -38,6 +38,14 @@ fn main() {
     app.add_systems(Startup, setup_camera);
 
     app.add_yoleck_entity_type({
+        YoleckEntityType::new("Player")
+            .with::<Vpeol2dPosition>()
+            .insert_on_init(|| IsPlayer)
+    });
+    app.yoleck_populate_schedule_mut()
+        .add_systems(populate_player);
+
+    app.add_yoleck_entity_type({
         YoleckEntityType::new("FloatingText")
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dScale>()
@@ -58,6 +66,13 @@ fn main() {
     app.yoleck_populate_schedule_mut()
         .add_systems(populate_doorway);
 
+    app.add_systems(YoleckSchedule::LevelLoaded, add_player);
+
+    app.add_systems(
+        Update,
+        (control_player,).run_if(in_state(YoleckEditorState::GameActive)),
+    );
+
     app.run();
 }
 
@@ -68,6 +83,57 @@ fn setup_camera(mut commands: Commands) {
         .spawn(camera)
         .insert(VpeolCameraState::default())
         .insert(Vpeol2dCameraControl::default());
+}
+
+#[derive(Component)]
+struct IsPlayer;
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct Player {
+    #[serde(default)]
+    position: Vec2,
+    #[serde(default)]
+    rotation: f32,
+}
+
+fn populate_player(
+    mut populate: YoleckPopulate<(), With<IsPlayer>>,
+    asset_server: Res<AssetServer>,
+) {
+    populate.populate(|_ctx, mut cmd, ()| {
+        cmd.insert((SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(100.0, 100.0)),
+                ..Default::default()
+            },
+            texture: asset_server.load("sprites/player.png"),
+            ..Default::default()
+        },));
+    });
+}
+
+fn control_player(
+    mut player_query: Query<&mut Transform, With<IsPlayer>>,
+    time: Res<Time>,
+    input: Res<Input<KeyCode>>,
+) {
+    let mut velocity = Vec3::ZERO;
+    if input.pressed(KeyCode::Up) {
+        velocity += Vec3::Y;
+    }
+    if input.pressed(KeyCode::Down) {
+        velocity -= Vec3::Y;
+    }
+    if input.pressed(KeyCode::Left) {
+        velocity -= Vec3::X;
+    }
+    if input.pressed(KeyCode::Right) {
+        velocity += Vec3::X;
+    }
+    velocity *= 400.0;
+    for mut player_transform in player_query.iter_mut() {
+        player_transform.translation += velocity * time.delta_seconds();
+    }
 }
 
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
@@ -190,4 +256,18 @@ fn populate_doorway(
             ..Default::default()
         });
     });
+}
+
+fn add_player(
+    levels_query: Query<Entity, With<YoleckLevelJustLoaded>>,
+    players_query: Query<(Entity, &YoleckBelongsToLevel, Has<IsPlayer>)>,
+) {
+    // Need to figure out why it doesn't always capture IsPlayer
+    for (player_entity, belongs_to_level, is_player) in players_query.iter() {
+        let belongs_to_freshly_created_level = levels_query.contains(belongs_to_level.level);
+        info!(
+            "{:?} belongs to level {:?}. Was it just created? {}. Is it player? {}",
+            player_entity, belongs_to_level.level, belongs_to_freshly_created_level, is_player
+        );
+    }
 }

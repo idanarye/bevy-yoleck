@@ -15,7 +15,7 @@ use crate::populating::PopulateReason;
 use crate::prelude::{YoleckEntityUuid, YoleckUuidRegistry};
 use crate::{
     YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus,
-    YoleckManaged, YoleckSchedule, YoleckState,
+    YoleckLevelJustLoaded, YoleckManaged, YoleckSchedule, YoleckState,
 };
 
 /// Used by Yoleck to determine how to handle the entity.
@@ -174,7 +174,7 @@ pub(crate) fn process_loading_command(
             commands
                 .entity(level_entity)
                 .remove::<YoleckLoadLevel>()
-                .insert(YoleckKeepLevel);
+                .insert((YoleckLevelJustLoaded, YoleckKeepLevel));
             for entry in raw_level.entries() {
                 commands.spawn((
                     entry.clone(),
@@ -184,6 +184,21 @@ pub(crate) fn process_loading_command(
                 ));
             }
         }
+    }
+}
+
+pub(crate) fn yoleck_run_level_loaded_schedule(world: &mut World) {
+    world.run_schedule(YoleckSchedule::LevelLoaded);
+}
+
+pub(crate) fn yoleck_remove_just_loaded_marker_from_levels(
+    query: Query<Entity, With<YoleckLevelJustLoaded>>,
+    mut commands: Commands,
+) {
+    for level_entity in query.iter() {
+        commands
+            .entity(level_entity)
+            .remove::<YoleckLevelJustLoaded>();
     }
 }
 

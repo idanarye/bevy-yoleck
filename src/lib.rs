@@ -222,7 +222,8 @@ pub mod prelude {
     pub use crate::populating::{YoleckMarking, YoleckPopulate};
     pub use crate::specs_registration::{YoleckComponent, YoleckEntityType};
     pub use crate::{
-        YoleckBelongsToLevel, YoleckExtForApp, YoleckPluginForEditor, YoleckPluginForGame,
+        YoleckBelongsToLevel, YoleckExtForApp, YoleckLevelInEditor, YoleckLevelInPlaytest,
+        YoleckLevelJustLoaded, YoleckPluginForEditor, YoleckPluginForGame, YoleckSchedule,
     };
     pub use bevy_yoleck_macros::YoleckComponent;
 }
@@ -284,6 +285,17 @@ impl Plugin for YoleckPluginBase {
             (
                 entity_management::yoleck_process_raw_entries,
                 apply_deferred,
+                (
+                    entity_management::yoleck_run_level_loaded_schedule,
+                    entity_management::yoleck_remove_just_loaded_marker_from_levels,
+                    apply_deferred,
+                )
+                    .run_if(
+                        |freshly_loaded_level_entities: Query<
+                            (),
+                            (With<YoleckLevelJustLoaded>, Without<YoleckLevelInEditor>),
+                        >| { !freshly_loaded_level_entities.is_empty() },
+                    ),
             )
                 .chain()
                 .in_set(YoleckSystemSet::ProcessRawEntities),
@@ -310,6 +322,7 @@ impl Plugin for YoleckPluginBase {
             ),
         );
         app.add_schedule(Schedule::new(YoleckSchedule::Populate));
+        app.add_schedule(Schedule::new(YoleckSchedule::LevelLoaded));
         app.add_schedule(Schedule::new(YoleckSchedule::OverrideCommonComponents));
     }
 }
@@ -335,7 +348,7 @@ impl Plugin for YoleckPluginForEditor {
         app.add_plugins(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
         app.insert_resource(YoleckKnobsCache::default());
-        let level_being_edited = app.world.spawn(YoleckKeepLevel).id();
+        let level_being_edited = app.world.spawn((YoleckLevelInEditor, YoleckKeepLevel)).id();
         app.insert_resource(YoleckState {
             level_being_edited,
             level_needs_saving: false,
@@ -670,7 +683,19 @@ pub(crate) enum YoleckInternalSchedule {
 pub enum YoleckSchedule {
     /// This is where most user defined populate systems should reside.
     Populate,
+    /// Right after all the level entities are loaded, but before any populate systems manage to
+    /// run.
+    LevelLoaded,
     /// Since many bundles add their own transform and visibility components, systems that override
     /// them explicitly need to go here.
     OverrideCommonComponents,
 }
+
+#[derive(Component)]
+pub struct YoleckLevelInEditor;
+
+#[derive(Component)]
+pub struct YoleckLevelInPlaytest;
+
+#[derive(Component)]
+pub struct YoleckLevelJustLoaded;

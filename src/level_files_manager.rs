@@ -16,8 +16,8 @@ use crate::level_files_upgrading::upgrade_level_file;
 use crate::level_index::YoleckLevelIndexEntry;
 use crate::prelude::{YoleckEditorState, YoleckEntityUuid};
 use crate::{
-    YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelIndex, YoleckManaged,
-    YoleckRawLevel, YoleckState,
+    YoleckEditableLevels, YoleckEntityConstructionSpecs, YoleckLevelInEditor,
+    YoleckLevelInPlaytest, YoleckLevelIndex, YoleckManaged, YoleckRawLevel, YoleckState,
 };
 
 const EXTENSION: &str = ".yol";
@@ -151,15 +151,17 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 if ui.button("Restart Playtest").clicked() {
                     clear_level(&mut commands);
                     let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited =
-                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
+                    yoleck.level_being_edited = commands
+                        .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
+                        .id();
                 }
                 if finish_playtest_response.clicked() {
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::EditorActive);
                     let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited =
-                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
+                    yoleck.level_being_edited = commands
+                        .spawn((YoleckLevelInEditor, YoleckLoadLevel(level_asset_handle)))
+                        .id();
                     level_being_playtested = None;
                 }
             } else {
@@ -169,8 +171,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                     clear_level(&mut commands);
                     next_editor_state.set(YoleckEditorState::GameActive);
                     let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited =
-                        commands.spawn(YoleckLoadLevel(level_asset_handle)).id();
+                    yoleck.level_being_edited = commands
+                        .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
+                        .id();
                     level_being_playtested = Some(level);
                 }
             }
@@ -315,8 +318,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                                         let level_asset_handle =
                                                             level_assets.add(level);
                                                         yoleck.level_being_edited = commands
-                                                            .spawn(YoleckLoadLevel(
-                                                                level_asset_handle,
+                                                            .spawn((
+                                                                YoleckLevelInEditor,
+                                                                YoleckLoadLevel(level_asset_handle),
                                                             ))
                                                             .id();
                                                     }
@@ -416,8 +420,9 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                                             clear_level(&mut commands);
                                             selected_level_file =
                                                 SelectedLevelFile::Unsaved(String::new());
-                                            yoleck.level_being_edited =
-                                                commands.spawn(YoleckKeepLevel).id();
+                                            yoleck.level_being_edited = commands
+                                                .spawn((YoleckLevelInEditor, YoleckKeepLevel))
+                                                .id();
                                         }
                                     }
                                 }
