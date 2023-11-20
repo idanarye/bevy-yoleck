@@ -11,3 +11,4 @@ assets/levels3d/*.yoli
 assets/levels_doors/*.yol
 assets/levels_doors/*.yoli
 !assets/levels_doors/example.yol
+!assets/levels_doors/example*.yol
