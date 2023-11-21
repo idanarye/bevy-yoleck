@@ -71,6 +71,7 @@ fn main() {
     app.add_yoleck_edit_system(edit_doorway);
     app.yoleck_populate_schedule_mut()
         .add_systems(populate_doorway);
+    app.add_systems(Update, set_doorways_sprite_index);
 
     app.add_systems(
         YoleckSchedule::LevelLoaded,
@@ -144,7 +145,7 @@ fn control_player(
     if input.pressed(KeyCode::Right) {
         velocity += Vec3::X;
     }
-    velocity *= 400.0;
+    velocity *= 800.0;
     for mut player_transform in player_query.iter_mut() {
         player_transform.translation += velocity * time.delta_seconds();
     }
@@ -259,8 +260,31 @@ fn edit_doorway_rotation(
 fn populate_doorway(
     mut populate: YoleckPopulate<(), With<Doorway>>,
     asset_server: Res<AssetServer>,
+    mut asset_handle_cache: Local<Option<Handle<TextureAtlas>>>,
+    mut texture_atlas_assets: ResMut<Assets<TextureAtlas>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
+        let texture_atlas = asset_handle_cache
+            .get_or_insert_with(|| {
+                texture_atlas_assets.add(TextureAtlas::from_grid(
+                    asset_server.load("sprites/doorway.png"),
+                    Vec2::new(64.0, 64.0),
+                    1,
+                    2,
+                    None,
+                    None,
+                ))
+            })
+            .clone();
+        cmd.insert(SpriteSheetBundle {
+            sprite: TextureAtlasSprite {
+                custom_size: Some(Vec2::new(100.0, 100.0)),
+                index: 0,
+                ..Default::default()
+            },
+            texture_atlas,
+            ..Default::default()
+        });
         cmd.insert(SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(100.0, 100.0)),
@@ -270,6 +294,14 @@ fn populate_doorway(
             ..Default::default()
         });
     });
+}
+
+fn set_doorways_sprite_index(
+    mut query: Query<(&mut TextureAtlasSprite, Has<DoorIsOpen>), With<Doorway>>,
+) {
+    for (mut sprite, door_is_open) in query.iter_mut() {
+        sprite.index = if door_is_open { 1 } else { 0 };
+    }
 }
 
 #[derive(Component)]
