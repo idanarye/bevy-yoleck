@@ -11,7 +11,11 @@ fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
 
-    let level = std::env::args().nth(1);
+    let level = if cfg!(target_arch = "wasm32") {
+        Some("entry.yol".to_owned())
+    } else {
+        std::env::args().nth(1)
+    };
 
     app.add_plugins(EguiPlugin);
 
