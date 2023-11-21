@@ -2,6 +2,7 @@ use std::path::Path;
 
 use bevy::math::Affine3A;
 use bevy::prelude::*;
+use bevy::utils::HashSet;
 use bevy_egui::{egui, EguiPlugin};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckEditableLevels};
@@ -74,14 +75,15 @@ fn main() {
     app.add_systems(
         YoleckSchedule::LevelLoaded,
         (
-            remove_players_from_opened_door_levels,
+            handle_player_entity_when_level_loads,
             position_level_from_opened_door,
         ),
     );
 
     app.add_systems(
         Update,
-        (control_player, handle_door_opening).run_if(in_state(YoleckEditorState::GameActive)),
+        (control_player, handle_door_opening, close_old_doors)
+            .run_if(in_state(YoleckEditorState::GameActive)),
     );
 
     app.run();
@@ -275,34 +277,59 @@ struct LevelFromOpenedDoor {
     exit_door: Entity,
 }
 
-fn remove_players_from_opened_door_levels(
+#[derive(Component)]
+struct PlayerHoldingLevel;
+
+fn handle_player_entity_when_level_loads(
     levels_query: Query<Entity, With<LevelFromOpenedDoor>>,
-    players_query: Query<(Entity, &YoleckBelongsToLevel), With<IsPlayer>>,
+    mut players_query: Query<(Entity, &mut YoleckBelongsToLevel), With<IsPlayer>>,
     mut commands: Commands,
 ) {
-    for (player_entity, belongs_to_level) in players_query.iter() {
-        if !levels_query.contains(belongs_to_level.level) {
-            continue;
+    for (player_entity, mut belongs_to_level) in players_query.iter_mut() {
+        if levels_query.contains(belongs_to_level.level) {
+            commands.entity(player_entity).despawn_recursive();
+        } else {
+            belongs_to_level.level = commands
+                .spawn((
+                    // So that the player entity will be removed when finishing a playtest in the
+                    // editor:
+                    YoleckKeepLevel,
+                    // So that we won't remove that level when unloading old rooms:
+                    PlayerHoldingLevel,
+                ))
+                .id();
         }
-        commands.entity(player_entity).despawn_recursive();
     }
 }
 
 #[derive(Component)]
 struct DoorIsOpen;
 
+#[derive(Component)]
+struct DoorConnectsTo(Entity);
+
 fn handle_door_opening(
     players_query: Query<&GlobalTransform, With<IsPlayer>>,
-    doors_query: Query<(Entity, &GlobalTransform, &Doorway), Without<DoorIsOpen>>,
+    doors_query: Query<
+        (Entity, &YoleckBelongsToLevel, &GlobalTransform, &Doorway),
+        Without<DoorIsOpen>,
+    >,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    levels_query: Query<Entity, (With<YoleckKeepLevel>, Without<PlayerHoldingLevel>)>,
 ) {
     for player_transform in players_query.iter() {
-        for (door_entity, door_transform, doorway) in doors_query.iter() {
+        for (door_entity, belongs_to_level, door_transform, doorway) in doors_query.iter() {
             let distance_sq = player_transform
                 .translation()
                 .distance_squared(door_transform.translation());
             if distance_sq < 10000.0 {
+                for level_entity in levels_query.iter() {
+                    if level_entity != belongs_to_level.level {
+                        commands.entity(level_entity).despawn_recursive();
+                    }
+                }
+
                 commands.entity(door_entity).insert(DoorIsOpen);
                 commands.spawn((
                     YoleckLoadLevel(
@@ -358,9 +385,33 @@ fn position_level_from_opened_door(
             exit_door_affine * rotate_door_around * entry_door_affine.inverse();
         let level_transformation = Transform::from_matrix(level_transformation.into());
 
-        commands.entity(entry_door_entity).insert(DoorIsOpen);
+        commands
+            .entity(level_from_opened_door.exit_door)
+            .insert(DoorConnectsTo(entry_door_entity));
+        commands
+            .entity(entry_door_entity)
+            .insert((DoorIsOpen, DoorConnectsTo(level_from_opened_door.exit_door)));
         commands
             .entity(level_entity)
             .insert(VpeolRepositionLevel(level_transformation));
+    }
+}
+
+fn close_old_doors(
+    mut removed_doors: RemovedComponents<DoorConnectsTo>,
+    doors_query: Query<(Entity, &DoorConnectsTo)>,
+    mut commands: Commands,
+) {
+    if removed_doors.is_empty() {
+        return;
+    }
+    let removed_doors = removed_doors.read().collect::<HashSet<Entity>>();
+
+    for (door_entity, door_connects_to) in doors_query.iter() {
+        if removed_doors.contains(&door_connects_to.0) {
+            commands
+                .entity(door_entity)
+                .remove::<(DoorIsOpen, DoorConnectsTo)>();
+        }
     }
 }
