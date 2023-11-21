@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use bevy::math::{Affine3A, Vec3A};
+use bevy::math::Affine3A;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiPlugin};
 use bevy_yoleck::vpeol::prelude::*;
@@ -326,43 +326,32 @@ fn position_level_from_opened_door(
     mut commands: Commands,
 ) {
     for (level_entity, level_from_opened_door) in levels_query.iter() {
-        info!(
-            "Level {:?} from {:?}",
-            level_entity, level_from_opened_door.exit_door
-        );
         let Ok((_, _, Some(exit_door_transform), exit_doorway, _, _)) =
             doors_query.get(level_from_opened_door.exit_door)
         else {
             continue;
         };
         let exit_door_affine = exit_door_transform.affine();
-        info!(
-            "Exit door at {:?} - is {:?}",
-            exit_door_affine, exit_doorway
-        );
-        let (entry_door_entity, _, _, entry_doorway, entry_door_position, entry_door_rotation) =
-            doors_query
-                .iter()
-                .find(|(_, belongs_to_level, _, entry_doorway, _, _)| {
-                    belongs_to_level.level == level_entity
-                        && entry_doorway.marker == exit_doorway.marker
-                })
-                .expect(&format!(
-                    "Cannot find a door marked as {:?} in {:?}",
-                    exit_doorway.marker, exit_doorway.target_level
-                ));
+        let (entry_door_entity, _, _, _, entry_door_position, entry_door_rotation) = doors_query
+            .iter()
+            .find(|(_, belongs_to_level, _, entry_doorway, _, _)| {
+                belongs_to_level.level == level_entity
+                    && entry_doorway.marker == exit_doorway.marker
+            })
+            .expect(&format!(
+                "Cannot find a door marked as {:?} in {:?}",
+                exit_doorway.marker, exit_doorway.target_level
+            ));
         let entry_door_affine = Affine3A::from_rotation_translation(
             Quat::from_rotation_z(entry_door_rotation.0),
             entry_door_position.0.extend(0.0),
         );
-        info!(
-            "Entry door {:?} at {:?} - is {:?}",
-            entry_door_entity, entry_door_affine, entry_doorway
+        let rotate_door_around = Affine3A::from_rotation_translation(
+            Quat::from_rotation_z(std::f32::consts::PI),
+            100.0 * Vec3::X,
         );
-        let mut exit_door_affine = exit_door_affine;
-        exit_door_affine.translation += exit_door_affine.transform_vector3a(100.0 * Vec3A::X);
-        let level_transformation = exit_door_affine * entry_door_affine.inverse();
-        info!("Need to move to {:?}", level_transformation);
+        let level_transformation =
+            exit_door_affine * rotate_door_around * entry_door_affine.inverse();
         let level_transformation = Transform::from_matrix(level_transformation.into());
 
         commands.entity(entry_door_entity).insert(DoorIsOpen);

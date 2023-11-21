@@ -97,7 +97,7 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRootResolver, VpeolSystemSet,
+    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
 };
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::input::mouse::MouseWheel;
@@ -686,19 +686,30 @@ fn vpeol_3d_populate_transform(
         &Vpeol3dPosition,
         Option<&Vpeol3dRotatation>,
         Option<&Vpeol3dScale>,
+        &YoleckBelongsToLevel,
     )>,
+    levels_query: Query<&VpeolRepositionLevel>,
 ) {
-    populate.populate(|_ctx, mut cmd, (position, rotation, scale)| {
-        let mut transform = Transform::from_translation(position.0);
-        if let Some(Vpeol3dRotatation(rotation)) = rotation {
-            transform = transform.with_rotation(*rotation);
-        }
-        if let Some(Vpeol3dScale(scale)) = scale {
-            transform = transform.with_scale(*scale);
-        }
-        cmd.insert(TransformBundle {
-            local: transform,
-            global: transform.into(),
-        });
-    })
+    populate.populate(
+        |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
+            let mut transform = Transform::from_translation(position.0);
+            if let Some(Vpeol3dRotatation(rotation)) = rotation {
+                transform = transform.with_rotation(*rotation);
+            }
+            if let Some(Vpeol3dScale(scale)) = scale {
+                transform = transform.with_scale(*scale);
+            }
+
+            if let Ok(VpeolRepositionLevel(level_transform)) =
+                levels_query.get(belongs_to_level.level)
+            {
+                transform = *level_transform * transform;
+            }
+
+            cmd.insert(TransformBundle {
+                local: transform,
+                global: transform.into(),
+            });
+        },
+    )
 }

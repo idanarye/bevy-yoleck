@@ -589,9 +589,7 @@ fn vpeol_2d_populate_transform(
             if let Ok(VpeolRepositionLevel(level_transform)) =
                 levels_query.get(belongs_to_level.level)
             {
-                info!("Before {:?}", transform.translation);
-                transform = level_transform.mul_transform(transform);
-                info!("After {:?}", transform.translation);
+                transform = *level_transform * transform;
             }
 
             cmd.insert(TransformBundle {
