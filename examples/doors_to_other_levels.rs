@@ -83,7 +83,12 @@ fn main() {
 
     app.add_systems(
         Update,
-        (control_player, handle_door_opening, close_old_doors)
+        (
+            control_camera,
+            control_player,
+            handle_door_opening,
+            close_old_doors,
+        )
             .run_if(in_state(YoleckEditorState::GameActive)),
     );
 
@@ -125,6 +130,28 @@ fn populate_player(
             ..Default::default()
         },));
     });
+}
+
+fn control_camera(
+    player_query: Query<&GlobalTransform, With<IsPlayer>>,
+    mut camera_query: Query<&mut Transform, With<Camera>>,
+    time: Res<Time>,
+) {
+    if player_query.is_empty() {
+        return;
+    }
+    let position_to_track = player_query.iter().map(|t| t.translation()).sum::<Vec3>()
+        / player_query.iter().len() as f32;
+    for mut camera_transform in camera_query.iter_mut() {
+        let displacement = position_to_track - camera_transform.translation;
+        if displacement.length_squared() < 10000.0 {
+            camera_transform.translation +=
+                displacement.clamp_length_max(100.0 * time.delta_seconds());
+        } else {
+            camera_transform.translation +=
+                displacement.clamp_length_max(800.0 * time.delta_seconds());
+        }
+    }
 }
 
 fn control_player(
@@ -314,10 +341,11 @@ struct PlayerHoldingLevel;
 
 fn handle_player_entity_when_level_loads(
     levels_query: Query<Entity, With<LevelFromOpenedDoor>>,
-    mut players_query: Query<(Entity, &mut YoleckBelongsToLevel), With<IsPlayer>>,
+    mut players_query: Query<(Entity, &mut YoleckBelongsToLevel, &Vpeol2dPosition), With<IsPlayer>>,
     mut commands: Commands,
+    mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
-    for (player_entity, mut belongs_to_level) in players_query.iter_mut() {
+    for (player_entity, mut belongs_to_level, player_position) in players_query.iter_mut() {
         if levels_query.contains(belongs_to_level.level) {
             commands.entity(player_entity).despawn_recursive();
         } else {
@@ -330,6 +358,14 @@ fn handle_player_entity_when_level_loads(
                     PlayerHoldingLevel,
                 ))
                 .id();
+            let translation_for_camera = player_position.0.extend(100.0);
+            for mut camera_transform in camera_query.iter_mut() {
+                *camera_transform = Transform {
+                    translation: translation_for_camera,
+                    rotation: Quat::IDENTITY,
+                    scale: 2.0 * (Vec3::X + Vec3::Y) + Vec3::Z,
+                };
+            }
         }
     }
 }
