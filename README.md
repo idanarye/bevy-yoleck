@@ -34,6 +34,7 @@ own level editor.
     https://user-images.githubusercontent.com/1149255/228008014-825ef02e-2edc-49f5-a15c-1fa6044f84de.mp4
 
   * Loading multiple levels and unloading them on the fly: https://idanarye.github.io/bevy-yoleck/demos/doors_to_other_levels
+
     The WASM version of this example is gameplay only. To see how the editor for it looks like, clone/download the repository and run:
     ```rust
     cargo run --example doors_to_other_levels --features vpeol_2d,bevy/png

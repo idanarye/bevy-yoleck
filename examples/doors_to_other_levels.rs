@@ -340,13 +340,16 @@ struct LevelFromOpenedDoor {
 struct PlayerHoldingLevel;
 
 fn handle_player_entity_when_level_loads(
-    levels_query: Query<Entity, With<LevelFromOpenedDoor>>,
+    levels_query: Query<Has<LevelFromOpenedDoor>, With<YoleckLevelJustLoaded>>,
     mut players_query: Query<(Entity, &mut YoleckBelongsToLevel, &Vpeol2dPosition), With<IsPlayer>>,
     mut commands: Commands,
     mut camera_query: Query<&mut Transform, With<Camera>>,
 ) {
     for (player_entity, mut belongs_to_level, player_position) in players_query.iter_mut() {
-        if levels_query.contains(belongs_to_level.level) {
+        let Ok(is_level_from_opened_door) = levels_query.get(belongs_to_level.level) else {
+            continue;
+        };
+        if is_level_from_opened_door {
             commands.entity(player_entity).despawn_recursive();
         } else {
             belongs_to_level.level = commands
