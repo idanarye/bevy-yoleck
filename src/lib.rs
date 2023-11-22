@@ -581,7 +581,7 @@ pub struct YoleckManaged {
 ///
 /// There is no need to add this to child entities of entities that already has this marker,
 /// because Yoleck will use `despawn_recursive` when despawning these entities.
-#[derive(Component)]
+#[derive(Component, Debug, Clone)]
 pub struct YoleckBelongsToLevel {
     /// The entity which was used with [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) to
     /// load the level that this entity belongs to.
