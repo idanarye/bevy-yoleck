@@ -6,8 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Removed
-- [**BREAKING**] The `YoleckLoadingCommand` resource is removed, in favor of a `YoleckLoadLevel` component.
-  - Note that unlike `YoleckLoadingCommand` that had could load the level from
+- [**BREAKING**] The `YoleckLoadingCommand` resource is removed, in favor of a
+  `YoleckLoadLevel` component. See the [migration
+  guide](MIGRATION-GUIDES.md#migrating-to-yoleck-017).
+  - Note that unlike `YoleckLoadingCommand` that could load the level from
     either an asset or a value, `YoleckLoadLevel` can only load from an asset.
     If it is necessary to load a level from memory, add it to
     `ResMut<Assets<YoleckRawLevel>>` first and pass the handle to

@@ -317,12 +317,13 @@ impl Plugin for YoleckPluginBase {
         );
         app.add_systems(
             Update,
-            (
-                (entity_management::process_loading_command, apply_deferred)
-                    .chain()
-                    .before(YoleckSystemSet::ProcessRawEntities),
+            ((
                 entity_management::process_unloading_command,
-            ),
+                entity_management::process_loading_command,
+                apply_deferred,
+            )
+                .chain()
+                .before(YoleckSystemSet::ProcessRawEntities),),
         );
         app.add_schedule(Schedule::new(YoleckSchedule::Populate));
         app.add_schedule(Schedule::new(YoleckSchedule::LevelLoaded));

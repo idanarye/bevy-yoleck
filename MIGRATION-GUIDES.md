@@ -1,3 +1,75 @@
+# Migrating to Yoleck 0.17
+
+## Loading levels
+
+Instead of a `YoleckLoadingCommand` resource, level loading is now done via entities. This means that instead of loading a level like this:
+```rust
+fn load_level(
+    mut yoleck_loading_command: ResMut<YoleckLoadingCommand>,
+    asset_server: Res<AssetServer>,
+) {
+    *yoleck_loading_command = YoleckLoadingCommand::FromAsset(asset_server.load("levels/my-level.yol"));
+}
+```
+
+You should do it like this:
+```rust
+fn load_level(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    commands.spawn(YoleckLoadLevel(asset_server.load("levels/my-level.yol")));
+}
+```
+
+Note that `YoleckLoadLevel` does not provide an equivalent for `YoleckLoadingCommand::FromData`. If you need to load a level from a value, put that value in `Assets<YoleckRawLevel>` first.
+
+## Clearing levels
+
+Instead of despawning all the entities marked with `YoleckBelongsToLevel`:
+
+```rust
+fn unload_level(
+    query: Query<Entity, With<YoleckBelongsToLevel>>,
+    mut commands: Commands,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+```
+
+You should despawn the entities that represent the levels - the ones marked with `YoleckKeepLevel`:
+
+```rust
+fn unload_old_levels(
+    query: Query<Entity, With<YoleckKeepLevel>>,
+    mut commands: Commands,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+```
+
+Yoleck will automatically despawn (with `despawn_recursive`) all the entities that belong to these levels.
+
+Note that it is also possible, if needed, to just remove the `YoleckKeepLevel` component from these entities to despawn their entities without despawning the level entities themselves.
+
+## Changes in `YoleckBelongsToLevel`
+
+`YoleckBelongsToLevel` now has a `pub level: Entity` field that specifies which level the entity belongs to. When unloading a level (by despawning a `YoleckKeepLevel` entity, or removing the `YoleckKeepLevel` component from it), the entities that will be despawned are the ones who's `YoleckBelongsToLevel` points at that level.
+
+As before, if you create a component from a system and want it to be despawned when switching a level or restarting/finishing a playtest in the editor, it still needs the `YoleckBelongsToLevel` component. Except now you have to provide a level entity for it. Where should the level entity come from? Two options:
+
+* It can be attached to an existing level, so that its lifetime will be bound to it. This is useful for entities that need to exist in the level's space - when despawning the level, we don't want these entities to remain.
+
+  The easiest way to achieve this is to use the `YoleckBelongsToLevel` of another component in that level. For example - say you have a treasure chest, and when the player shoots at it it opens up and a powerup pops from it for the player to pick up. Since the chest should already have a `YoleckBelongsToLevel` component, and since the system that spawns the powerup should already need to use some components of the chest entity, it should be easy to just clone the chest's `YoleckBelongsToLevel` and add it to the powerup spawning command.
+
+* You can create a faux level and attach the entities to it. This is useful, for example, for a player character entity that can travel between levels. Just create a new entity with a `YoleckKeepLevel` component and add its `Entity` to the roaming entity inside a `YoleckBelongsToLevel` component.
+
+  Note that you can freely set an existing `YoleckBelongsToLevel` to point to different levels. So it might make more sense to switch the player character entity to different level as it travels between them than to associate it to some faux level. Both options are available.
+
 # Migrating to Yoleck 0.15
 
 ## Accessing the YoleckUi
