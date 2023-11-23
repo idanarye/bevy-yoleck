@@ -235,7 +235,16 @@ pub(crate) fn process_unloading_command(
 /// added instead. To unload the level, either remove `YoleckKeepLevel` or despawn the entire level
 /// entity.
 ///
-/// Note that the entities inside the level will _not_ be children of the level entity.
+/// Immediately after the level is loaded, but before the populate systems get to run, Yoleck will
+/// run the [`YoleckSchedule::LevelLoaded`] schedule, allowing the game to register systems there
+/// and interfere with the level entities while they are still just freshly deserialized
+/// [`YoleckComponent`](crate::prelude::YoleckComponent) data. During that time, the entities of
+/// the levels that were just loaded will be marked with [`YoleckLevelJustLoaded`], allowing to
+/// these systems to distinguish them from already existing levels.
+///
+/// Note that the entities inside the level will _not_ be children of the level entity. Games that
+/// want to load multiple levels and dynamically position them should use
+/// [`VpeolRepositionLevel`](crate::vpeol::VpeolRepositionLevel).
 #[derive(Component)]
 pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
 

@@ -695,11 +695,21 @@ pub enum YoleckSchedule {
     OverrideCommonComponents,
 }
 
+/// Automatically added to level entities that are being edited in the level editor.
 #[derive(Component)]
 pub struct YoleckLevelInEditor;
 
+/// Automatically added to level entities that are being play-tested in the level editor.
+///
+/// Note that this only gets added to the levels that are launched from the editor UI. If game
+/// systems load new levels during the play-test, this component will not be added to them.
 #[derive(Component)]
 pub struct YoleckLevelInPlaytest;
 
+/// During the [`YoleckSchedule::LevelLoaded`] schedule, this component marks the level entities
+/// that were just loaded and triggered that schedule.
+///
+/// Note that this component will be removed after that schedule finishes running - it should not
+/// be relied on in systems outside that schedule.
 #[derive(Component)]
 pub struct YoleckLevelJustLoaded;

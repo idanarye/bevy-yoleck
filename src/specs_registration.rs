@@ -94,7 +94,12 @@ impl YoleckEntityType {
         self
     }
 
-    /// Annotate that the entity has a UUID
+    /// Give the entity a UUID, so that it can be persistently referred in `.yol` files.
+    ///
+    /// These entities will have a `uuid` field in their record header in the `.yol` file, and a
+    /// [`YoleckEntityUuid`](crate::prelude::YoleckEntityUuid) component that stores the same UUID
+    /// when loaded. The [`YoleckUuidRegistry`](crate::prelude::YoleckUuidRegistry) resource can be
+    /// used to resolve the entity from the UUID.
     pub fn with_uuid(mut self) -> Self {
         self.has_uuid = true;
         self
