@@ -22,12 +22,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `YoleckEditableLevels` resource (accessible only from edit systems) that
   provides the list of level file names.
 - Entity reference with `YoleckEntityUuid` and `YoleckUuidRegistry`.
+  - Some picking helpers for handling entity references in the editor:
+    `vpeol_read_click_on_entity`, `yoleck_map_entity_to_uuid` and
+    `yoleck_exclusive_system_cancellable`.
 - Load multiple levels with `YoleckLoadLevel` (which is a component, that can
   be placed on multiple entities)
 - Unload levels by removing the `YoleckKeepLevel` component from the entity
   that was used to load the level - or by despawning that entity entirely.
 - `YoleckSchedule::LevelLoaded` schedule for interfering with levels before
   populating their entities.
+- `VpeolRepositionLevel` component.
 
 ### Change
 - `YoleckBelongsToLevel` now points to a level entity.

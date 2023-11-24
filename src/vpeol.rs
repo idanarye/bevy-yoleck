@@ -653,6 +653,12 @@ impl Triangle {
     }
 }
 
+/// Detects an entity that's being clicked on. Meant to be used with [Yoleck's exclusive edit
+/// systems](crate::exclusive_systems::YoleckExclusiveSystemsQueue) and with Bevy's system piping.
+///
+/// Note that this only returns `Some` when the user clicks on an entity - it does not finish the
+/// exclusive system. The other systems that this gets piped into should decide whether or not it
+/// should be finished.
 pub fn vpeol_read_click_on_entity<Filter: ReadOnlyWorldQuery>(
     mut ui: ResMut<YoleckUi>,
     cameras_query: Query<&VpeolCameraState>,
@@ -700,5 +706,15 @@ pub fn vpeol_read_click_on_entity<Filter: ReadOnlyWorldQuery>(
     None
 }
 
+/// Apply a transform to every entity in the level.
+///
+/// Note that:
+/// * It is the duty of [`vpeol_2d`](crate::vpeol_2d)/[`vpeol_3d`](crate::vpeol_3d) to handle the
+///   actual repositioning, and they do so only for entities that use their existing components
+///   ([`Vpeol2dPosition`](crate::vpeol_2d::Vpeol2dPosition)/[`Vpeol3dPosition`](crate::vpeol_3d::Vpeol3dPosition)
+///   and friends). If there are entities that do not use these mechanisms, it falls under the
+///   responsibility of whatever populates their `Transform` to take this component (of their level
+///   entity) into account.
+/// * The repositioning is done directly on the `Transform` - not on the `GlobalTransform`.
 #[derive(Component)]
 pub struct VpeolRepositionLevel(pub Transform);
