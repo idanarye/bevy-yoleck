@@ -13,7 +13,7 @@ use crate::{BoxedAny, YoleckEntityLifecycleStatus, YoleckInternalSchedule, Yolec
 ///
 /// Rather than being used for general ECS behavior definition, `YoleckComponent`s should be used
 /// for spawning the actual components using [populate
-/// systems](crate::YoleckExtForApp::yoleck_populate_schedule_mut).
+/// systems](crate::prelude::YoleckSchedule::Populate).
 pub trait YoleckComponent:
     Default + Clone + PartialEq + Component + Serialize + for<'a> Deserialize<'a>
 {

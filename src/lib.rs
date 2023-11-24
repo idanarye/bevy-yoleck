@@ -41,8 +41,7 @@
 //!   [`YoleckComponent`](crate::specs_registration::YoleckComponent)s for that entity type.
 //! * Register edit systems with
 //!   [`add_yoleck_edit_system`](YoleckExtForApp::add_yoleck_edit_system).
-//! * Register populate systems on [the populate
-//!   schedule](YoleckExtForApp::yoleck_populate_schedule_mut)
+//! * Register populate systems on [`YoleckSchedule::Populate`]
 //! * If the application starts in editor mode:
 //!   * Add the `EguiPlugin` plugin.
 //!   * Add the [`YoleckPluginForEditor`] plugin.
@@ -101,7 +100,7 @@
 //!             .with::<Rectangle>()
 //!     });
 //!     app.add_yoleck_edit_system(edit_rectangle);
-//!     app.yoleck_populate_schedule_mut().add_systems(populate_rectangle);
+//!     app.add_systems(YoleckSchedule::Populate, populate_rectangle);
 //!
 //!     app.run();
 //! }
@@ -422,26 +421,6 @@ pub trait YoleckExtForApp {
     /// See [`YoleckEdit`](crate::editing::YoleckEdit).
     fn add_yoleck_edit_system<P>(&mut self, system: impl 'static + IntoSystem<(), (), P>);
 
-    /// Get a Bevy schedule to add Yoleck populate systems on.
-    ///
-    /// ```no_run
-    /// # use bevy::prelude::*;
-    /// # use bevy_yoleck::prelude::*;
-    /// # use serde::{Deserialize, Serialize};
-    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
-    /// # struct Component1;
-    /// # let mut app = App::new();
-    ///
-    /// app.yoleck_populate_schedule_mut().add_systems(populate_component1);
-    ///
-    /// fn populate_component1(mut populate: YoleckPopulate<&Component1>) {
-    ///     populate.populate(|_ctx, mut cmd, component1| {
-    ///         // Add Bevy components derived from `component1` to `cmd`.
-    ///     });
-    /// }
-    /// ```
-    fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule;
-
     /// Register a function that upgrades entities from a previous version of the app format.
     ///
     /// This should only be called _after_ adding
@@ -523,12 +502,6 @@ impl YoleckExtForApp for App {
             .world
             .get_resource_or_insert_with(YoleckEditSystems::default);
         edit_systems.edit_systems.push(system_id);
-    }
-
-    fn yoleck_populate_schedule_mut(&mut self) -> &mut Schedule {
-        self
-            .get_schedule_mut(YoleckSchedule::Populate)
-            .expect("Yoleck's populate schedule was not created. Please use a YoleckPluginForGame or YoleckPluginForEditor")
     }
 
     fn add_yoleck_entity_upgrade(
@@ -682,10 +655,31 @@ pub(crate) enum YoleckInternalSchedule {
     UpdateManagedDataFromComponents,
 }
 
-/// Schedules for [Yoleck's populate schedule](YoleckExtForApp::yoleck_populate_schedule_mut).
+/// Schedules for user code to do the actual entity/level population after Yoleck spawns the level
+/// "skeleton".
 #[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum YoleckSchedule {
-    /// This is where most user defined populate systems should reside.
+    /// This is where user defined populate systems should reside.
+    ///
+    /// Note that populate systems, rather than directly trying to query the entities to be
+    /// populated, should use [`YoleckPopulate`](crate::prelude::YoleckPopulate):
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+    /// # struct Component1;
+    /// # let mut app = App::new();
+    ///
+    /// app.add_systems(YoleckSchedule::Populate, populate_component1);
+    ///
+    /// fn populate_component1(mut populate: YoleckPopulate<&Component1>) {
+    ///     populate.populate(|_ctx, mut cmd, component1| {
+    ///         // Add Bevy components derived from `component1` to `cmd`.
+    ///     });
+    /// }
+    /// ```
     Populate,
     /// Right after all the level entities are loaded, but before any populate systems manage to
     /// run.

@@ -71,8 +71,7 @@ fn main() {
             .insert_on_init(|| IsPlayer)
     });
     app.add_yoleck_edit_system(edit_player);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_player);
+    app.add_systems(YoleckSchedule::Populate, populate_player);
     app.add_yoleck_entity_upgrade_for(1, "Player", |data| {
         let mut old_data = data.as_object_mut().unwrap().remove("Player").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
@@ -86,8 +85,7 @@ fn main() {
     });
     app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_fruit);
+    app.add_systems(YoleckSchedule::Populate, populate_fruit);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "Fruit" {
             return;
@@ -108,8 +106,7 @@ fn main() {
             .with::<LaserPointer>()
     });
     app.add_yoleck_edit_system(edit_text);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_text);
+    app.add_systems(YoleckSchedule::Populate, populate_text);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "FloatingText" {
             return;
@@ -136,8 +133,7 @@ fn main() {
             .with::<TriangleVertices>()
     });
     app.add_yoleck_edit_system(edit_triangle);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_triangle);
+    app.add_systems(YoleckSchedule::Populate, populate_triangle);
 
     app.add_yoleck_edit_system(edit_laser_pointer);
     app.add_systems(Update, draw_laser_pointers);

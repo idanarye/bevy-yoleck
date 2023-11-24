@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     If it is necessary to load a level from memory, add it to
     `ResMut<Assets<YoleckRawLevel>>` first and pass the handle to
     `YoleckLoadLevel`.
+- [**BREAKING**] The `yoleck_populate_schedule_mut` method (which Yoleck was
+  adding as an extension on Bevy's `App`) is removed in favor of just using
+  `YoleckSchedule::Populate` directly.
 
 ### Added
 - `YoleckEditableLevels` resource (accessible only from edit systems) that

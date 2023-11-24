@@ -70,6 +70,22 @@ As before, if you create a component from a system and want it to be despawned w
 
   Note that you can freely set an existing `YoleckBelongsToLevel` to point to different levels. So it might make more sense to switch the player character entity to different level as it travels between them than to associate it to some faux level. Both options are available.
 
+## Adding populate systems
+
+
+`yoleck_populate_schedule_mut` is removed - this no longer works:
+
+```rust
+app.yoleck_populate_schedule_mut().add_systems(my_populate_system);
+```
+
+Instead, just add the system on the `YoleckSchedule::Populate` schedule:
+```rust
+app.add_systems(YoleckSchedule::Populate, my_populate_system);
+```
+
+`yoleck_populate_schedule_mut` made ergonomic sense in Bevy 0.10, but since starting Bevy 0.11 one has to always specify the schedule, it is no longer that ergonomic to have this helper method.
+
 # Migrating to Yoleck 0.15
 
 ## Accessing the YoleckUi

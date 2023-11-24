@@ -60,8 +60,7 @@ fn main() {
                 knob_scale: 0.5,
             })
     });
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_spaceship);
+    app.add_systems(YoleckSchedule::Populate, populate_spaceship);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Planet")
@@ -74,8 +73,7 @@ fn main() {
                 knob_scale: 0.5,
             })
     });
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_planet);
+    app.add_systems(YoleckSchedule::Populate, populate_planet);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("PlanetPointer")
@@ -88,8 +86,7 @@ fn main() {
             })
     });
 
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_simple_sphere);
+    app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);
 
     app.add_yoleck_edit_system(edit_laser_pointer);
     app.add_systems(Update, draw_laser_pointers);

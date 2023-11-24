@@ -48,8 +48,7 @@ fn main() {
             .with::<Vpeol2dPosition>()
             .insert_on_init(|| IsPlayer)
     });
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_player);
+    app.add_systems(YoleckSchedule::Populate, populate_player);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("FloatingText")
@@ -58,8 +57,7 @@ fn main() {
             .with::<TextContent>()
     });
     app.add_yoleck_edit_system(edit_text);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_text);
+    app.add_systems(YoleckSchedule::Populate, populate_text);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Doorway")
@@ -69,8 +67,7 @@ fn main() {
     });
     app.add_yoleck_edit_system(edit_doorway_rotation);
     app.add_yoleck_edit_system(edit_doorway);
-    app.yoleck_populate_schedule_mut()
-        .add_systems(populate_doorway);
+    app.add_systems(YoleckSchedule::Populate, populate_doorway);
     app.add_systems(Update, set_doorways_sprite_index);
 
     app.add_systems(
