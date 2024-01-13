@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.17.1 - 2024-01-14
+### Fixed
+- Use a proper `OR` syntax for the dual license.
+
 ## 0.17.0 - 2023-11-25
 ### Removed
 - [**BREAKING**] The `YoleckLoadingCommand` resource is removed, in favor of a

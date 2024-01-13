@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-yoleck"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "anyhow",
  "bevy",
@@ -308,7 +308,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-yoleck-macros"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "proc-macro2",
  "quote",
