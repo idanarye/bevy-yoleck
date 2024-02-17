@@ -39,7 +39,7 @@
 //! dragging, there are two options:
 //!
 //! 1. Add  the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
-//!    are also [`Vpeol3dRotatation`] and [`Vpeol3dScale`], but they don't currently get editing
+//!    are also [`Vpeol3dRotation`] and [`Vpeol3dScale`], but they don't currently get editing
 //!    support from vpeol_3d). To enable dragging across the third axis, add
 //!    [`Vpeol3dThirdAxisWithKnob`] as well.
 //!     ```no_run
@@ -125,7 +125,7 @@ impl Plugin for Vpeol3dPluginForGame {
 #[cfg(feature = "bevy_reflect")]
 fn register_reflect_types(app: &mut App) {
     app.register_type::<Vpeol3dPosition>();
-    app.register_type::<Vpeol3dRotatation>();
+    app.register_type::<Vpeol3dRotation>();
     app.register_type::<Vpeol3dScale>();
     app.register_type::<Vpeol3dCameraControl>();
 }
@@ -470,7 +470,7 @@ pub struct Vpeol3dThirdAxisWithKnob {
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct Vpeol3dRotatation(pub Quat);
+pub struct Vpeol3dRotation(pub Quat);
 
 /// A scale component that's populated (but not edited) by vpeol_3d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
@@ -684,7 +684,7 @@ fn vpeol_3d_edit_third_axis_with_knob(
 fn vpeol_3d_populate_transform(
     mut populate: YoleckPopulate<(
         &Vpeol3dPosition,
-        Option<&Vpeol3dRotatation>,
+        Option<&Vpeol3dRotation>,
         Option<&Vpeol3dScale>,
         &YoleckBelongsToLevel,
     )>,
@@ -693,7 +693,7 @@ fn vpeol_3d_populate_transform(
     populate.populate(
         |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
             let mut transform = Transform::from_translation(position.0);
-            if let Some(Vpeol3dRotatation(rotation)) = rotation {
+            if let Some(Vpeol3dRotation(rotation)) = rotation {
                 transform = transform.with_rotation(*rotation);
             }
             if let Some(Vpeol3dScale(scale)) = scale {

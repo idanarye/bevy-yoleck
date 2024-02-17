@@ -34,7 +34,7 @@ pub mod prelude {
     #[cfg(feature = "vpeol_3d")]
     pub use crate::vpeol_3d::{
         Vpeol3dCameraControl, Vpeol3dPluginForEditor, Vpeol3dPluginForGame, Vpeol3dPosition,
-        Vpeol3dRotatation, Vpeol3dScale, Vpeol3dThirdAxisWithKnob,
+        Vpeol3dRotation, Vpeol3dScale, Vpeol3dThirdAxisWithKnob,
     };
 }
 
