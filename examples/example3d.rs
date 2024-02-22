@@ -126,11 +126,10 @@ fn setup_arena(
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mesh = mesh_assets.add(Mesh::from(shape::Plane {
-        size: 100.0,
-        subdivisions: 0,
+    let mesh = mesh_assets.add(Mesh::from(Plane3d {
+        normal: Direction3d::Y,
     }));
-    let material = material_assets.add(Color::GRAY.into());
+    let material = material_assets.add(Color::GRAY);
     commands.spawn(PbrBundle {
         mesh,
         material,
@@ -180,15 +179,15 @@ fn populate_planet(
 fn control_spaceship(
     mut spaceship_query: Query<&mut Transform, With<IsSpaceship>>,
     time: Res<Time>,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     let calc_axis = |neg: KeyCode, pos: KeyCode| match (input.pressed(neg), input.pressed(pos)) {
         (true, true) | (false, false) => 0.0,
         (true, false) => -1.0,
         (false, true) => 1.0,
     };
-    let pitch = calc_axis(KeyCode::Up, KeyCode::Down);
-    let roll = calc_axis(KeyCode::Left, KeyCode::Right);
+    let pitch = calc_axis(KeyCode::ArrowUp, KeyCode::ArrowDown);
+    let roll = calc_axis(KeyCode::ArrowLeft, KeyCode::ArrowRight);
     for mut spaceship_transform in spaceship_query.iter_mut() {
         let forward_direction = spaceship_transform.rotation.mul_vec3(-Vec3::Z);
         let roll_quat =
@@ -231,16 +230,10 @@ fn populate_simple_sphere(
     populate.populate(|ctx, mut cmd, ()| {
         if ctx.is_first_time() {
             let mesh = mesh
-                .get_or_insert_with(|| {
-                    mesh_assets.add(Mesh::from(shape::UVSphere {
-                        radius: 1.0,
-                        sectors: 10,
-                        stacks: 10,
-                    }))
-                })
+                .get_or_insert_with(|| mesh_assets.add(Mesh::from(Sphere { radius: 1.0 })))
                 .clone();
             let material = material
-                .get_or_insert_with(|| material_assets.add(Color::YELLOW.into()))
+                .get_or_insert_with(|| material_assets.add(Color::YELLOW))
                 .clone();
             cmd.insert(PbrBundle {
                 mesh,

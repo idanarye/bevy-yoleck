@@ -29,7 +29,7 @@ impl YoleckKnobsCache {
         &mut self,
         key: K,
         commands: &'a mut Commands<'w, 's>,
-    ) -> KnobFromCache<'w, 's, 'a>
+    ) -> KnobFromCache<'a>
     where
         K: 'static + Send + Sync + Hash + Eq,
     {
@@ -78,21 +78,21 @@ impl YoleckKnobsCache {
     }
 }
 
-pub struct KnobFromCache<'w, 's, 'a> {
-    pub cmd: EntityCommands<'w, 's, 'a>,
+pub struct KnobFromCache<'a> {
+    pub cmd: EntityCommands<'a>,
     pub is_new: bool,
 }
 
 /// An handle for intearcing with a knob from an edit system.
-pub struct YoleckKnobHandle<'w, 's, 'a> {
+pub struct YoleckKnobHandle<'a> {
     /// The command of the knob entity.
-    pub cmd: EntityCommands<'w, 's, 'a>,
+    pub cmd: EntityCommands<'a>,
     /// `true` if the knob entity is just created this frame.
     pub is_new: bool,
     passed: HashMap<TypeId, BoxedArc>,
 }
 
-impl YoleckKnobHandle<'_, '_, '_> {
+impl YoleckKnobHandle<'_> {
     /// Get data sent to the knob from external systems (usually interaciton from the level
     /// editor)
     ///
@@ -134,7 +134,7 @@ pub struct YoleckKnobs<'w, 's> {
 }
 
 impl<'w, 's> YoleckKnobs<'w, 's> {
-    pub fn knob<'a, K>(&'a mut self, key: K) -> YoleckKnobHandle<'w, 's, 'a>
+    pub fn knob<'a, K>(&'a mut self, key: K) -> YoleckKnobHandle<'a>
     where
         K: 'static + Send + Sync + Hash + Eq,
     {

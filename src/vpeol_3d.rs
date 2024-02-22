@@ -230,9 +230,12 @@ fn update_camera_status_for_models(
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
-            let ray_in_object_coords = Ray {
+            let ray_in_object_coords = Ray3d {
                 origin: inverse_transform.transform_point3(cursor_ray.origin),
-                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+                direction: inverse_transform
+                    .transform_vector3(*cursor_ray.direction)
+                    .try_into()
+                    .unwrap(),
             };
 
             let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
@@ -298,15 +301,15 @@ impl Vpeol3dCameraControl {
         }
     }
 
-    fn ray_intersection(&self, ray: Ray) -> Option<Vec3> {
-        let distance = ray.intersect_plane(self.plane_origin, self.plane_normal)?;
+    fn ray_intersection(&self, ray: Ray3d) -> Option<Vec3> {
+        let distance = ray.intersect_plane(self.plane_origin, Plane3d::new(self.plane_normal))?;
         Some(ray.get_point(distance))
     }
 }
 
 fn camera_3d_pan(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
@@ -390,14 +393,14 @@ fn camera_3d_move_along_plane_normal(
 
 fn camera_3d_rotate(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
         &VpeolCameraState,
         &Vpeol3dCameraControl,
     )>,
-    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray>>,
+    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray3d>>,
 ) {
     enum MouseButtonOp {
         JustPressed,
@@ -432,10 +435,10 @@ fn camera_3d_rotate(
             MouseButtonOp::BeingPressed => {
                 if let Some(prev_ray) = last_cursor_ray_by_camera.get_mut(&camera_entity) {
                     let rotation =
-                        Quat::from_rotation_arc(cursor_ray.direction, prev_ray.direction);
+                        Quat::from_rotation_arc(*cursor_ray.direction, *prev_ray.direction);
                     camera_transform.rotate(rotation);
                     let new_forward = camera_transform.forward();
-                    camera_transform.look_to(new_forward, maintaining_up);
+                    camera_transform.look_to(*new_forward, maintaining_up);
                 }
             }
         }
@@ -570,7 +573,7 @@ fn vpeol_3d_init_position(
     mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     cameras_query: Query<&VpeolCameraState>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
     let Ok((mut position, drag_plane)) = edit.get_single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;
@@ -584,7 +587,9 @@ fn vpeol_3d_init_position(
     };
 
     let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
-    if let Some(distance_to_plane) = cursor_ray.intersect_plane(position.0, drag_plane.normal) {
+    if let Some(distance_to_plane) =
+        cursor_ray.intersect_plane(position.0, Plane3d::new(drag_plane.normal))
+    {
         position.0 = cursor_ray.get_point(distance_to_plane);
     };
 
@@ -619,13 +624,13 @@ fn vpeol_3d_edit_third_axis_with_knob(
 
     let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
         (
-            mesh_assets.add(Mesh::from(shape::Cylinder {
+            mesh_assets.add(Mesh::from(Cylinder {
                 radius: 0.5,
-                height: 1.0,
-                resolution: 10,
-                segments: 10,
+                half_height: 0.5,
+                // resolution: 10,
+                // segments: 10,
             })),
-            material_assets.add(Color::ORANGE_RED.into()),
+            material_assets.add(Color::ORANGE_RED),
         )
     });
 

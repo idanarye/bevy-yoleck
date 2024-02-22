@@ -5,7 +5,7 @@
 //!
 //! `vpeol` modules also support `bevy_reflect::Reflect` by enabling the feature `beavy_reflect`.
 
-use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -109,7 +109,7 @@ impl VpeolDragPlane {
 #[derive(Component, Default, Debug)]
 pub struct VpeolCameraState {
     /// Where this camera considers the cursor to be in the world.
-    pub cursor_ray: Option<Ray>,
+    pub cursor_ray: Option<Ray3d>,
     /// The topmost entity being pointed by the cursor.
     pub entity_under_cursor: Option<(Entity, VpeolCursorPointing)>,
     /// Entities that may or may not be topmost, but the editor needs to know whether or not they
@@ -243,8 +243,8 @@ fn handle_camera_state(
     mut egui_context: EguiContexts,
     mut query: Query<(&Camera, &mut VpeolCameraState)>,
     window_getter: WindowGetter,
-    mouse_buttons: Res<Input<MouseButton>>,
-    keyboard: Res<Input<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     global_transform_query: Query<&GlobalTransform>,
     selected_query: Query<(), With<YoleckEditMarker>>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
@@ -283,7 +283,8 @@ fn handle_camera_state(
                 } else {
                     global_drag_plane.normal
                 };
-            let distance = cursor_ray.intersect_plane(plane_origin, drag_plane_normal)?;
+            let distance =
+                cursor_ray.intersect_plane(plane_origin, Plane3d::new(drag_plane_normal))?;
             Some(cursor_ray.get_point(distance))
         };
 
@@ -425,7 +426,7 @@ pub struct VpeolRouteClickTo(pub Entity);
 #[derive(SystemParam)]
 pub struct VpeolRootResolver<'w, 's> {
     root_resolver: Query<'w, 's, &'static VpeolRouteClickTo>,
-    has_managed_query: Query<'w, 's, Or<(With<YoleckManaged>, With<YoleckKnobMarker>)>>,
+    has_managed_query: Query<'w, 's, (), Or<(With<YoleckManaged>, With<YoleckKnobMarker>)>>,
 }
 
 impl VpeolRootResolver<'_, '_> {
@@ -447,7 +448,7 @@ pub fn handle_clickable_children_system<F, B>(
     should_add_query: Query<Entity, F>,
     mut commands: Commands,
 ) where
-    F: ReadOnlyWorldQuery,
+    F: QueryFilter,
     B: Default + Bundle,
 {
     for (parent, children) in parents_query.iter() {
@@ -559,7 +560,7 @@ fn restore_transform_from_cache_after_transform_propagate(
     }
 }
 
-pub(crate) fn ray_intersection_with_mesh(ray: Ray, mesh: &Mesh) -> Option<f32> {
+pub(crate) fn ray_intersection_with_mesh(ray: Ray3d, mesh: &Mesh) -> Option<f32> {
     let aabb = mesh.compute_aabb()?;
     let distance_to_aabb = ray_intersection_with_aabb(ray, aabb)?;
 
@@ -570,7 +571,7 @@ pub(crate) fn ray_intersection_with_mesh(ray: Ray, mesh: &Mesh) -> Option<f32> {
     }
 }
 
-fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
+fn ray_intersection_with_aabb(ray: Ray3d, aabb: Aabb) -> Option<f32> {
     let center: Vec3 = aabb.center.into();
     let mut max_low = f32::NEG_INFINITY;
     let mut min_high = f32::INFINITY;
@@ -586,8 +587,8 @@ fn ray_intersection_with_aabb(ray: Ray, aabb: Aabb) -> Option<f32> {
                 return None;
             }
         } else {
-            let low = ray.intersect_plane(center - half_extent * axis, axis);
-            let high = ray.intersect_plane(center + half_extent * axis, axis);
+            let low = ray.intersect_plane(center - half_extent * axis, Plane3d::new(axis));
+            let high = ray.intersect_plane(center + half_extent * axis, Plane3d::new(axis));
             let (low, high) = if 0.0 <= dot { (low, high) } else { (high, low) };
             if let Some(low) = low {
                 max_low = max_low.max(low);
@@ -628,14 +629,14 @@ fn iter_triangles(mesh: &Mesh) -> Option<impl '_ + Iterator<Item = Triangle>> {
 struct Triangle([Vec3; 3]);
 
 impl Triangle {
-    fn ray_intersection(&self, ray: Ray) -> Option<f32> {
+    fn ray_intersection(&self, ray: Ray3d) -> Option<f32> {
         let directions = [
             self.0[1] - self.0[0],
             self.0[2] - self.0[1],
             self.0[0] - self.0[2],
         ];
         let normal = directions[0].cross(directions[1]); // no need to normalize it
-        let distance = ray.intersect_plane(self.0[0], normal)?;
+        let distance = ray.intersect_plane(self.0[0], Plane3d::new(normal))?;
         let point = ray.get_point(distance);
         if self
             .0
@@ -659,12 +660,12 @@ impl Triangle {
 /// Note that this only returns `Some` when the user clicks on an entity - it does not finish the
 /// exclusive system. The other systems that this gets piped into should decide whether or not it
 /// should be finished.
-pub fn vpeol_read_click_on_entity<Filter: ReadOnlyWorldQuery>(
+pub fn vpeol_read_click_on_entity<Filter: QueryFilter>(
     mut ui: ResMut<YoleckUi>,
     cameras_query: Query<&VpeolCameraState>,
     yoleck_managed_query: Query<&YoleckManaged>,
     filter_query: Query<(), Filter>,
-    buttons: Res<Input<MouseButton>>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut candidate: Local<Option<Entity>>,
 ) -> Option<Entity> {
     let target = if ui.ctx().is_pointer_over_area() {

@@ -1,6 +1,6 @@
 use std::ops::RangeFrom;
 
-use bevy::ecs::query::{ReadOnlyWorldQuery, WorldQuery};
+use bevy::ecs::query::{QueryData, QueryFilter, WorldQuery};
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -9,13 +9,13 @@ use crate::entity_management::EntitiesToPopulate;
 
 /// Wrapper for writing queries in populate systems.
 #[derive(SystemParam)]
-pub struct YoleckPopulate<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
+pub struct YoleckPopulate<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter = ()> {
     entities_to_populate: Res<'w, EntitiesToPopulate>,
     query: Query<'w, 's, Q, F>,
     commands: Commands<'w, 's>,
 }
 
-impl<Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckPopulate<'_, '_, Q, F> {
+impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckPopulate<'_, '_, Q, F> {
     /// Iterate over the entities that need populating in order to add/update components using
     /// a Bevy command.
     pub fn populate(

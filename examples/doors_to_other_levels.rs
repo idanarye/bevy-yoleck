@@ -116,6 +116,7 @@ struct Player {
 fn populate_player(
     mut populate: YoleckPopulate<(), With<IsPlayer>>,
     asset_server: Res<AssetServer>,
+    mut texture_cache: Local<Option<Handle<Image>>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
         cmd.insert((SpriteBundle {
@@ -123,7 +124,9 @@ fn populate_player(
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            texture: asset_server.load("sprites/player.png"),
+            texture: texture_cache
+                .get_or_insert_with(|| asset_server.load("sprites/player.png"))
+                .clone(),
             ..Default::default()
         },));
     });
@@ -154,19 +157,19 @@ fn control_camera(
 fn control_player(
     mut player_query: Query<&mut Transform, With<IsPlayer>>,
     time: Res<Time>,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut velocity = Vec3::ZERO;
-    if input.pressed(KeyCode::Up) {
+    if input.pressed(KeyCode::ArrowUp) {
         velocity += Vec3::Y;
     }
-    if input.pressed(KeyCode::Down) {
+    if input.pressed(KeyCode::ArrowDown) {
         velocity -= Vec3::Y;
     }
-    if input.pressed(KeyCode::Left) {
+    if input.pressed(KeyCode::ArrowLeft) {
         velocity -= Vec3::X;
     }
-    if input.pressed(KeyCode::Right) {
+    if input.pressed(KeyCode::ArrowRight) {
         velocity += Vec3::X;
     }
     velocity *= 800.0;
@@ -284,44 +287,42 @@ fn edit_doorway_rotation(
 fn populate_doorway(
     mut populate: YoleckPopulate<(), With<Doorway>>,
     asset_server: Res<AssetServer>,
-    mut asset_handle_cache: Local<Option<Handle<TextureAtlas>>>,
-    mut texture_atlas_assets: ResMut<Assets<TextureAtlas>>,
+    mut asset_handle_cache: Local<Option<(Handle<Image>, Handle<TextureAtlasLayout>)>>,
+    mut texture_atlas_layout_assets: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
-        let texture_atlas = asset_handle_cache
+        let (texture, texture_atlas_layout) = asset_handle_cache
             .get_or_insert_with(|| {
-                texture_atlas_assets.add(TextureAtlas::from_grid(
+                (
                     asset_server.load("sprites/doorway.png"),
-                    Vec2::new(64.0, 64.0),
-                    1,
-                    2,
-                    None,
-                    None,
-                ))
+                    texture_atlas_layout_assets.add(TextureAtlasLayout::from_grid(
+                        // asset_server.load("sprites/doorway.png"),
+                        Vec2::new(64.0, 64.0),
+                        1,
+                        2,
+                        None,
+                        None,
+                    )),
+                )
             })
             .clone();
         cmd.insert(SpriteSheetBundle {
-            sprite: TextureAtlasSprite {
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                index: 0,
-                ..Default::default()
-            },
-            texture_atlas,
-            ..Default::default()
-        });
-        cmd.insert(SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            texture: asset_server.load("sprites/doorway.png"),
+            atlas: TextureAtlas {
+                layout: texture_atlas_layout,
+                index: 0,
+            },
+            texture,
             ..Default::default()
         });
     });
 }
 
 fn set_doorways_sprite_index(
-    mut query: Query<(&mut TextureAtlasSprite, Has<DoorIsOpen>), With<Doorway>>,
+    mut query: Query<(&mut TextureAtlas, Has<DoorIsOpen>), With<Doorway>>,
 ) {
     for (mut sprite, door_is_open) in query.iter_mut() {
         sprite.index = if door_is_open { 1 } else { 0 };

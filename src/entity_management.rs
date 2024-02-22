@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::prelude::*;
-use bevy::reflect::{TypePath, TypeUuid};
+use bevy::reflect::TypePath;
 use bevy::utils::{BoxedFuture, HashMap, Uuid};
 use serde::{Deserialize, Serialize};
 
@@ -260,8 +260,7 @@ pub struct YoleckKeepLevel;
 pub(crate) struct YoleckLevelAssetLoader;
 
 /// Represents a level file.
-#[derive(Asset, TypeUuid, TypePath, Debug, Serialize, Deserialize, Clone)]
-#[uuid = "4b37433a-1cff-4693-b943-3fb46eaaeabc"]
+#[derive(Asset, TypePath, Debug, Serialize, Deserialize, Clone)]
 pub struct YoleckRawLevel(
     pub(crate) YoleckRawLevelHeader,
     serde_json::Value, // level data

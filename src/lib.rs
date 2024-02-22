@@ -332,7 +332,7 @@ impl Plugin for YoleckPluginBase {
 
 impl Plugin for YoleckPluginForGame {
     fn build(&self, app: &mut App) {
-        app.add_state::<YoleckEditorState>();
+        app.init_state::<YoleckEditorState>();
         app.add_systems(
             Startup,
             |mut state: ResMut<NextState<YoleckEditorState>>| {
@@ -345,7 +345,7 @@ impl Plugin for YoleckPluginForGame {
 
 impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
-        app.add_state::<YoleckEditorState>();
+        app.init_state::<YoleckEditorState>();
         app.add_event::<YoleckEditorEvent>();
         app.add_plugins(YoleckPluginBase);
         app.add_plugins(YoleckExclusiveSystemsPlugin);

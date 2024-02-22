@@ -22,7 +22,7 @@ pub fn yoleck_map_entity_to_uuid(
 pub fn yoleck_exclusive_system_cancellable(
     In(directive): In<YoleckExclusiveSystemDirective>,
     mut ui: ResMut<YoleckUi>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) -> YoleckExclusiveSystemDirective {
     if matches!(directive, YoleckExclusiveSystemDirective::Finished) {
         return directive;

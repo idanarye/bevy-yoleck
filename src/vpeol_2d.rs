@@ -142,7 +142,7 @@ impl Plugin for Vpeol2dPluginForEditor {
             Update,
             (
                 update_camera_status_for_sprites,
-                update_camera_status_for_atlas_sprites,
+                // update_camera_status_for_atlas_sprites, // FIXME
                 update_camera_status_for_2d_meshes,
                 update_camera_status_for_text_2d,
             )
@@ -159,7 +159,8 @@ impl Plugin for Vpeol2dPluginForEditor {
                 handle_clickable_children_system::<
                     Or<(
                         (With<Sprite>, With<Handle<Image>>),
-                        (With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
+                        // FIXME:
+                        //(With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
                         (With<TextLayoutInfo>, With<Anchor>),
                     )>,
                     (),
@@ -250,6 +251,8 @@ fn update_camera_status_for_sprites(
     }
 }
 
+// FIXME:
+/*
 fn update_camera_status_for_atlas_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(
@@ -288,6 +291,7 @@ fn update_camera_status_for_atlas_sprites(
         }
     }
 }
+*/
 
 fn update_camera_status_for_2d_meshes(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
@@ -307,9 +311,12 @@ fn update_camera_status_for_2d_meshes(
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
-            let ray_in_object_coords = Ray {
+            let ray_in_object_coords = Ray3d {
                 origin: inverse_transform.transform_point3(cursor_ray.origin),
-                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+                direction: inverse_transform
+                    .transform_vector3(*cursor_ray.direction)
+                    .try_into()
+                    .unwrap(),
             };
 
             let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
@@ -371,7 +378,7 @@ impl Default for Vpeol2dCameraControl {
 
 fn camera_2d_pan(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<
         (Entity, &mut Transform, &VpeolCameraState),
         With<Vpeol2dCameraControl>,
@@ -541,7 +548,7 @@ fn vpeol_2d_init_position(
     ui: Res<YoleckUi>,
     mut edit: YoleckEdit<&mut Vpeol2dPosition>,
     cameras_query: Query<&VpeolCameraState>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
     let Ok(mut position) = edit.get_single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;

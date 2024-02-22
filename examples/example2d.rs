@@ -267,7 +267,7 @@ fn edit_player(
 fn control_player(
     mut player_query: Query<&mut Transform, With<IsPlayer>>,
     time: Res<Time>,
-    input: Res<Input<KeyCode>>,
+    input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut velocity = Vec3::ZERO;
     if input.pressed(KeyCode::Up) {
