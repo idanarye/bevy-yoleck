@@ -4,7 +4,7 @@ pub fn upgrade_level_file(mut level: serde_json::Value) -> anyhow::Result<serde_
         .as_array_mut()
         .ok_or_else(|| anyhow::anyhow!("Level file must be an array"))?;
     let mut format_version = parts
-        .get(0)
+        .first()
         .ok_or_else(|| anyhow::anyhow!("Level file array must not be empty"))?
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("Level file header must be an object"))?

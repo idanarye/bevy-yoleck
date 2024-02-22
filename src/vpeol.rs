@@ -239,6 +239,7 @@ impl WindowGetter<'_, '_> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_camera_state(
     mut egui_context: EguiContexts,
     mut query: Query<(&Camera, &mut VpeolCameraState)>,
@@ -426,6 +427,7 @@ pub struct VpeolRouteClickTo(pub Entity);
 #[derive(SystemParam)]
 pub struct VpeolRootResolver<'w, 's> {
     root_resolver: Query<'w, 's, &'static VpeolRouteClickTo>,
+    #[allow(clippy::type_complexity)]
     has_managed_query: Query<'w, 's, (), Or<(With<YoleckManaged>, With<YoleckKnobMarker>)>>,
 }
 

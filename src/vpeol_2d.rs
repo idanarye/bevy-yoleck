@@ -214,6 +214,7 @@ impl CursorInWorldPos {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn update_camera_status_for_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(
@@ -440,10 +441,9 @@ fn camera_2d_zoom(
         let Some(cursor_in_screen_pos) = window.cursor_position() else {
             continue;
         };
-        let Some(new_cursor_ray) = camera.viewport_to_world(
-            &camera_transform.as_ref().clone().into(),
-            cursor_in_screen_pos,
-        ) else {
+        let Some(new_cursor_ray) =
+            camera.viewport_to_world(&((*camera_transform.as_ref()).into()), cursor_in_screen_pos)
+        else {
             continue;
         };
         let new_world_pos = new_cursor_ray.origin.truncate();
