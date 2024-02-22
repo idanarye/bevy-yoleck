@@ -142,7 +142,6 @@ impl Plugin for Vpeol2dPluginForEditor {
             Update,
             (
                 update_camera_status_for_sprites,
-                // update_camera_status_for_atlas_sprites, // FIXME
                 update_camera_status_for_2d_meshes,
                 update_camera_status_for_text_2d,
             )
@@ -159,8 +158,6 @@ impl Plugin for Vpeol2dPluginForEditor {
                 handle_clickable_children_system::<
                     Or<(
                         (With<Sprite>, With<Handle<Image>>),
-                        // FIXME:
-                        //(With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
                         (With<TextLayoutInfo>, With<Anchor>),
                     )>,
                     (),
@@ -219,8 +216,15 @@ impl CursorInWorldPos {
 
 fn update_camera_status_for_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
+    entities_query: Query<(
+        Entity,
+        &GlobalTransform,
+        &Sprite,
+        &Handle<Image>,
+        Option<&TextureAtlas>,
+    )>,
     image_assets: Res<Assets<Image>>,
+    texture_atlas_layout_assets: Res<Assets<TextureAtlasLayout>>,
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
@@ -228,11 +232,18 @@ fn update_camera_status_for_sprites(
             continue;
         };
 
-        for (entity, entity_transform, sprite, texture) in
+        for (entity, entity_transform, sprite, texture, texture_atlas) in
             entities_query.iter_many(&visible_entities.entities)
         {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
+            } else if let Some(texture_atlas) = texture_atlas {
+                let Some(texture_atlas_layout) =
+                    texture_atlas_layout_assets.get(&texture_atlas.layout)
+                else {
+                    continue;
+                };
+                texture_atlas_layout.textures[texture_atlas.index].size()
             } else if let Some(texture) = image_assets.get(texture) {
                 texture.size().as_vec2()
             } else {
@@ -250,48 +261,6 @@ fn update_camera_status_for_sprites(
         }
     }
 }
-
-// FIXME:
-/*
-fn update_camera_status_for_atlas_sprites(
-    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(
-        Entity,
-        &GlobalTransform,
-        &TextureAtlasSprite,
-        &Handle<TextureAtlas>,
-    )>,
-    texture_atlas_assets: Res<Assets<TextureAtlas>>,
-    root_resolver: VpeolRootResolver,
-) {
-    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else {
-            continue;
-        };
-
-        for (entity, entity_transform, sprite, texture) in
-            entities_query.iter_many(&visible_entities.entities)
-        {
-            let size = if let Some(custom_size) = sprite.custom_size {
-                custom_size
-            } else if let Some(texture_atlas) = texture_atlas_assets.get(texture) {
-                texture_atlas.textures[sprite.index].size()
-            } else {
-                continue;
-            };
-            if cursor.check_square(entity_transform, &sprite.anchor, size) {
-                let z_depth = entity_transform.translation().z;
-                let Some(root_entity) = root_resolver.resolve_root(entity) else {
-                    continue;
-                };
-                camera_state.consider(root_entity, z_depth, || {
-                    cursor.cursor_in_world_pos.extend(z_depth)
-                });
-            }
-        }
-    }
-}
-*/
 
 fn update_camera_status_for_2d_meshes(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,

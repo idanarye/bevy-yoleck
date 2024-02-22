@@ -126,9 +126,13 @@ fn setup_arena(
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
 ) {
-    let mesh = mesh_assets.add(Mesh::from(Plane3d {
-        normal: Direction3d::Y,
-    }.mesh().size(100.0, 100.0)));
+    let mesh = mesh_assets.add(Mesh::from(
+        Plane3d {
+            normal: Direction3d::Y,
+        }
+        .mesh()
+        .size(100.0, 100.0),
+    ));
     let material = material_assets.add(Color::GRAY);
     commands.spawn(PbrBundle {
         mesh,

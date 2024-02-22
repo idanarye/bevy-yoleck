@@ -3,6 +3,7 @@ use std::path::Path;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
+use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::sprite::Mesh2dHandle;
 use bevy::utils::Uuid;
@@ -156,43 +157,40 @@ fn setup_camera(mut commands: Commands) {
 
 #[derive(Resource)]
 struct GameAssets {
-    fruits_sprite_sheet: Handle<TextureAtlas>,
+    fruits_sprite_sheet_texture: Handle<Image>,
+    fruits_sprite_sheet_layout: Handle<TextureAtlasLayout>,
     fruits_sprite_sheet_egui: (egui::TextureId, Vec<egui::Rect>),
     font: Handle<Font>,
 }
 
 impl FromWorld for GameAssets {
     fn from_world(world: &mut World) -> Self {
-        let mut system_state =
-            SystemState::<(Res<AssetServer>, ResMut<Assets<TextureAtlas>>, EguiContexts)>::new(
-                world,
-            );
-        let (asset_server, mut texture_atlas_assets, mut egui_context) =
+        let mut system_state = SystemState::<(
+            Res<AssetServer>,
+            ResMut<Assets<TextureAtlasLayout>>,
+            EguiContexts,
+        )>::new(world);
+        let (asset_server, mut texture_atlas_layout_assets, mut egui_context) =
             system_state.get_mut(world);
-        let fruits_atlas = TextureAtlas::from_grid(
-            asset_server.load("sprites/fruits.png"),
-            Vec2::new(64.0, 64.0),
-            3,
-            1,
-            None,
-            None,
-        );
+        let fruits_atlas_texture = asset_server.load("sprites/fruits.png");
+        let fruits_atlas_layout =
+            TextureAtlasLayout::from_grid(Vec2::new(64.0, 64.0), 3, 1, None, None);
         let fruits_egui = {
             (
-                egui_context.add_image(fruits_atlas.texture.clone()),
-                fruits_atlas
+                egui_context.add_image(fruits_atlas_texture.clone()),
+                fruits_atlas_layout
                     .textures
                     .iter()
                     .map(|rect| {
                         [
                             [
-                                rect.min.x / fruits_atlas.size.x,
-                                rect.min.y / fruits_atlas.size.y,
+                                rect.min.x / fruits_atlas_layout.size.x,
+                                rect.min.y / fruits_atlas_layout.size.y,
                             ]
                             .into(),
                             [
-                                rect.max.x / fruits_atlas.size.x,
-                                rect.max.y / fruits_atlas.size.y,
+                                rect.max.x / fruits_atlas_layout.size.x,
+                                rect.max.y / fruits_atlas_layout.size.y,
                             ]
                             .into(),
                         ]
@@ -202,7 +200,8 @@ impl FromWorld for GameAssets {
             )
         };
         Self {
-            fruits_sprite_sheet: texture_atlas_assets.add(fruits_atlas),
+            fruits_sprite_sheet_texture: fruits_atlas_texture,
+            fruits_sprite_sheet_layout: texture_atlas_layout_assets.add(fruits_atlas_layout),
             fruits_sprite_sheet_egui: fruits_egui,
             font: asset_server.load("fonts/FiraSans-Bold.ttf"),
         }
@@ -223,6 +222,7 @@ struct Player {
 fn populate_player(
     mut populate: YoleckPopulate<(), With<IsPlayer>>,
     asset_server: Res<AssetServer>,
+    mut texture_cache: Local<Option<Handle<Image>>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
         cmd.insert((SpriteBundle {
@@ -230,7 +230,9 @@ fn populate_player(
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            texture: asset_server.load("sprites/player.png"),
+            texture: texture_cache
+                .get_or_insert_with(|| asset_server.load("sprites/player.png"))
+                .clone(),
             ..Default::default()
         },));
     });
@@ -270,16 +272,16 @@ fn control_player(
     input: Res<ButtonInput<KeyCode>>,
 ) {
     let mut velocity = Vec3::ZERO;
-    if input.pressed(KeyCode::Up) {
+    if input.pressed(KeyCode::ArrowUp) {
         velocity += Vec3::Y;
     }
-    if input.pressed(KeyCode::Down) {
+    if input.pressed(KeyCode::ArrowDown) {
         velocity -= Vec3::Y;
     }
-    if input.pressed(KeyCode::Left) {
+    if input.pressed(KeyCode::ArrowLeft) {
         velocity -= Vec3::X;
     }
-    if input.pressed(KeyCode::Right) {
+    if input.pressed(KeyCode::ArrowRight) {
         velocity += Vec3::X;
     }
     velocity *= 400.0;
@@ -343,12 +345,15 @@ fn edit_fruit_type(
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
                 knob.cmd.insert(SpriteSheetBundle {
-                    sprite: TextureAtlasSprite {
-                        index,
+                    sprite: Sprite {
                         custom_size: Some(Vec2::new(20.0, 20.0)),
                         ..Default::default()
                     },
-                    texture_atlas: assets.fruits_sprite_sheet.clone(),
+                    atlas: TextureAtlas {
+                        layout: assets.fruits_sprite_sheet_layout.clone(),
+                        index,
+                    },
+                    texture: assets.fruits_sprite_sheet_texture.clone(),
                     transform: Transform::from_translation(knob_position),
                     global_transform: Transform::from_translation(knob_position).into(),
                     ..Default::default()
@@ -408,12 +413,15 @@ fn populate_fruit(
         cmd.with_children(|commands| {
             let mut child = commands.spawn(marking.marker());
             child.insert(SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
-                    index: fruit.index,
+                sprite: Sprite {
                     custom_size: Some(Vec2::new(100.0, 100.0)),
                     ..Default::default()
                 },
-                texture_atlas: assets.fruits_sprite_sheet.clone(),
+                atlas: TextureAtlas {
+                    layout: assets.fruits_sprite_sheet_layout.clone(),
+                    index: fruit.index,
+                },
+                texture: assets.fruits_sprite_sheet_texture.clone(),
                 ..Default::default()
             });
         });
@@ -540,11 +548,14 @@ fn populate_triangle(
                 .get_mut(mesh_handle)
                 .expect("mesh inserted by previous invocation of this system")
         } else {
-            let mesh_handle = mesh_assets.add(Mesh::new(PrimitiveTopology::TriangleList));
+            let mesh_handle = mesh_assets.add(Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::default(),
+            ));
             let mesh = mesh_assets.get_mut(&mesh_handle);
             cmd.insert(ColorMesh2dBundle {
                 mesh: Mesh2dHandle(mesh_handle),
-                material: material_assets.add(Color::GREEN.into()),
+                material: material_assets.add(Color::GREEN),
                 ..Default::default()
             });
             mesh.expect("mesh was just inserted")
@@ -562,7 +573,7 @@ fn populate_triangle(
             let i = i as u32;
             indices.extend([0, i, i + 1]);
         }
-        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh.insert_indices(Indices::U32(indices));
     });
 }
 
@@ -590,7 +601,7 @@ fn edit_laser_pointer(
         };
         if button.clicked() {
             exclusive_queue.push_back(
-                vpeol_read_click_on_entity::<&YoleckEntityUuid>
+                vpeol_read_click_on_entity::<With<YoleckEntityUuid>>
                     .pipe(yoleck_map_entity_to_uuid)
                     .pipe(
                         |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
