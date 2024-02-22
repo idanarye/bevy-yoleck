@@ -128,7 +128,7 @@ fn setup_arena(
 ) {
     let mesh = mesh_assets.add(Mesh::from(Plane3d {
         normal: Direction3d::Y,
-    }));
+    }.mesh().size(100.0, 100.0)));
     let material = material_assets.add(Color::GRAY);
     commands.spawn(PbrBundle {
         mesh,
@@ -268,7 +268,7 @@ fn edit_laser_pointer(
         };
         if button.clicked() {
             exclusive_queue.push_back(
-                vpeol_read_click_on_entity::<&YoleckEntityUuid>
+                vpeol_read_click_on_entity::<With<YoleckEntityUuid>>
                     .pipe(yoleck_map_entity_to_uuid)
                     .pipe(
                         |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
