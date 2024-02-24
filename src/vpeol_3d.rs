@@ -137,12 +137,12 @@ fn register_reflect_types(app: &mut App) {
 /// * Entity dragging.
 /// * Connecting nested entities.
 pub struct Vpeol3dPluginForEditor {
-    /// The normal to configure the global [`VpeolDragPlane`] resource with.
+    /// The plane to configure the global [`VpeolDragPlane`] resource with.
     ///
     /// Indiviual entities can override this with their own [`VpeolDragPlane`] component.
     ///
     /// It is a good idea to match this to [`Vpeol3dCameraControl::plane_normal`].
-    pub drag_plane_normal: Vec3,
+    pub drag_plane: Plane3d,
 }
 
 impl Vpeol3dPluginForEditor {
@@ -155,7 +155,9 @@ impl Vpeol3dPluginForEditor {
     /// This combines well with [`Vpeol3dCameraControl::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
-            drag_plane_normal: Vec3::Z,
+            drag_plane: Plane3d {
+                normal: Direction3d::Z,
+            },
         }
     }
 
@@ -168,7 +170,9 @@ impl Vpeol3dPluginForEditor {
     /// This combines well with [`Vpeol3dCameraControl::topdown`].
     pub fn topdown() -> Self {
         Self {
-            drag_plane_normal: Vec3::Y,
+            drag_plane: Plane3d {
+                normal: Direction3d::Y,
+            },
         }
     }
 }
@@ -177,9 +181,7 @@ impl Plugin for Vpeol3dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
-        app.insert_resource(VpeolDragPlane {
-            normal: self.drag_plane_normal,
-        });
+        app.insert_resource(VpeolDragPlane(self.drag_plane));
 
         app.add_systems(
             Update,
@@ -230,9 +232,12 @@ fn update_camera_status_for_models(
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
-            let ray_in_object_coords = Ray {
+            let ray_in_object_coords = Ray3d {
                 origin: inverse_transform.transform_point3(cursor_ray.origin),
-                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+                direction: inverse_transform
+                    .transform_vector3(*cursor_ray.direction)
+                    .try_into()
+                    .unwrap(),
             };
 
             let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
@@ -253,13 +258,13 @@ fn update_camera_status_for_models(
 pub struct Vpeol3dCameraControl {
     /// Panning is done by dragging a plane with this as its origin.
     pub plane_origin: Vec3,
-    /// Panning is done by dragging a plane with this as its normal.
-    pub plane_normal: Vec3,
+    /// Panning is done by dragging along this plane.
+    pub plane: Plane3d,
     /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
     ///
     /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane_normal`].
-    pub allow_rotation_while_maintaining_up: Option<Vec3>,
+    pub allow_rotation_while_maintaining_up: Option<Direction3d>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.
     pub proximity_per_scroll_line: f32,
@@ -277,7 +282,9 @@ impl Vpeol3dCameraControl {
     pub fn sidescroller() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
-            plane_normal: -Vec3::Z,
+            plane: Plane3d {
+                normal: Direction3d::NEG_Z,
+            },
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
@@ -291,22 +298,24 @@ impl Vpeol3dCameraControl {
     pub fn topdown() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
-            plane_normal: Vec3::Y,
-            allow_rotation_while_maintaining_up: Some(Vec3::Y),
+            plane: Plane3d {
+                normal: Direction3d::Y,
+            },
+            allow_rotation_while_maintaining_up: Some(Direction3d::Y),
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
         }
     }
 
-    fn ray_intersection(&self, ray: Ray) -> Option<Vec3> {
-        let distance = ray.intersect_plane(self.plane_origin, self.plane_normal)?;
+    fn ray_intersection(&self, ray: Ray3d) -> Option<Vec3> {
+        let distance = ray.intersect_plane(self.plane_origin, self.plane)?;
         Some(ray.get_point(distance))
     }
 }
 
 fn camera_3d_pan(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
@@ -384,20 +393,20 @@ fn camera_3d_move_along_plane_normal(
             continue;
         }
 
-        camera_transform.translation += zoom_amount * camera_control.plane_normal;
+        camera_transform.translation += zoom_amount * *camera_control.plane.normal;
     }
 }
 
 fn camera_3d_rotate(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<(
         Entity,
         &mut Transform,
         &VpeolCameraState,
         &Vpeol3dCameraControl,
     )>,
-    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray>>,
+    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray3d>>,
 ) {
     enum MouseButtonOp {
         JustPressed,
@@ -432,10 +441,10 @@ fn camera_3d_rotate(
             MouseButtonOp::BeingPressed => {
                 if let Some(prev_ray) = last_cursor_ray_by_camera.get_mut(&camera_entity) {
                     let rotation =
-                        Quat::from_rotation_arc(cursor_ray.direction, prev_ray.direction);
+                        Quat::from_rotation_arc(*cursor_ray.direction, *prev_ray.direction);
                     camera_transform.rotate(rotation);
                     let new_forward = camera_transform.forward();
-                    camera_transform.look_to(new_forward, maintaining_up);
+                    camera_transform.look_to(*new_forward, *maintaining_up);
                 }
             }
         }
@@ -531,8 +540,8 @@ fn vpeol_3d_edit_position(
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
     for (entity, position, drag_plane) in edit.iter_matching() {
-        let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
-        common_drag_plane.consider(drag_plane.normal);
+        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        common_drag_plane.consider(*drag_plane.normal);
 
         if let Some(pos) = passed_data.get::<Vec3>(entity) {
             transition = *pos - position.0;
@@ -570,7 +579,7 @@ fn vpeol_3d_init_position(
     mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     cameras_query: Query<&VpeolCameraState>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
     let Ok((mut position, drag_plane)) = edit.get_single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;
@@ -583,8 +592,10 @@ fn vpeol_3d_init_position(
         return YoleckExclusiveSystemDirective::Listening;
     };
 
-    let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
-    if let Some(distance_to_plane) = cursor_ray.intersect_plane(position.0, drag_plane.normal) {
+    let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+    if let Some(distance_to_plane) =
+        cursor_ray.intersect_plane(position.0, Plane3d::new(*drag_plane.normal))
+    {
         position.0 = cursor_ray.get_point(distance_to_plane);
     };
 
@@ -619,20 +630,18 @@ fn vpeol_3d_edit_third_axis_with_knob(
 
     let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
         (
-            mesh_assets.add(Mesh::from(shape::Cylinder {
+            mesh_assets.add(Mesh::from(Cylinder {
                 radius: 0.5,
-                height: 1.0,
-                resolution: 10,
-                segments: 10,
+                half_height: 0.5,
             })),
-            material_assets.add(Color::ORANGE_RED.into()),
+            material_assets.add(Color::ORANGE_RED),
         )
     });
 
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
     for (_, _, _, drag_plane) in edit.iter_matching() {
-        let drag_plane = drag_plane.unwrap_or(global_drag_plane.as_ref());
-        common_drag_plane.consider(drag_plane.normal);
+        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        common_drag_plane.consider(*drag_plane.normal);
     }
     let Some(drag_plane_normal) = common_drag_plane.shared_normal() else {
         return;
@@ -652,12 +661,10 @@ fn vpeol_3d_edit_third_axis_with_knob(
                 rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
                 scale: third_axis_with_knob.knob_scale * Vec3::ONE,
             };
-            knob.cmd.insert(VpeolDragPlane {
-                normal: drag_plane_normal
-                    .cross(Vec3::X)
-                    .try_normalize()
-                    .unwrap_or(Vec3::Y),
-            });
+            knob.cmd.insert(VpeolDragPlane(Plane3d {
+                normal: Direction3d::new(drag_plane_normal.cross(Vec3::X))
+                    .unwrap_or(Direction3d::Y),
+            }));
             knob.cmd.insert(PbrBundle {
                 mesh: mesh.clone(),
                 material: material.clone(),

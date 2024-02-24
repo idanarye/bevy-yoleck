@@ -77,11 +77,7 @@ where
     T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut App) {
-        app.add_state::<T>();
-        let initial_state = self.when_editor.clone();
-        app.add_systems(Startup, move |mut game_state: ResMut<NextState<T>>| {
-            game_state.set(initial_state.clone());
-        });
+        app.insert_state(self.when_editor.clone());
         let when_editor = self.when_editor.clone();
         let when_game = self.when_game.clone();
         app.add_systems(

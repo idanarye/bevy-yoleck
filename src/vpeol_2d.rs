@@ -136,13 +136,12 @@ impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol2dPluginForGame);
-        app.insert_resource(VpeolDragPlane { normal: Vec3::Z });
+        app.insert_resource(VpeolDragPlane::XY);
 
         app.add_systems(
             Update,
             (
                 update_camera_status_for_sprites,
-                update_camera_status_for_atlas_sprites,
                 update_camera_status_for_2d_meshes,
                 update_camera_status_for_text_2d,
             )
@@ -159,7 +158,6 @@ impl Plugin for Vpeol2dPluginForEditor {
                 handle_clickable_children_system::<
                     Or<(
                         (With<Sprite>, With<Handle<Image>>),
-                        (With<TextureAtlasSprite>, With<Handle<TextureAtlas>>),
                         (With<TextLayoutInfo>, With<Anchor>),
                     )>,
                     (),
@@ -216,49 +214,18 @@ impl CursorInWorldPos {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn update_camera_status_for_sprites(
-    mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Handle<Image>)>,
-    image_assets: Res<Assets<Image>>,
-    root_resolver: VpeolRootResolver,
-) {
-    for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
-        let Some(cursor) = CursorInWorldPos::from_camera_state(&camera_state) else {
-            continue;
-        };
-
-        for (entity, entity_transform, sprite, texture) in
-            entities_query.iter_many(&visible_entities.entities)
-        {
-            let size = if let Some(custom_size) = sprite.custom_size {
-                custom_size
-            } else if let Some(texture) = image_assets.get(texture) {
-                texture.size().as_vec2()
-            } else {
-                continue;
-            };
-            if cursor.check_square(entity_transform, &sprite.anchor, size) {
-                let z_depth = entity_transform.translation().z;
-                let Some(root_entity) = root_resolver.resolve_root(entity) else {
-                    continue;
-                };
-                camera_state.consider(root_entity, z_depth, || {
-                    cursor.cursor_in_world_pos.extend(z_depth)
-                });
-            }
-        }
-    }
-}
-
-fn update_camera_status_for_atlas_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
     entities_query: Query<(
         Entity,
         &GlobalTransform,
-        &TextureAtlasSprite,
-        &Handle<TextureAtlas>,
+        &Sprite,
+        &Handle<Image>,
+        Option<&TextureAtlas>,
     )>,
-    texture_atlas_assets: Res<Assets<TextureAtlas>>,
+    image_assets: Res<Assets<Image>>,
+    texture_atlas_layout_assets: Res<Assets<TextureAtlasLayout>>,
     root_resolver: VpeolRootResolver,
 ) {
     for (mut camera_state, visible_entities) in cameras_query.iter_mut() {
@@ -266,13 +233,20 @@ fn update_camera_status_for_atlas_sprites(
             continue;
         };
 
-        for (entity, entity_transform, sprite, texture) in
+        for (entity, entity_transform, sprite, texture, texture_atlas) in
             entities_query.iter_many(&visible_entities.entities)
         {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
-            } else if let Some(texture_atlas) = texture_atlas_assets.get(texture) {
-                texture_atlas.textures[sprite.index].size()
+            } else if let Some(texture_atlas) = texture_atlas {
+                let Some(texture_atlas_layout) =
+                    texture_atlas_layout_assets.get(&texture_atlas.layout)
+                else {
+                    continue;
+                };
+                texture_atlas_layout.textures[texture_atlas.index].size()
+            } else if let Some(texture) = image_assets.get(texture) {
+                texture.size().as_vec2()
             } else {
                 continue;
             };
@@ -307,9 +281,12 @@ fn update_camera_status_for_2d_meshes(
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
-            let ray_in_object_coords = Ray {
+            let ray_in_object_coords = Ray3d {
                 origin: inverse_transform.transform_point3(cursor_ray.origin),
-                direction: inverse_transform.transform_vector3(cursor_ray.direction),
+                direction: inverse_transform
+                    .transform_vector3(*cursor_ray.direction)
+                    .try_into()
+                    .unwrap(),
             };
 
             let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
@@ -371,7 +348,7 @@ impl Default for Vpeol2dCameraControl {
 
 fn camera_2d_pan(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut cameras_query: Query<
         (Entity, &mut Transform, &VpeolCameraState),
         With<Vpeol2dCameraControl>,
@@ -464,10 +441,9 @@ fn camera_2d_zoom(
         let Some(cursor_in_screen_pos) = window.cursor_position() else {
             continue;
         };
-        let Some(new_cursor_ray) = camera.viewport_to_world(
-            &camera_transform.as_ref().clone().into(),
-            cursor_in_screen_pos,
-        ) else {
+        let Some(new_cursor_ray) =
+            camera.viewport_to_world(&((*camera_transform.as_ref()).into()), cursor_in_screen_pos)
+        else {
             continue;
         };
         let new_world_pos = new_cursor_ray.origin.truncate();
@@ -541,7 +517,7 @@ fn vpeol_2d_init_position(
     ui: Res<YoleckUi>,
     mut edit: YoleckEdit<&mut Vpeol2dPosition>,
     cameras_query: Query<&VpeolCameraState>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
     let Ok(mut position) = edit.get_single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;

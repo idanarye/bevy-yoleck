@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 0.18.0 - 2024-02-18
 ### Changed
 - Upgrade bevy_egui to 0.24.
+- [**BREAKING**] Changed some API types to use Bevy's new math types (instead
+  of vectors):
+  - `VpeolDragPlane` now uses `Plane3d`.
+  - `Vpeol3dPluginForEditor` also uses `Plane3d`.
+  - `Vpeol3dCameraControl` uses `Plane3d` for the camera drag plane, and
+    `Direction3d` for configuring the UP direction to maintain while rotating
+    the camera.
+
 
 ### Fixed
 - [**BREAKING**] Typo - `Rotatation` -> `Rotation` in Vpeol.

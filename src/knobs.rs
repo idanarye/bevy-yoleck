@@ -1,5 +1,5 @@
 use std::any::{Any, TypeId};
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{BuildHasher, Hash};
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
@@ -25,17 +25,14 @@ struct CachedKnob {
 }
 
 impl YoleckKnobsCache {
-    pub fn access<'w, 's, 'a, K>(
-        &mut self,
-        key: K,
-        commands: &'a mut Commands<'w, 's>,
-    ) -> KnobFromCache<'w, 's, 'a>
+    pub fn access<'a, K>(&mut self, key: K, commands: &'a mut Commands) -> KnobFromCache<'a>
     where
         K: 'static + Send + Sync + Hash + Eq,
     {
-        let mut hasher = self.by_key_hash.hasher().build_hasher();
-        key.hash(&mut hasher);
-        let entries = self.by_key_hash.entry(hasher.finish()).or_default();
+        let entries = self
+            .by_key_hash
+            .entry(self.by_key_hash.hasher().hash_one(&key))
+            .or_default();
         for entry in entries.iter_mut() {
             if let Some(cached_key) = entry.key.downcast_ref::<K>() {
                 if key == *cached_key {
@@ -78,21 +75,21 @@ impl YoleckKnobsCache {
     }
 }
 
-pub struct KnobFromCache<'w, 's, 'a> {
-    pub cmd: EntityCommands<'w, 's, 'a>,
+pub struct KnobFromCache<'a> {
+    pub cmd: EntityCommands<'a>,
     pub is_new: bool,
 }
 
 /// An handle for intearcing with a knob from an edit system.
-pub struct YoleckKnobHandle<'w, 's, 'a> {
+pub struct YoleckKnobHandle<'a> {
     /// The command of the knob entity.
-    pub cmd: EntityCommands<'w, 's, 'a>,
+    pub cmd: EntityCommands<'a>,
     /// `true` if the knob entity is just created this frame.
     pub is_new: bool,
     passed: HashMap<TypeId, BoxedArc>,
 }
 
-impl YoleckKnobHandle<'_, '_, '_> {
+impl YoleckKnobHandle<'_> {
     /// Get data sent to the knob from external systems (usually interaciton from the level
     /// editor)
     ///
@@ -134,7 +131,7 @@ pub struct YoleckKnobs<'w, 's> {
 }
 
 impl<'w, 's> YoleckKnobs<'w, 's> {
-    pub fn knob<'a, K>(&'a mut self, key: K) -> YoleckKnobHandle<'w, 's, 'a>
+    pub fn knob<K>(&mut self, key: K) -> YoleckKnobHandle
     where
         K: 'static + Send + Sync + Hash + Eq,
     {

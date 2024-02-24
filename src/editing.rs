@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bevy::ecs::query::{QueryIter, QuerySingleError, ReadOnlyWorldQuery, WorldQuery};
+use bevy::ecs::query::{QueryData, QueryFilter, QueryIter, QuerySingleError, WorldQuery};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -18,15 +18,15 @@ pub struct YoleckEditMarker;
 /// delegate to them, but if there are edited entities that do not fit the query they will act as
 /// if they found no match.
 #[derive(SystemParam)]
-pub struct YoleckEdit<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery = ()> {
+pub struct YoleckEdit<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter = ()> {
     query: Query<'w, 's, Q, (With<YoleckEditMarker>, F)>,
     verification_query: Query<'w, 's, (), With<YoleckEditMarker>>,
 }
 
-impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdit<'w, 's, Q, F> {
+impl<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'w, 's, Q, F> {
     pub fn get_single(
         &self,
-    ) -> Result<<<Q as WorldQuery>::ReadOnly as WorldQuery>::Item<'_>, QuerySingleError> {
+    ) -> Result<<<Q as QueryData>::ReadOnly as WorldQuery>::Item<'_>, QuerySingleError> {
         let single = self.query.get_single()?;
         // This will return an error if multiple entities are selected (but only one fits F and Q)
         self.verification_query.get_single()?;
@@ -61,7 +61,7 @@ impl<'w, 's, Q: 'static + WorldQuery, F: 'static + ReadOnlyWorldQuery> YoleckEdi
     /// check [`has_nonmatching`](Self::has_nonmatching) must be checked manually.
     pub fn iter_matching(
         &mut self,
-    ) -> QueryIter<<Q as WorldQuery>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)> {
+    ) -> QueryIter<<Q as QueryData>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)> {
         self.query.iter()
     }
 
