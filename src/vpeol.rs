@@ -638,7 +638,10 @@ impl Triangle {
             self.0[0] - self.0[2],
         ];
         let normal = directions[0].cross(directions[1]); // no need to normalize it
-        let distance = ray.intersect_plane(self.0[0], Plane3d::new(normal))?;
+        let plane = Plane3d {
+            normal: Direction3d::new(normal).ok()?,
+        };
+        let distance = ray.intersect_plane(self.0[0], plane)?;
         let point = ray.get_point(distance);
         if self
             .0

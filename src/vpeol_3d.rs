@@ -627,8 +627,6 @@ fn vpeol_3d_edit_third_axis_with_knob(
             mesh_assets.add(Mesh::from(Cylinder {
                 radius: 0.5,
                 half_height: 0.5,
-                // resolution: 10,
-                // segments: 10,
             })),
             material_assets.add(Color::ORANGE_RED),
         )
