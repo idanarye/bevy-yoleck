@@ -136,7 +136,7 @@ impl Plugin for Vpeol2dPluginForEditor {
     fn build(&self, app: &mut App) {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol2dPluginForGame);
-        app.insert_resource(VpeolDragPlane { normal: Vec3::Z });
+        app.insert_resource(VpeolDragPlane::XY);
 
         app.add_systems(
             Update,

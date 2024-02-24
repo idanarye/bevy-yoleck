@@ -95,14 +95,15 @@ impl Plugin for VpeolBasePlugin {
 /// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
 #[derive(Component, Resource)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct VpeolDragPlane {
-    /// The normal of the plane.
-    pub normal: Vec3,
-}
+pub struct VpeolDragPlane(pub Plane3d);
 
 impl VpeolDragPlane {
-    pub const XY: VpeolDragPlane = VpeolDragPlane { normal: Vec3::Z };
-    pub const XZ: VpeolDragPlane = VpeolDragPlane { normal: Vec3::Y };
+    pub const XY: VpeolDragPlane = VpeolDragPlane(Plane3d {
+        normal: Direction3d::Z,
+    });
+    pub const XZ: VpeolDragPlane = VpeolDragPlane(Plane3d {
+        normal: Direction3d::Y,
+    });
 }
 
 /// Data passed between Vpeol abstraction and backends.
@@ -278,14 +279,10 @@ fn handle_camera_state(
             continue;
         };
         let calc_cursor_in_world_position = |entity: Entity, plane_origin: Vec3| -> Option<Vec3> {
-            let drag_plane_normal =
-                if let Ok(drag_plane_override) = drag_plane_overrides_query.get(entity) {
-                    drag_plane_override.normal
-                } else {
-                    global_drag_plane.normal
-                };
-            let distance =
-                cursor_ray.intersect_plane(plane_origin, Plane3d::new(drag_plane_normal))?;
+            let VpeolDragPlane(drag_plane) = drag_plane_overrides_query
+                .get(entity)
+                .unwrap_or(&global_drag_plane);
+            let distance = cursor_ray.intersect_plane(plane_origin, *drag_plane)?;
             Some(cursor_ray.get_point(distance))
         };
 

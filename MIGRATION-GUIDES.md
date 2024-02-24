@@ -1,5 +1,9 @@
 # Migrating to Yoleck 0.19
 
+## Using the new Bevy types
+
+Bevy 0.13 introduces types for defining directions and planes, which can be used instead of vectors. Yoleck (mainly Vpeol) uses them now in its API. The conversion should be straightforward.
+
 ## `vpeol_read_click_on_entity`
 
 Bevy 0.13 [split `WorldQuery` to `QueryData` and `FilterData`](https://bevyengine.org/learn/migration-guides/0-12-to-0-13/#split-worldquery-into-querydata-and-queryfilter) (though there is still a `WorldQuery` trait with some of that functionality). When you use `vpeol_read_click_on_entity`, the data passed to it is `QueryFilter`, not `QueryData` - which measn that if it's a component (which should usually be the case) you need `vpeol_read_click_on_entity::<Has<MyComponent>>` and not `vpeol_read_click_on_entity::<&MyComponent>` (which would have worked before)
