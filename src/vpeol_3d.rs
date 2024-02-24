@@ -141,7 +141,7 @@ pub struct Vpeol3dPluginForEditor {
     ///
     /// Indiviual entities can override this with their own [`VpeolDragPlane`] component.
     ///
-    /// It is a good idea to match this to [`Vpeol3dCameraControl::plane_normal`].
+    /// It is a good idea to match this to [`Vpeol3dCameraControl::plane`].
     pub drag_plane: Plane3d,
 }
 
@@ -263,7 +263,7 @@ pub struct Vpeol3dCameraControl {
     /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
     ///
-    /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane_normal`].
+    /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane`].
     pub allow_rotation_while_maintaining_up: Option<Direction3d>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.

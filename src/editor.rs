@@ -62,7 +62,7 @@ pub enum YoleckEditorState {
 ///     // This plugin is needed for game mode:
 ///     app.add_plugins(YoleckPluginForGame);
 ///
-///     app.add_state::<GameState>();
+///     app.init_state::<GameState>();
 /// }
 pub struct YoleckSyncWithEditorState<T>
 where

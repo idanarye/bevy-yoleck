@@ -88,7 +88,7 @@
 //!         ));
 //!     } else {
 //!         app.add_plugins(YoleckPluginForGame);
-//!         app.add_state::<GameState>();
+//!         app.init_state::<GameState>();
 //!         // In editor mode Yoleck takes care of level loading. In game mode the game needs to
 //!         // tell yoleck which levels to load and when.
 //!         app.add_systems(Update, load_first_level.run_if(in_state(GameState::Loading)));

@@ -39,7 +39,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 /// # #[derive(Component)]
 /// # struct LookingAt2D(Vec2);
 /// fn regular_edit_system(
-///     edit: YoleckEdit<With<LookingAt2D>>,
+///     edit: YoleckEdit<(), With<LookingAt2D>>,
 ///     mut ui: ResMut<YoleckUi>,
 ///     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 /// ) {
@@ -56,7 +56,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 ///     // Getting the actual input is still quite manual. May be chanced in the future.
 ///     cameras_query: Query<&VpeolCameraState>,
 ///     ui: ResMut<YoleckUi>,
-///     buttons: Res<Input<MouseButton>>,
+///     buttons: Res<ButtonInput<MouseButton>>,
 /// ) -> YoleckExclusiveSystemDirective {
 ///     let Ok(mut looking_at) = edit.get_single_mut() else {
 ///         return YoleckExclusiveSystemDirective::Finished;
