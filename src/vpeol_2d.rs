@@ -148,7 +148,7 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .in_set(VpeolSystemSet::UpdateCameraState),
         );
         app.add_systems(
-            Update,
+            PostUpdate, // to prevent camera shaking (only seen it in 3D, but still)
             (camera_2d_pan, camera_2d_zoom).run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(

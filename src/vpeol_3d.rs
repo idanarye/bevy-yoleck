@@ -188,7 +188,7 @@ impl Plugin for Vpeol3dPluginForEditor {
             (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
         );
         app.add_systems(
-            Update,
+            PostUpdate, // to prevent camera shaking
             (
                 camera_3d_pan,
                 camera_3d_move_along_plane_normal,
