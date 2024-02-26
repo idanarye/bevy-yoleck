@@ -232,17 +232,25 @@ fn update_camera_status_for_models(
 
             let inverse_transform = global_transform.compute_matrix().inverse();
 
+            // Note: the transform may change the ray's length, which Bevy no longer supports
+            // (since version 0.13), so we keep the ray length separately and apply it later to the
+            // distance.
+            let ray_origin = inverse_transform.transform_point3(cursor_ray.origin);
+            let ray_vector = inverse_transform.transform_vector3(*cursor_ray.direction);
+            let Ok((ray_direction, ray_length_factor)) = Direction3d::new_and_length(ray_vector) else {
+                continue;
+            };
+
             let ray_in_object_coords = Ray3d {
-                origin: inverse_transform.transform_point3(cursor_ray.origin),
-                direction: inverse_transform
-                    .transform_vector3(*cursor_ray.direction)
-                    .try_into()
-                    .unwrap(),
+                origin: ray_origin,
+                direction: ray_direction,
             };
 
             let Some(distance) = ray_intersection_with_mesh(ray_in_object_coords, mesh) else {
                 continue;
             };
+
+            let distance = distance / ray_length_factor;
 
             let Some(root_entity) = root_resolver.resolve_root(entity) else {
                 continue;
