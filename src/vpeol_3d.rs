@@ -237,7 +237,8 @@ fn update_camera_status_for_models(
             // distance.
             let ray_origin = inverse_transform.transform_point3(cursor_ray.origin);
             let ray_vector = inverse_transform.transform_vector3(*cursor_ray.direction);
-            let Ok((ray_direction, ray_length_factor)) = Direction3d::new_and_length(ray_vector) else {
+            let Ok((ray_direction, ray_length_factor)) = Direction3d::new_and_length(ray_vector)
+            else {
                 continue;
             };
 
