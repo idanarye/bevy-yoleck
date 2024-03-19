@@ -6,13 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.20.0 - 2024-03-19
+### Changed
+- Update bevy_egui version to 0.26.
+
 ## 0.19.0 - 2024-02-27
 ### Changed
-- Upgrade bevy_egui to 0.24.
+- Update Bevy version to 0.13 and bevy_egui version to 0.25.
 - [**BREAKING**] Changed some API types to use Bevy's new math types. See the
   [migration guide](MIGRATION-GUIDES.md#migrating-to-yoleck-019).
 
 ## 0.18.0 - 2024-02-18
+### Changed
+- Upgrade bevy_egui to 0.24.
+
 ### Fixed
 - [**BREAKING**] Typo - `Rotatation` -> `Rotation` in Vpeol.
 
