@@ -533,32 +533,19 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_scale(
-    mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, Option<&mut Vpeol3dScale>)>,
-) {
+fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mut Vpeol3dScale>>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    let mut entity_scale = Vec3::ZERO;
-    for (_, scale) in edit.iter_matching() {
-        if let Some(val) = scale {
-            entity_scale = val.0;
-        }
-    }
-    ui.horizontal(|ui| {
-        ui.add(
-            egui::DragValue::new(&mut entity_scale.x)
-                .prefix("SCALE:")
-                .speed(0.1),
-        );
-    });
-    if entity_scale.is_finite() && entity_scale != Vec3::ZERO {
-        for (_, scale) in edit.iter_matching_mut() {
-            if let Some(mut val) = scale {
-                val.0 = Vec3::splat(entity_scale.x)
-            }
-        }
+    for mut scale in edit.iter_matching_mut().flatten() {
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::DragValue::new(&mut scale.0.x)
+                    .prefix("SCALE:")
+                    .speed(0.1),
+            );
+            scale.0 = Vec3::splat(scale.0.x);
+        });
     }
 }
 
