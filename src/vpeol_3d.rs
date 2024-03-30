@@ -207,6 +207,7 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
+        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
@@ -532,14 +533,38 @@ impl CommonDragPlane {
     }
 }
 
+fn vpeol_3d_edit_rotation(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<(Entity, Option<&mut Vpeol3dScale>)>,
+) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    let mut entity_scale = Vec3::ZERO;
+    for (_, scale) in edit.iter_matching() {
+        if let Some(val) = scale {
+            entity_scale = val.0;
+        }
+    }
+    ui.horizontal(|ui| {
+        ui.add(
+            egui::DragValue::new(&mut entity_scale.x)
+                .prefix("SCALE:")
+                .speed(0.1),
+        );
+    });
+    if entity_scale.is_finite() && entity_scale != Vec3::ZERO {
+        for (_, scale) in edit.iter_matching_mut() {
+            if let Some(mut val) = scale {
+                val.0 = Vec3::splat(entity_scale.x)
+            }
+        }
+    }
+}
+
 fn vpeol_3d_edit_position(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(
-        Entity,
-        &mut Vpeol3dPosition,
-        Option<&VpeolDragPlane>,
-        Option<&mut Vpeol3dScale>,
-    )>,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
 ) {
@@ -550,11 +575,10 @@ fn vpeol_3d_edit_position(
     let mut average = DVec3::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec3::ZERO;
-    let mut entity_scale = Vec3::ZERO;
 
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
-    for (entity, position, drag_plane, scale) in edit.iter_matching() {
+    for (entity, position, drag_plane) in edit.iter_matching() {
         let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
         common_drag_plane.consider(*drag_plane.normal);
 
@@ -563,9 +587,6 @@ fn vpeol_3d_edit_position(
         }
         average += position.0.as_dvec3();
         num_entities += 1;
-        if let Some(val) = scale {
-            entity_scale = val.0;
-        }
     }
     average /= num_entities as f64;
 
@@ -581,25 +602,12 @@ fn vpeol_3d_edit_position(
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:"));
-        ui.add(
-            egui::DragValue::new(&mut entity_scale.x)
-                .prefix("SCALE:")
-                .speed(0.1),
-        );
-        //ui.add(egui::DragValue::new(&mut entity_scale.x).prefix("ROTATION:"));
         transition += (new_average - average).as_vec3();
     });
 
     if transition.is_finite() && transition != Vec3::ZERO {
-        for (_, mut position, _, _) in edit.iter_matching_mut() {
+        for (_, mut position, _) in edit.iter_matching_mut() {
             position.0 += transition;
-        }
-    }
-    if entity_scale.is_finite() && entity_scale != Vec3::ZERO {
-        for (_, _, _, scale) in edit.iter_matching_mut() {
-            if let Some(mut val) = scale {
-                val.0 = Vec3::splat(entity_scale.x)
-            }
         }
     }
 }
