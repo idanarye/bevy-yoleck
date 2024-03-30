@@ -207,7 +207,7 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
-        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
+        app.add_yoleck_edit_system(vpeol_3d_edit_scale);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
@@ -533,7 +533,7 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_rotation(
+fn vpeol_3d_edit_scale(
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, Option<&mut Vpeol3dScale>)>,
 ) {
