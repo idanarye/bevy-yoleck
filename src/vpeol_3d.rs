@@ -576,7 +576,6 @@ fn vpeol_3d_edit_position(
                 .color(egui::Color32::RED),
         );
     }
-    println!("{:?}", entity_scale);
     ui.horizontal(|ui| {
         let mut new_average = average;
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
@@ -595,7 +594,6 @@ fn vpeol_3d_edit_position(
     if entity_scale.is_finite() && entity_scale != Vec3::ZERO {
         for (_, _, _, scale) in edit.iter_matching_mut() {
             if let Some(mut val) = scale {
-                println!("change scale");
                 val.0 = Vec3::splat(entity_scale.x)
             }
         }
