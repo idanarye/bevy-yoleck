@@ -581,7 +581,11 @@ fn vpeol_3d_edit_position(
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:"));
-        ui.add(egui::DragValue::new(&mut entity_scale.x).prefix("SCALE:"));
+        ui.add(
+            egui::DragValue::new(&mut entity_scale.x)
+                .prefix("SCALE:")
+                .speed(0.1),
+        );
         //ui.add(egui::DragValue::new(&mut entity_scale.x).prefix("ROTATION:"));
         transition += (new_average - average).as_vec3();
     });
