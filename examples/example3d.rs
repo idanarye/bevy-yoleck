@@ -65,6 +65,7 @@ fn main() {
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Planet")
             .with_uuid()
+            .with::<Vpeol3dScale>()
             .with::<Vpeol3dPosition>()
             .insert_on_init(|| IsPlanet)
             .insert_on_init_during_editor(|| VpeolDragPlane::XY)
