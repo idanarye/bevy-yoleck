@@ -542,10 +542,11 @@ fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mu
             ui.add(
                 egui::DragValue::new(&mut scale.0.x)
                     .prefix("SCALE:")
-                    .speed(0.1),
+                    .speed(0.1)
+                    .clamp_range(0..=1000),
             );
-            scale.0 = Vec3::splat(scale.0.x);
         });
+        scale.0 = Vec3::splat(scale.0.x);
     }
 }
 
