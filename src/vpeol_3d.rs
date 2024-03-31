@@ -92,6 +92,7 @@
 //!     axis knob.
 
 use std::f32::consts::PI;
+use std::u64::MAX;
 
 use crate::bevy_egui::egui;
 use crate::exclusive_systems::{
@@ -546,7 +547,7 @@ fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mu
                 egui::DragValue::new(&mut scale.0.x)
                     .prefix("SCALE:")
                     .speed(0.1)
-                    .clamp_range(0..=1000),
+                    .clamp_range(0..=MAX),
             );
         });
         scale.0 = Vec3::splat(scale.0.x);
