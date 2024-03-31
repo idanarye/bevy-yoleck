@@ -91,6 +91,7 @@
 //!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
 //!     axis knob.
 
+use std::f32::consts::FRAC_PI_2;
 use std::f32::consts::PI;
 use std::u64::MAX;
 
@@ -568,7 +569,7 @@ fn vpeol_3d_edit_rotation(
         });
         ui.vertical(|ui| {
             ui.add(egui::Slider::new(&mut x, -PI..=PI).text("X"));
-            ui.add(egui::Slider::new(&mut y, -1.56..=1.56).text("Y"));
+            ui.add(egui::Slider::new(&mut y, -FRAC_PI_2..=FRAC_PI_2).text("Y"));
             ui.add(egui::Slider::new(&mut z, -PI..=PI).text("Z"));
         });
         rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
