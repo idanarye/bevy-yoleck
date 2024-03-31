@@ -91,6 +91,8 @@
 //!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
 //!     axis knob.
 
+use std::f32::consts::PI;
+
 use crate::bevy_egui::egui;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
@@ -208,6 +210,7 @@ impl Plugin for Vpeol3dPluginForEditor {
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
         app.add_yoleck_edit_system(vpeol_3d_edit_scale);
+        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
@@ -547,6 +550,42 @@ fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mu
             );
         });
         scale.0 = Vec3::splat(scale.0.x);
+    }
+}
+
+fn vpeol_3d_edit_rotation(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<Option<&mut Vpeol3dRotation>>,
+) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    for mut rotation in edit.iter_matching_mut().flatten() {
+        let (mut x, mut y, mut z) = rotation.0.to_euler(EulerRot::XYZ);
+        ui.horizontal(|ui| {
+            ui.add(egui::Label::new("Rotation:"));
+        });
+        ui.vertical(|ui| {
+            ui.add(
+                egui::DragValue::new(&mut x)
+                    .prefix("x:")
+                    .speed(0.1)
+                    .clamp_range(-PI..=PI),
+            );
+            ui.add(
+                egui::DragValue::new(&mut y)
+                    .prefix("y:")
+                    .speed(0.01)
+                    .clamp_range(-1.56..=1.56),
+            );
+            ui.add(
+                egui::DragValue::new(&mut z)
+                    .prefix("z:")
+                    .speed(0.1)
+                    .clamp_range(-PI..=PI),
+            );
+        });
+        rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
     }
 }
 
