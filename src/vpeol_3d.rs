@@ -538,11 +538,11 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mut Vpeol3dScale>>) {
+fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol3dScale>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    for mut scale in edit.iter_matching_mut().flatten() {
+    for mut scale in edit.iter_matching_mut() {
         ui.horizontal(|ui| {
             ui.add(
                 egui::DragValue::new(&mut scale.0.x)
@@ -555,14 +555,11 @@ fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<Option<&mu
     }
 }
 
-fn vpeol_3d_edit_rotation(
-    mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<Option<&mut Vpeol3dRotation>>,
-) {
+fn vpeol_3d_edit_rotation(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol3dRotation>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    for mut rotation in edit.iter_matching_mut().flatten() {
+    for mut rotation in edit.iter_matching_mut() {
         let (mut x, mut y, mut z) = rotation.0.to_euler(EulerRot::XYZ);
         ui.horizontal(|ui| {
             ui.add(egui::Label::new("Rotation:"));
