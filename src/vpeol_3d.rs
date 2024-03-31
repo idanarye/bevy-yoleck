@@ -566,24 +566,9 @@ fn vpeol_3d_edit_rotation(
             ui.add(egui::Label::new("Rotation:"));
         });
         ui.vertical(|ui| {
-            ui.add(
-                egui::DragValue::new(&mut x)
-                    .prefix("x:")
-                    .speed(0.1)
-                    .clamp_range(-PI..=PI),
-            );
-            ui.add(
-                egui::DragValue::new(&mut y)
-                    .prefix("y:")
-                    .speed(0.01)
-                    .clamp_range(-1.56..=1.56),
-            );
-            ui.add(
-                egui::DragValue::new(&mut z)
-                    .prefix("z:")
-                    .speed(0.1)
-                    .clamp_range(-PI..=PI),
-            );
+            ui.add(egui::Slider::new(&mut x, -PI..=PI).text("X"));
+            ui.add(egui::Slider::new(&mut y, -1.56..=1.56).text("Y"));
+            ui.add(egui::Slider::new(&mut z, -PI..=PI).text("Z"));
         });
         rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
     }
