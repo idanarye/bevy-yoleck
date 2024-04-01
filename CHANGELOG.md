@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.20.1 - 2024-04-01
+### Fixed
+- Enable bevy_egui's `render` feature, so that users won't need to load it
+  explicitly and can use the one reexported from Yoleck (fixes
+  https://github.com/idanarye/bevy-yoleck/issues/39)
+
 ## 0.20.0 - 2024-03-19
 ### Changed
 - Update bevy_egui version to 0.26.
