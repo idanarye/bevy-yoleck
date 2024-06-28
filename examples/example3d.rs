@@ -54,6 +54,7 @@ fn main() {
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Spaceship")
             .with::<Vpeol3dPosition>()
+            .with::<Vpeol3dRotation>()
             .insert_on_init(|| IsSpaceship)
             .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
                 knob_distance: 2.0,

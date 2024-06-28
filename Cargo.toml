@@ -22,13 +22,14 @@ exclude = [
 [dependencies]
 bevy-yoleck-macros = { version = "0.9.1", path = "macros" }
 anyhow = "^1"
-bevy = { version = "^0.13", default-features = false }
+bevy = { version = "^0.13", default-features = false, features = ["bevy_gizmos"] }
 bevy_egui = { version = "^0.26", default-features = false, features = ["default_fonts"] }
 serde = "^1"
 serde_json = "^1"
 thiserror = "^1"
 
 [features]
+default=["vpeol", "vpeol_3d", "vpeol_2d"]
 bevy_reflect = []
 vpeol = []
 vpeol_2d = [

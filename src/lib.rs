@@ -200,6 +200,10 @@ pub mod vpeol;
 pub mod vpeol_2d;
 #[cfg(feature = "vpeol_3d")]
 pub mod vpeol_3d;
+#[cfg(feature = "vpeol_3d")]
+pub mod vpeol_3d_rotation;
+#[cfg(feature = "vpeol_3d")]
+pub mod vpeol_3d_scale;
 
 use std::any::{Any, TypeId};
 use std::path::Path;

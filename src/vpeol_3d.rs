@@ -91,10 +91,6 @@
 //!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
 //!     axis knob.
 
-use std::f32::consts::FRAC_PI_2;
-use std::f32::consts::PI;
-use std::u64::MAX;
-
 use crate::bevy_egui::egui;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
@@ -103,6 +99,8 @@ use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
 };
+use crate::vpeol_3d_rotation::{Is3dRotationEditing, Vpeol3dRotationEdit};
+use crate::vpeol_3d_scale::Vpeol3dScaleEdit;
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
@@ -111,6 +109,12 @@ use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
+
+#[derive(Resource)]
+pub struct Editor3dResource {
+    pub is_rotation_editing: bool,
+    pub is_sync_scale_axis: bool,
+}
 
 /// Add the systems required for loading levels that use vpeol_3d components
 pub struct Vpeol3dPluginForGame;
@@ -186,6 +190,10 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
+        app.insert_resource(Editor3dResource {
+            is_rotation_editing: false,
+            is_sync_scale_axis: false,
+        });
 
         app.add_systems(
             Update,
@@ -211,12 +219,12 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
-        app.add_yoleck_edit_system(vpeol_3d_edit_scale);
-        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
         app.world
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
         app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
+        app.add_plugins(Vpeol3dRotationEdit);
+        app.add_plugins(Vpeol3dScaleEdit);
     }
 }
 
@@ -538,47 +546,16 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol3dScale>) {
-    if edit.is_empty() || edit.has_nonmatching() {
-        return;
-    }
-    for mut scale in edit.iter_matching_mut() {
-        ui.horizontal(|ui| {
-            ui.add(
-                egui::DragValue::new(&mut scale.0.x)
-                    .prefix("SCALE:")
-                    .speed(0.1)
-                    .clamp_range(0..=MAX),
-            );
-        });
-        scale.0 = Vec3::splat(scale.0.x);
-    }
-}
-
-fn vpeol_3d_edit_rotation(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol3dRotation>) {
-    if edit.is_empty() || edit.has_nonmatching() {
-        return;
-    }
-    for mut rotation in edit.iter_matching_mut() {
-        let (mut x, mut y, mut z) = rotation.0.to_euler(EulerRot::XYZ);
-        ui.horizontal(|ui| {
-            ui.add(egui::Label::new("Rotation:"));
-        });
-        ui.vertical(|ui| {
-            ui.add(egui::Slider::new(&mut x, -PI..=PI).text("X"));
-            ui.add(egui::Slider::new(&mut y, -FRAC_PI_2..=FRAC_PI_2).text("Y"));
-            ui.add(egui::Slider::new(&mut z, -PI..=PI).text("Z"));
-        });
-        rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
-    }
-}
-
 fn vpeol_3d_edit_position(
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
+    editor_config: Res<Editor3dResource>,
 ) {
+    if editor_config.is_rotation_editing {
+        return;
+    }
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
