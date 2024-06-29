@@ -1,8 +1,6 @@
-use crate::{
-    bevy_egui::egui, vpeol::prelude::Vpeol3dPosition, vpeol_3d::Editor3dResource, YoleckExtForApp,
-};
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
+use crate::{bevy_egui::egui, vpeol_3d::Editor3dResource, YoleckExtForApp};
 use crate::{
     prelude::{YoleckEdit, YoleckUi},
     vpeol::prelude::Vpeol3dRotation,
@@ -63,30 +61,27 @@ fn edit_rotation_by_ui(
     mut rot: ResMut<VpeolRot>,
     mut editor_config: ResMut<Editor3dResource>,
 ) {
-    if let Ok(mut rotation) = edit.get_single_mut() {
-        let (mut x, mut y, mut z) = (rot.0.x, rot.0.y, rot.0.z);
+    let Ok(mut rotation) = edit.get_single_mut() else {
+        return;
+    };
+    let (mut x, mut y, mut z) = (rot.0.x, rot.0.y, rot.0.z);
 
-        ui.horizontal(|ui| {
-            ui.add(egui::Label::new("Rotation:"));
-            ui.add(egui::Checkbox::new(
-                &mut editor_config.is_rotation_editing,
-                "Enable khobs for rotation edit",
-            ));
-        });
-        ui.vertical(|ui| {
-            ui.add(egui::DragValue::new(&mut x).prefix("X:").speed(0.01));
-            ui.add(egui::DragValue::new(&mut y).prefix("Y:").speed(0.01));
-            ui.add(egui::DragValue::new(&mut z).prefix("Z:").speed(0.01));
-        });
+    ui.horizontal(|ui| {
+        ui.add(egui::Label::new("Rotation:"));
+        ui.add(egui::Checkbox::new(
+            &mut editor_config.is_rotation_editing,
+            "Enable khobs for rotation edit",
+        ));
+    });
+    ui.vertical(|ui| {
+        ui.add(egui::DragValue::new(&mut x).prefix("X:").speed(0.01));
+        ui.add(egui::DragValue::new(&mut y).prefix("Y:").speed(0.01));
+        ui.add(egui::DragValue::new(&mut z).prefix("Z:").speed(0.01));
+    });
 
-        rot.0.x = x;
-        rot.0.y = y;
-        rot.0.z = z;
+    rot.0.x = x;
+    rot.0.y = y;
+    rot.0.z = z;
 
-        //let quat_x = Quat::from_rotation_x(x);
-        //let quat_y = Quat::from_rotation_y(y);
-        //let quat_z = Quat::from_rotation_z(z);
-        //rotation.0 = (quat_z * quat_y * quat_x).normalize();
-        rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
-    }
+    rotation.0 = Quat::from_euler(EulerRot::XYZ, x, y, z);
 }

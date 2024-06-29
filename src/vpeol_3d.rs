@@ -99,7 +99,7 @@ use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
 };
-use crate::vpeol_3d_rotation::{Is3dRotationEditing, Vpeol3dRotationEdit};
+use crate::vpeol_3d_rotation::Vpeol3dRotationEdit;
 use crate::vpeol_3d_scale::Vpeol3dScaleEdit;
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::input::mouse::MouseWheel;
