@@ -29,6 +29,7 @@ serde_json = "^1"
 thiserror = "^1"
 
 [features]
+default=["vpeol", "vpeol_3d", "vpeol_2d"]
 bevy_reflect = []
 vpeol = []
 vpeol_2d = [

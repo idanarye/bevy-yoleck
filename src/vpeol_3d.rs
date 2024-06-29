@@ -99,6 +99,8 @@ use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
     VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
 };
+use crate::vpeol_3d_rotation::Vpeol3dRotationEdit;
+use crate::vpeol_3d_scale::Vpeol3dScaleEdit;
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
@@ -107,6 +109,12 @@ use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
+
+#[derive(Resource)]
+pub struct Editor3dResource {
+    pub is_rotation_editing: bool,
+    pub is_sync_scale_axis: bool,
+}
 
 /// Add the systems required for loading levels that use vpeol_3d components
 pub struct Vpeol3dPluginForGame;
@@ -182,6 +190,10 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
+        app.insert_resource(Editor3dResource {
+            is_rotation_editing: false,
+            is_sync_scale_axis: false,
+        });
 
         app.add_systems(
             Update,
@@ -211,6 +223,8 @@ impl Plugin for Vpeol3dPluginForEditor {
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
         app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
+        app.add_plugins(Vpeol3dRotationEdit);
+        app.add_plugins(Vpeol3dScaleEdit);
     }
 }
 
@@ -537,7 +551,11 @@ fn vpeol_3d_edit_position(
     mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
+    editor_config: Res<Editor3dResource>,
 ) {
+    if editor_config.is_rotation_editing {
+        return;
+    }
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
