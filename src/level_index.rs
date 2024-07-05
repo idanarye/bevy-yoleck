@@ -77,19 +77,17 @@ impl AssetLoader for YoleckLevelIndexLoader {
     type Settings = ();
     type Error = YoleckAssetLoaderError;
 
-    fn load<'a>(
+    async fn load<'a>(
         &'a self,
-        reader: &'a mut bevy::asset::io::Reader,
+        reader: &'a mut bevy::asset::io::Reader<'_>,
         _settings: &'a Self::Settings,
-        _load_context: &'a mut bevy::asset::LoadContext,
-    ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
-        Box::pin(async {
-            let mut bytes = Vec::new();
-            reader.read_to_end(&mut bytes).await?;
-            let json = std::str::from_utf8(&bytes)?;
-            let level_index: YoleckLevelIndex = serde_json::from_str(json)?;
-            Ok(level_index)
-        })
+        _load_context: &'a mut bevy::asset::LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let json = std::str::from_utf8(&bytes)?;
+        let level_index: YoleckLevelIndex = serde_json::from_str(json)?;
+        Ok(level_index)
     }
 
     fn extensions(&self) -> &[&str] {

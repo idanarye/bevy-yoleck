@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use bevy::color::palettes::css;
 use bevy::math::Affine3A;
 use bevy::prelude::*;
 use bevy::utils::HashSet;
@@ -202,10 +203,10 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
         let color;
         if ctx.is_in_editor() && content.text.chars().all(|c| c.is_whitespace()) {
             text = "<TEXT>".to_owned();
-            color = Color::WHITE.with_a(0.25);
+            color = css::WHITE.with_alpha(0.25);
         } else {
             text = content.text.clone();
-            color = Color::WHITE;
+            color = css::WHITE;
         };
         cmd.insert(Text2dBundle {
             text: {
@@ -214,7 +215,7 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
                     TextStyle {
                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                         font_size: 72.0,
-                        color,
+                        color: color.into(),
                     },
                 )
             },
@@ -271,7 +272,7 @@ fn edit_doorway_rotation(
     let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (75.0 * Vec3::X);
     rotate_knob.cmd.insert(SpriteBundle {
         sprite: Sprite {
-            color: Color::PURPLE,
+            color: css::PURPLE.into(),
             custom_size: Some(Vec2::new(30.0, 30.0)),
             ..Default::default()
         },
@@ -296,8 +297,7 @@ fn populate_doorway(
                 (
                     asset_server.load("sprites/doorway.png"),
                     texture_atlas_layout_assets.add(TextureAtlasLayout::from_grid(
-                        // asset_server.load("sprites/doorway.png"),
-                        Vec2::new(64.0, 64.0),
+                        UVec2::new(64, 64),
                         1,
                         2,
                         None,
@@ -306,17 +306,17 @@ fn populate_doorway(
                 )
             })
             .clone();
-        cmd.insert(SpriteSheetBundle {
+        cmd.insert(SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
             },
-            atlas: TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0,
-            },
             texture,
             ..Default::default()
+        });
+        cmd.insert(TextureAtlas {
+            layout: texture_atlas_layout,
+            index: 0,
         });
     });
 }

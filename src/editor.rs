@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
+use bevy::state::state::FreelyMutableState;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::egui;
 
@@ -66,7 +67,15 @@ pub enum YoleckEditorState {
 /// }
 pub struct YoleckSyncWithEditorState<T>
 where
-    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+    T: 'static
+        + States
+        + FreelyMutableState
+        + Sync
+        + Send
+        + std::fmt::Debug
+        + Clone
+        + std::cmp::Eq
+        + std::hash::Hash,
 {
     pub when_editor: T,
     pub when_game: T,
@@ -74,7 +83,15 @@ where
 
 impl<T> Plugin for YoleckSyncWithEditorState<T>
 where
-    T: 'static + States + Sync + Send + std::fmt::Debug + Clone + std::cmp::Eq + std::hash::Hash,
+    T: 'static
+        + States
+        + FreelyMutableState
+        + Sync
+        + Send
+        + std::fmt::Debug
+        + Clone
+        + std::cmp::Eq
+        + std::hash::Hash,
 {
     fn build(&self, app: &mut App) {
         app.insert_state(self.when_editor.clone());
@@ -315,20 +332,26 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
             ui.memory_mut(|memory| memory.toggle_popup(popup_id));
         }
 
-        egui::popup_below_widget(ui, popup_id, &button_response, |ui| {
-            for entity_type in construction_specs.entity_types.iter() {
-                if ui.button(&entity_type.name).clicked() {
-                    writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
-                        level: yoleck.level_being_edited,
-                        type_name: entity_type.name.clone(),
-                        data: serde_json::Value::Object(Default::default()),
-                        select_created_entity: true,
-                        modify_exclusive_systems: None,
-                    }));
-                    ui.memory_mut(|memory| memory.toggle_popup(popup_id));
+        egui::popup_below_widget(
+            ui,
+            popup_id,
+            &button_response,
+            egui::PopupCloseBehavior::CloseOnClickOutside,
+            |ui| {
+                for entity_type in construction_specs.entity_types.iter() {
+                    if ui.button(&entity_type.name).clicked() {
+                        writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                            level: yoleck.level_being_edited,
+                            type_name: entity_type.name.clone(),
+                            data: serde_json::Value::Object(Default::default()),
+                            select_created_entity: true,
+                            modify_exclusive_systems: None,
+                        }));
+                        ui.memory_mut(|memory| memory.toggle_popup(popup_id));
+                    }
                 }
-            }
-        });
+            },
+        );
 
         system_state.apply(world);
     }
@@ -598,7 +621,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         let mut prepared = frame.begin(ui);
         let content_ui = std::mem::replace(
             &mut prepared.content_ui,
-            ui.child_ui(egui::Rect::EVERYTHING, *ui.layout()),
+            ui.child_ui(ui.max_rect(), *ui.layout(), None),
         );
         world.insert_resource(YoleckUi(content_ui));
         world.insert_resource(passed_data);

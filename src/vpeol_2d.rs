@@ -95,7 +95,7 @@ use bevy::math::DVec2;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
-use bevy::sprite::{Anchor, Mesh2dHandle};
+use bevy::sprite::{Anchor, Mesh2dHandle, WithMesh2d, WithSprite};
 use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
@@ -168,7 +168,7 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_2d_edit_position);
-        app.world
+        app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_2d_init_position));
     }
@@ -234,7 +234,8 @@ fn update_camera_status_for_sprites(
         };
 
         for (entity, entity_transform, sprite, texture, texture_atlas) in
-            entities_query.iter_many(&visible_entities.entities)
+            entities_query.iter_many(visible_entities.iter::<WithSprite>())
+        // entities_query.iter()
         {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
@@ -244,7 +245,9 @@ fn update_camera_status_for_sprites(
                 else {
                     continue;
                 };
-                texture_atlas_layout.textures[texture_atlas.index].size()
+                texture_atlas_layout.textures[texture_atlas.index]
+                    .size()
+                    .as_vec2()
             } else if let Some(texture) = image_assets.get(texture) {
                 texture.size().as_vec2()
             } else {
@@ -273,7 +276,8 @@ fn update_camera_status_for_2d_meshes(
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
-        for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
+        for (entity, global_transform, mesh) in
+            entities_query.iter_many(visible_entities.iter::<WithMesh2d>())
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
@@ -312,7 +316,8 @@ fn update_camera_status_for_text_2d(
         };
 
         for (entity, entity_transform, text_layout_info, anchor) in
-            entities_query.iter_many(&visible_entities.entities)
+            // Weird that it is not `WithText`...
+            entities_query.iter_many(visible_entities.iter::<WithSprite>())
         {
             if cursor.check_square(entity_transform, anchor, text_layout_info.logical_size) {
                 let z_depth = entity_transform.translation().z;

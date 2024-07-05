@@ -100,10 +100,11 @@ use crate::vpeol::{
     VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
 };
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
+use bevy::color::palettes::css;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::view::VisibleEntities;
+use bevy::render::view::{VisibleEntities, WithMesh};
 use bevy::utils::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
@@ -142,7 +143,7 @@ pub struct Vpeol3dPluginForEditor {
     /// Indiviual entities can override this with their own [`VpeolDragPlane`] component.
     ///
     /// It is a good idea to match this to [`Vpeol3dCameraControl::plane`].
-    pub drag_plane: Plane3d,
+    pub drag_plane: InfinitePlane3d,
 }
 
 impl Vpeol3dPluginForEditor {
@@ -155,9 +156,7 @@ impl Vpeol3dPluginForEditor {
     /// This combines well with [`Vpeol3dCameraControl::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
-            drag_plane: Plane3d {
-                normal: Direction3d::Z,
-            },
+            drag_plane: InfinitePlane3d { normal: Dir3::Z },
         }
     }
 
@@ -170,9 +169,7 @@ impl Vpeol3dPluginForEditor {
     /// This combines well with [`Vpeol3dCameraControl::topdown`].
     pub fn topdown() -> Self {
         Self {
-            drag_plane: Plane3d {
-                normal: Direction3d::Y,
-            },
+            drag_plane: InfinitePlane3d { normal: Dir3::Y },
         }
     }
 }
@@ -207,7 +204,7 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_yoleck_edit_system(vpeol_3d_edit_position);
-        app.world
+        app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
         app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
@@ -224,7 +221,8 @@ fn update_camera_status_for_models(
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
-        for (entity, global_transform, mesh) in entities_query.iter_many(&visible_entities.entities)
+        for (entity, global_transform, mesh) in
+            entities_query.iter_many(visible_entities.iter::<WithMesh>())
         {
             let Some(mesh) = mesh_assets.get(mesh) else {
                 continue;
@@ -237,8 +235,7 @@ fn update_camera_status_for_models(
             // distance.
             let ray_origin = inverse_transform.transform_point3(cursor_ray.origin);
             let ray_vector = inverse_transform.transform_vector3(*cursor_ray.direction);
-            let Ok((ray_direction, ray_length_factor)) = Direction3d::new_and_length(ray_vector)
-            else {
+            let Ok((ray_direction, ray_length_factor)) = Dir3::new_and_length(ray_vector) else {
                 continue;
             };
 
@@ -268,12 +265,12 @@ pub struct Vpeol3dCameraControl {
     /// Panning is done by dragging a plane with this as its origin.
     pub plane_origin: Vec3,
     /// Panning is done by dragging along this plane.
-    pub plane: Plane3d,
+    pub plane: InfinitePlane3d,
     /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
     ///
     /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane`].
-    pub allow_rotation_while_maintaining_up: Option<Direction3d>,
+    pub allow_rotation_while_maintaining_up: Option<Dir3>,
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Line` units.
     pub proximity_per_scroll_line: f32,
@@ -291,8 +288,8 @@ impl Vpeol3dCameraControl {
     pub fn sidescroller() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
-            plane: Plane3d {
-                normal: Direction3d::NEG_Z,
+            plane: InfinitePlane3d {
+                normal: Dir3::NEG_Z,
             },
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
@@ -307,10 +304,8 @@ impl Vpeol3dCameraControl {
     pub fn topdown() -> Self {
         Self {
             plane_origin: Vec3::ZERO,
-            plane: Plane3d {
-                normal: Direction3d::Y,
-            },
-            allow_rotation_while_maintaining_up: Some(Direction3d::Y),
+            plane: InfinitePlane3d { normal: Dir3::Y },
+            allow_rotation_while_maintaining_up: Some(Dir3::Y),
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
         }
@@ -603,7 +598,7 @@ fn vpeol_3d_init_position(
 
     let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
     if let Some(distance_to_plane) =
-        cursor_ray.intersect_plane(position.0, Plane3d::new(*drag_plane.normal))
+        cursor_ray.intersect_plane(position.0, InfinitePlane3d::new(*drag_plane.normal))
     {
         position.0 = cursor_ray.get_point(distance_to_plane);
     };
@@ -643,7 +638,7 @@ fn vpeol_3d_edit_third_axis_with_knob(
                 radius: 0.5,
                 half_height: 0.5,
             })),
-            material_assets.add(Color::ORANGE_RED),
+            material_assets.add(Color::from(css::ORANGE_RED)),
         )
     });
 
@@ -670,9 +665,8 @@ fn vpeol_3d_edit_third_axis_with_knob(
                 rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
                 scale: third_axis_with_knob.knob_scale * Vec3::ONE,
             };
-            knob.cmd.insert(VpeolDragPlane(Plane3d {
-                normal: Direction3d::new(drag_plane_normal.cross(Vec3::X))
-                    .unwrap_or(Direction3d::Y),
+            knob.cmd.insert(VpeolDragPlane(InfinitePlane3d {
+                normal: Dir3::new(drag_plane_normal.cross(Vec3::X)).unwrap_or(Dir3::Y),
             }));
             knob.cmd.insert(PbrBundle {
                 mesh: mesh.clone(),

@@ -95,15 +95,11 @@ impl Plugin for VpeolBasePlugin {
 /// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
 #[derive(Component, Resource)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct VpeolDragPlane(pub Plane3d);
+pub struct VpeolDragPlane(pub InfinitePlane3d);
 
 impl VpeolDragPlane {
-    pub const XY: VpeolDragPlane = VpeolDragPlane(Plane3d {
-        normal: Direction3d::Z,
-    });
-    pub const XZ: VpeolDragPlane = VpeolDragPlane(Plane3d {
-        normal: Direction3d::Y,
-    });
+    pub const XY: VpeolDragPlane = VpeolDragPlane(InfinitePlane3d { normal: Dir3::Z });
+    pub const XZ: VpeolDragPlane = VpeolDragPlane(InfinitePlane3d { normal: Dir3::Y });
 }
 
 /// Data passed between Vpeol abstraction and backends.
@@ -586,8 +582,8 @@ fn ray_intersection_with_aabb(ray: Ray3d, aabb: Aabb) -> Option<f32> {
                 return None;
             }
         } else {
-            let low = ray.intersect_plane(center - half_extent * axis, Plane3d::new(axis));
-            let high = ray.intersect_plane(center + half_extent * axis, Plane3d::new(axis));
+            let low = ray.intersect_plane(center - half_extent * axis, InfinitePlane3d::new(axis));
+            let high = ray.intersect_plane(center + half_extent * axis, InfinitePlane3d::new(axis));
             let (low, high) = if 0.0 <= dot { (low, high) } else { (high, low) };
             if let Some(low) = low {
                 max_low = max_low.max(low);
@@ -635,8 +631,8 @@ impl Triangle {
             self.0[0] - self.0[2],
         ];
         let normal = directions[0].cross(directions[1]); // no need to normalize it
-        let plane = Plane3d {
-            normal: Direction3d::new(normal).ok()?,
+        let plane = InfinitePlane3d {
+            normal: Dir3::new(normal).ok()?,
         };
         let distance = ray.intersect_plane(self.0[0], plane)?;
         let point = ray.get_point(distance);

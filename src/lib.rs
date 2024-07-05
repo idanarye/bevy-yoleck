@@ -351,7 +351,10 @@ impl Plugin for YoleckPluginForEditor {
         app.add_plugins(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
         app.insert_resource(YoleckKnobsCache::default());
-        let level_being_edited = app.world.spawn((YoleckLevelInEditor, YoleckKeepLevel)).id();
+        let level_being_edited = app
+            .world_mut()
+            .spawn((YoleckLevelInEditor, YoleckKeepLevel))
+            .id();
         app.insert_resource(YoleckState {
             level_being_edited,
             level_needs_saving: false,
@@ -452,7 +455,7 @@ pub trait YoleckExtForApp {
 impl YoleckExtForApp for App {
     fn add_yoleck_entity_type(&mut self, entity_type: YoleckEntityType) {
         let construction_specs = self
-            .world
+            .world_mut()
             .get_resource_or_insert_with(YoleckEntityConstructionSpecs::default);
 
         let mut component_type_ids = Vec::with_capacity(entity_type.components.len());
@@ -479,7 +482,7 @@ impl YoleckExtForApp for App {
         };
 
         let mut construction_specs = self
-            .world
+            .world_mut()
             .get_resource_mut::<YoleckEntityConstructionSpecs>()
             .expect("YoleckEntityConstructionSpecs was inserted earlier in this function");
 
@@ -497,9 +500,9 @@ impl YoleckExtForApp for App {
     }
 
     fn add_yoleck_edit_system<P>(&mut self, system: impl 'static + IntoSystem<(), (), P>) {
-        let system_id = self.world.register_system(system);
+        let system_id = self.world_mut().register_system(system);
         let mut edit_systems = self
-            .world
+            .world_mut()
             .get_resource_or_insert_with(YoleckEditSystems::default);
         edit_systems.edit_systems.push(system_id);
     }
@@ -509,7 +512,7 @@ impl YoleckExtForApp for App {
         to_version: usize,
         upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
     ) {
-        let mut entity_upgrading = self.world.get_resource_mut::<YoleckEntityUpgrading>()
+        let mut entity_upgrading = self.world_mut().get_resource_mut::<YoleckEntityUpgrading>()
             .expect("add_yoleck_entity_upgrade can only be called after the YoleckEntityUpgrading plugin was added");
         if entity_upgrading.app_format_version < to_version {
             panic!("Cannot create an upgrade system to version {} when YoleckEntityUpgrading set the version to {}", to_version, entity_upgrading.app_format_version);

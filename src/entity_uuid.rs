@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use bevy::utils::{HashMap, Uuid};
+use bevy::utils::HashMap;
+use uuid::Uuid;
 
 /// A UUID automatically added to entity types defined with
 /// [`with_uuid`](crate::YoleckEntityType::with_uuid)

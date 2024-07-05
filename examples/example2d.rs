@@ -1,13 +1,14 @@
 use std::path::Path;
 
+use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::sprite::Mesh2dHandle;
-use bevy::utils::Uuid;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use uuid::Uuid;
 
 use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
 use bevy_yoleck::vpeol::{prelude::*, vpeol_read_click_on_entity};
@@ -174,7 +175,7 @@ impl FromWorld for GameAssets {
             system_state.get_mut(world);
         let fruits_atlas_texture = asset_server.load("sprites/fruits.png");
         let fruits_atlas_layout =
-            TextureAtlasLayout::from_grid(Vec2::new(64.0, 64.0), 3, 1, None, None);
+            TextureAtlasLayout::from_grid(UVec2::new(64, 64), 3, 1, None, None);
         let fruits_egui = {
             (
                 egui_context.add_image(fruits_atlas_texture.clone()),
@@ -184,13 +185,13 @@ impl FromWorld for GameAssets {
                     .map(|rect| {
                         [
                             [
-                                rect.min.x / fruits_atlas_layout.size.x,
-                                rect.min.y / fruits_atlas_layout.size.y,
+                                rect.min.x as f32 / fruits_atlas_layout.size.x as f32,
+                                rect.min.y as f32 / fruits_atlas_layout.size.y as f32,
                             ]
                             .into(),
                             [
-                                rect.max.x / fruits_atlas_layout.size.x,
-                                rect.max.y / fruits_atlas_layout.size.y,
+                                rect.max.x as f32 / fruits_atlas_layout.size.x as f32,
+                                rect.max.y as f32 / fruits_atlas_layout.size.y as f32,
                             ]
                             .into(),
                         ]
@@ -253,7 +254,7 @@ fn edit_player(
     let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (50.0 * Vec3::Y);
     rotate_knob.cmd.insert(SpriteBundle {
         sprite: Sprite {
-            color: Color::PURPLE,
+            color: css::PURPLE.into(),
             custom_size: Some(Vec2::new(30.0, 30.0)),
             ..Default::default()
         },
@@ -344,19 +345,19 @@ fn edit_fruit_type(
                 let mut knob = knobs.knob((entity, "select", index));
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
-                knob.cmd.insert(SpriteSheetBundle {
+                knob.cmd.insert(SpriteBundle {
                     sprite: Sprite {
                         custom_size: Some(Vec2::new(20.0, 20.0)),
                         ..Default::default()
-                    },
-                    atlas: TextureAtlas {
-                        layout: assets.fruits_sprite_sheet_layout.clone(),
-                        index,
                     },
                     texture: assets.fruits_sprite_sheet_texture.clone(),
                     transform: Transform::from_translation(knob_position),
                     global_transform: Transform::from_translation(knob_position).into(),
                     ..Default::default()
+                });
+                knob.cmd.insert(TextureAtlas {
+                    layout: assets.fruits_sprite_sheet_layout.clone(),
+                    index,
                 });
                 if knob.get_passed_data::<YoleckKnobClick>().is_some() {
                     fruit_type.index = index;
@@ -412,17 +413,17 @@ fn populate_fruit(
         // can be tested and demonstrated.
         cmd.with_children(|commands| {
             let mut child = commands.spawn(marking.marker());
-            child.insert(SpriteSheetBundle {
+            child.insert(SpriteBundle {
                 sprite: Sprite {
                     custom_size: Some(Vec2::new(100.0, 100.0)),
                     ..Default::default()
                 },
-                atlas: TextureAtlas {
-                    layout: assets.fruits_sprite_sheet_layout.clone(),
-                    index: fruit.index,
-                },
                 texture: assets.fruits_sprite_sheet_texture.clone(),
                 ..Default::default()
+            });
+            child.insert(TextureAtlas {
+                layout: assets.fruits_sprite_sheet_layout.clone(),
+                index: fruit.index,
             });
         });
     });
@@ -526,7 +527,7 @@ fn edit_triangle(
         let knob_position = triangle_transform.transform_point(vertex.extend(1.0));
         knob.cmd.insert(SpriteBundle {
             sprite: Sprite {
-                color: Color::RED,
+                color: css::RED.into(),
                 custom_size: Some(Vec2::new(15.0, 15.0)),
                 ..Default::default()
             },
@@ -555,7 +556,7 @@ fn populate_triangle(
             let mesh = mesh_assets.get_mut(&mesh_handle);
             cmd.insert(ColorMesh2dBundle {
                 mesh: Mesh2dHandle(mesh_handle),
-                material: material_assets.add(Color::GREEN),
+                material: material_assets.add(Color::from(css::GREEN)),
                 ..Default::default()
             });
             mesh.expect("mesh was just inserted")
@@ -647,7 +648,7 @@ fn draw_laser_pointers(
         gizmos.line(
             laser_transform.translation(),
             target_transform.translation(),
-            Color::GREEN,
+            css::GREEN,
         );
     }
 }

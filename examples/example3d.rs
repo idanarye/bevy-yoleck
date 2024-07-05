@@ -1,8 +1,9 @@
 use std::path::Path;
 
+use bevy::color::palettes::css;
 use bevy::prelude::*;
-use bevy::utils::Uuid;
 use bevy_egui::EguiPlugin;
+use uuid::Uuid;
 
 use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
 use bevy_yoleck::vpeol::{prelude::*, vpeol_read_click_on_entity};
@@ -128,12 +129,12 @@ fn setup_arena(
 ) {
     let mesh = mesh_assets.add(Mesh::from(
         Plane3d {
-            normal: Direction3d::Y,
+            normal: Dir3::Y,
+            half_size: Vec2::new(100.0, 100.0),
         }
-        .mesh()
-        .size(100.0, 100.0),
+        .mesh(),
     ));
-    let material = material_assets.add(Color::GRAY);
+    let material = material_assets.add(Color::from(css::GRAY));
     commands.spawn(PbrBundle {
         mesh,
         material,
@@ -237,7 +238,7 @@ fn populate_simple_sphere(
                 .get_or_insert_with(|| mesh_assets.add(Mesh::from(Sphere { radius: 1.0 })))
                 .clone();
             let material = material
-                .get_or_insert_with(|| material_assets.add(Color::YELLOW))
+                .get_or_insert_with(|| material_assets.add(Color::from(css::YELLOW)))
                 .clone();
             cmd.insert(PbrBundle {
                 mesh,
@@ -318,7 +319,7 @@ fn draw_laser_pointers(
         gizmos.line(
             laser_transform.translation(),
             target_transform.translation(),
-            Color::GREEN,
+            css::GREEN,
         );
     }
 }
