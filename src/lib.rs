@@ -136,7 +136,7 @@
 //!     populate.populate(|_ctx, mut cmd, rectangle| {
 //!         cmd.insert(SpriteBundle {
 //!             sprite: Sprite {
-//!                 color: Color::RED,
+//!                 color: bevy::color::palettes::css::RED.into(),
 //!                 custom_size: Some(Vec2::new(rectangle.width, rectangle.height)),
 //!                 ..Default::default()
 //!             },
@@ -163,7 +163,7 @@
 //!     let level_index_handle = level_index_handle
 //!         .get_or_insert_with(|| asset_server.load("levels/index.yoli"))
 //!         .clone();
-//!     let Some(level_index) = level_index_assets.get(level_index_handle) else {
+//!     let Some(level_index) = level_index_assets.get(&level_index_handle) else {
 //!         // During the first invocation of this system, the level index asset is not going to be
 //!         // loaded just yet. Since this system is going to run on every frame during the Loading
 //!         // state, it just has to keep trying until it starts in a frame where it is loaded.
@@ -628,7 +628,7 @@ pub(crate) struct YoleckState {
 /// use bevy::ecs::system::SystemState;
 /// # use bevy_yoleck::{YoleckEditorSections, egui};
 /// # let mut app = App::new();
-/// app.world.resource_mut::<YoleckEditorSections>().0.push((|world: &mut World| {
+/// app.world_mut().resource_mut::<YoleckEditorSections>().0.push((|world: &mut World| {
 ///     let mut system_state = SystemState::<(
 ///         Res<Time>,
 ///     )>::new(world);

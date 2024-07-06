@@ -33,7 +33,7 @@ pub struct YoleckLevelIndexEntry {
 ///     let level_index_handle = level_index_handle
 ///         .get_or_insert_with(|| asset_server.load("levels/index.yoli"))
 ///         .clone();
-///     let Some(level_index) = level_index_assets.get(level_index_handle) else {
+///     let Some(level_index) = level_index_assets.get(&level_index_handle) else {
 ///         // During the first invocation of this system, the level index asset is not going to be
 ///         // loaded just yet. Since this system is going to run on every frame during the Loading
 ///         // state, it just has to keep trying until it starts in a frame where it is loaded.
