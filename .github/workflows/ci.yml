@@ -118,7 +118,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
-          cargo doc --verbose --all-features &&
+          cargo doc --verbose --all-features --feature bevy/webgl2 &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html &&
           required_features=$(
             (
@@ -126,8 +126,7 @@ jobs:
                   | jq '.packages[].targets[] | select(.kind == ["example"]) | .["required-features"][]' -r \
               echo bevy/webgl2
             ) | tr '\n' ' '
-          )
-          cargo build --examples --release --features "$required_features" --target wasm32-unknown-unknown &&
+          ) cargo build --examples --release --features "$required_features" --target wasm32-unknown-unknown &&
           for demowasm in $(cd target/wasm32-unknown-unknown/release/examples; ls *.wasm | grep -v -); do
               wasm-bindgen target/wasm32-unknown-unknown/release/examples/$demowasm --out-dir target/doc/demos/ --target web
               cat > target/doc/demos/${demowasm%.*}.html <<EOF
