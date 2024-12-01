@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::ops::Deref;
 
-use bevy::asset::{AssetLoader, AsyncReadExt};
+use bevy::asset::AssetLoader;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 
@@ -77,11 +77,11 @@ impl AssetLoader for YoleckLevelIndexLoader {
     type Settings = ();
     type Error = YoleckAssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut bevy::asset::io::Reader<'_>,
-        _settings: &'a Self::Settings,
-        _load_context: &'a mut bevy::asset::LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn bevy::asset::io::Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;

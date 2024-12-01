@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::PrimitiveTopology;
-use bevy::sprite::Mesh2dHandle;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use uuid::Uuid;
 
@@ -148,12 +147,12 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let mut camera = Camera2dBundle::default();
-    camera.transform.translation.z = 100.0;
-    commands
-        .spawn(camera)
-        .insert(VpeolCameraState::default())
-        .insert(Vpeol2dCameraControl::default());
+    commands.spawn((
+        Camera2d,
+        Transform::from_xyz(0.0, 0.0, 100.0),
+        VpeolCameraState::default(),
+        Vpeol2dCameraControl::default(),
+    ));
 }
 
 #[derive(Resource)]
@@ -226,16 +225,13 @@ fn populate_player(
     mut texture_cache: Local<Option<Handle<Image>>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
-        cmd.insert((SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            texture: texture_cache
+        cmd.insert(Sprite {
+            image: texture_cache
                 .get_or_insert_with(|| asset_server.load("sprites/player.png"))
                 .clone(),
+            custom_size: Some(Vec2::new(100.0, 100.0)),
             ..Default::default()
-        },));
+        });
     });
 }
 
@@ -252,18 +248,13 @@ fn edit_player(
     // TODO: do this in vpeol_2d?
     let mut rotate_knob = knobs.knob("rotate");
     let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (50.0 * Vec3::Y);
-    rotate_knob.cmd.insert(SpriteBundle {
-        sprite: Sprite {
-            color: css::PURPLE.into(),
-            custom_size: Some(Vec2::new(30.0, 30.0)),
-            ..Default::default()
-        },
-        transform: Transform::from_translation(knob_position),
-        global_transform: Transform::from_translation(knob_position).into(),
-        ..Default::default()
-    });
+    rotate_knob.cmd.insert((
+        Sprite::from_color(css::PURPLE, Vec2::new(30.0, 30.0)),
+        Transform::from_translation(knob_position),
+        GlobalTransform::from(Transform::from_translation(knob_position)),
+    ));
     if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec3>() {
-        rotation.0 = Vec2::Y.angle_between(rotate_to.truncate() - *position);
+        rotation.0 = Vec2::Y.angle_to(rotate_to.truncate() - *position);
     }
 }
 
@@ -287,7 +278,7 @@ fn control_player(
     }
     velocity *= 400.0;
     for mut player_transform in player_query.iter_mut() {
-        player_transform.translation += velocity * time.delta_seconds();
+        player_transform.translation += velocity * time.delta_secs();
     }
 }
 
@@ -345,20 +336,19 @@ fn edit_fruit_type(
                 let mut knob = knobs.knob((entity, "select", index));
                 let knob_position =
                     (*position + Vec2::new(-30.0 + index as f32 * 30.0, 50.0)).extend(1.0);
-                knob.cmd.insert(SpriteBundle {
-                    sprite: Sprite {
+                knob.cmd.insert((
+                    Sprite {
+                        image: assets.fruits_sprite_sheet_texture.clone(),
+                        texture_atlas: Some(TextureAtlas {
+                            layout: assets.fruits_sprite_sheet_layout.clone(),
+                            index,
+                        }),
                         custom_size: Some(Vec2::new(20.0, 20.0)),
                         ..Default::default()
                     },
-                    texture: assets.fruits_sprite_sheet_texture.clone(),
-                    transform: Transform::from_translation(knob_position),
-                    global_transform: Transform::from_translation(knob_position).into(),
-                    ..Default::default()
-                });
-                knob.cmd.insert(TextureAtlas {
-                    layout: assets.fruits_sprite_sheet_layout.clone(),
-                    index,
-                });
+                    Transform::from_translation(knob_position),
+                    GlobalTransform::from(Transform::from_translation(knob_position)),
+                ));
                 if knob.get_passed_data::<YoleckKnobClick>().is_some() {
                     fruit_type.index = index;
                 }
@@ -405,7 +395,7 @@ fn populate_fruit(
     populate.populate(|_ctx, mut cmd, fruit| {
         marking.despawn_marked(&mut cmd);
         cmd.insert((
-            VisibilityBundle::default(),
+            Visibility::default(),
             VpeolWillContainClickableChildren,
             IsFruit,
         ));
@@ -413,18 +403,15 @@ fn populate_fruit(
         // can be tested and demonstrated.
         cmd.with_children(|commands| {
             let mut child = commands.spawn(marking.marker());
-            child.insert(SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(100.0, 100.0)),
-                    ..Default::default()
-                },
-                texture: assets.fruits_sprite_sheet_texture.clone(),
+            child.insert((Sprite {
+                image: assets.fruits_sprite_sheet_texture.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: assets.fruits_sprite_sheet_layout.clone(),
+                    index: fruit.index,
+                }),
+                custom_size: Some(Vec2::new(100.0, 100.0)),
                 ..Default::default()
-            });
-            child.insert(TextureAtlas {
-                layout: assets.fruits_sprite_sheet_layout.clone(),
-                index: fruit.index,
-            });
+            },));
         });
     });
 }
@@ -462,19 +449,14 @@ impl Default for TextContent {
 
 fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAssets>) {
     populate.populate(|_ctx, mut cmd, content| {
-        cmd.insert(Text2dBundle {
-            text: {
-                Text::from_section(
-                    content.text.clone(),
-                    TextStyle {
-                        font: assets.font.clone(),
-                        font_size: 72.0,
-                        color: Color::WHITE,
-                    },
-                )
+        cmd.insert((
+            Text2d(content.text.clone()),
+            TextFont {
+                font: assets.font.clone(),
+                font_size: 72.0,
+                ..Default::default()
             },
-            ..Default::default()
-        });
+        ));
     });
 }
 
@@ -525,26 +507,21 @@ fn edit_triangle(
                 .truncate();
         }
         let knob_position = triangle_transform.transform_point(vertex.extend(1.0));
-        knob.cmd.insert(SpriteBundle {
-            sprite: Sprite {
-                color: css::RED.into(),
-                custom_size: Some(Vec2::new(15.0, 15.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_translation(knob_position),
-            global_transform: Transform::from_translation(knob_position).into(),
-            ..Default::default()
-        });
+        knob.cmd.insert((
+            Sprite::from_color(css::RED, Vec2::new(15.0, 15.0)),
+            Transform::from_translation(knob_position),
+            GlobalTransform::from(Transform::from_translation(knob_position)),
+        ));
     }
 }
 
 fn populate_triangle(
-    mut populate: YoleckPopulate<(&TriangleVertices, Option<&Mesh2dHandle>)>,
+    mut populate: YoleckPopulate<(&TriangleVertices, Option<&Mesh2d>)>,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<ColorMaterial>>,
 ) {
     populate.populate(|_ctx, mut cmd, (triangle, mesh2d)| {
-        let mesh = if let Some(Mesh2dHandle(mesh_handle)) = mesh2d {
+        let mesh = if let Some(Mesh2d(mesh_handle)) = mesh2d {
             mesh_assets
                 .get_mut(mesh_handle)
                 .expect("mesh inserted by previous invocation of this system")
@@ -554,11 +531,10 @@ fn populate_triangle(
                 RenderAssetUsages::default(),
             ));
             let mesh = mesh_assets.get_mut(&mesh_handle);
-            cmd.insert(ColorMesh2dBundle {
-                mesh: Mesh2dHandle(mesh_handle),
-                material: material_assets.add(Color::from(css::GREEN)),
-                ..Default::default()
-            });
+            cmd.insert((
+                Mesh2d(mesh_handle),
+                MeshMaterial2d(material_assets.add(Color::from(css::GREEN))),
+            ));
             mesh.expect("mesh was just inserted")
         };
         mesh.insert_attribute(

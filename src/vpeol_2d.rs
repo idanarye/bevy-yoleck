@@ -95,7 +95,7 @@ use bevy::math::DVec2;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
-use bevy::sprite::{Anchor, Mesh2dHandle, WithMesh2d, WithSprite};
+use bevy::sprite::{Anchor, WithSprite};
 use bevy::text::TextLayoutInfo;
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
@@ -156,10 +156,7 @@ impl Plugin for Vpeol2dPluginForEditor {
             (
                 apply_deferred,
                 handle_clickable_children_system::<
-                    Or<(
-                        (With<Sprite>, With<Handle<Image>>),
-                        (With<TextLayoutInfo>, With<Anchor>),
-                    )>,
+                    Or<(With<Sprite>, (With<TextLayoutInfo>, With<Anchor>))>,
                     (),
                 >,
                 apply_deferred,
@@ -217,13 +214,7 @@ impl CursorInWorldPos {
 #[allow(clippy::type_complexity)]
 fn update_camera_status_for_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(
-        Entity,
-        &GlobalTransform,
-        &Sprite,
-        &Handle<Image>,
-        Option<&TextureAtlas>,
-    )>,
+    entities_query: Query<(Entity, &GlobalTransform, &Sprite)>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_layout_assets: Res<Assets<TextureAtlasLayout>>,
     root_resolver: VpeolRootResolver,
@@ -233,13 +224,13 @@ fn update_camera_status_for_sprites(
             continue;
         };
 
-        for (entity, entity_transform, sprite, texture, texture_atlas) in
+        for (entity, entity_transform, sprite) in
             entities_query.iter_many(visible_entities.iter::<WithSprite>())
         // entities_query.iter()
         {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
-            } else if let Some(texture_atlas) = texture_atlas {
+            } else if let Some(texture_atlas) = sprite.texture_atlas.as_ref() {
                 let Some(texture_atlas_layout) =
                     texture_atlas_layout_assets.get(&texture_atlas.layout)
                 else {
@@ -248,7 +239,7 @@ fn update_camera_status_for_sprites(
                 texture_atlas_layout.textures[texture_atlas.index]
                     .size()
                     .as_vec2()
-            } else if let Some(texture) = image_assets.get(texture) {
+            } else if let Some(texture) = image_assets.get(&sprite.image) {
                 texture.size().as_vec2()
             } else {
                 continue;
@@ -268,7 +259,7 @@ fn update_camera_status_for_sprites(
 
 fn update_camera_status_for_2d_meshes(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(Entity, &GlobalTransform, &Mesh2dHandle)>,
+    entities_query: Query<(Entity, &GlobalTransform, &Mesh2d)>,
     mesh_assets: Res<Assets<Mesh>>,
     root_resolver: VpeolRootResolver,
 ) {
@@ -277,7 +268,7 @@ fn update_camera_status_for_2d_meshes(
             continue;
         };
         for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter::<WithMesh2d>())
+            entities_query.iter_many(visible_entities.iter::<With<Mesh2d>>())
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
@@ -319,7 +310,7 @@ fn update_camera_status_for_text_2d(
             // Weird that it is not `WithText`...
             entities_query.iter_many(visible_entities.iter::<WithSprite>())
         {
-            if cursor.check_square(entity_transform, anchor, text_layout_info.logical_size) {
+            if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
                 let Some(root_entity) = root_resolver.resolve_root(entity) else {
                     continue;
@@ -446,7 +437,7 @@ fn camera_2d_zoom(
         let Some(cursor_in_screen_pos) = window.cursor_position() else {
             continue;
         };
-        let Some(new_cursor_ray) =
+        let Ok(new_cursor_ray) =
             camera.viewport_to_world(&((*camera_transform.as_ref()).into()), cursor_in_screen_pos)
         else {
             continue;
@@ -573,10 +564,7 @@ fn vpeol_2d_populate_transform(
                 transform = *level_transform * transform;
             }
 
-            cmd.insert(TransformBundle {
-                local: transform,
-                global: transform.into(),
-            });
+            cmd.insert((transform, GlobalTransform::from(transform)));
         },
     )
 }

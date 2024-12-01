@@ -104,7 +104,7 @@ use bevy::color::palettes::css;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::view::{VisibleEntities, WithMesh};
+use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
@@ -197,7 +197,7 @@ impl Plugin for Vpeol3dPluginForEditor {
             Update,
             (
                 apply_deferred,
-                handle_clickable_children_system::<With<Handle<Mesh>>, ()>,
+                handle_clickable_children_system::<With<Mesh3d>, ()>,
                 apply_deferred,
             )
                 .chain()
@@ -213,7 +213,7 @@ impl Plugin for Vpeol3dPluginForEditor {
 
 fn update_camera_status_for_models(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(Entity, &GlobalTransform, &Handle<Mesh>)>,
+    entities_query: Query<(Entity, &GlobalTransform, &Mesh3d)>,
     mesh_assets: Res<Assets<Mesh>>,
     root_resolver: VpeolRootResolver,
 ) {
@@ -222,9 +222,9 @@ fn update_camera_status_for_models(
             continue;
         };
         for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter::<WithMesh>())
+            entities_query.iter_many(visible_entities.iter::<With<Mesh3d>>())
         {
-            let Some(mesh) = mesh_assets.get(mesh) else {
+            let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
             };
 
@@ -668,13 +668,12 @@ fn vpeol_3d_edit_third_axis_with_knob(
             knob.cmd.insert(VpeolDragPlane(InfinitePlane3d {
                 normal: Dir3::new(drag_plane_normal.cross(Vec3::X)).unwrap_or(Dir3::Y),
             }));
-            knob.cmd.insert(PbrBundle {
-                mesh: mesh.clone(),
-                material: material.clone(),
-                transform: knob_transform,
-                global_transform: knob_transform.into(),
-                ..Default::default()
-            });
+            knob.cmd.insert((
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(material.clone()),
+                knob_transform,
+                GlobalTransform::from(knob_transform),
+            ));
             if let Some(pos) = knob.get_passed_data::<Vec3>() {
                 let vector_from_entity = *pos - knob_offset - entity_position;
                 let along_drag_normal = vector_from_entity.dot(drag_plane_normal);
@@ -716,10 +715,7 @@ fn vpeol_3d_populate_transform(
                 transform = *level_transform * transform;
             }
 
-            cmd.insert(TransformBundle {
-                local: transform,
-                global: transform.into(),
-            });
+            cmd.insert((transform, GlobalTransform::from(transform)));
         },
     )
 }

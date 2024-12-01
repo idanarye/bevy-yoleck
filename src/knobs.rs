@@ -130,7 +130,7 @@ pub struct YoleckKnobs<'w, 's> {
     passed_data: Res<'w, YoleckPassedData>,
 }
 
-impl<'w, 's> YoleckKnobs<'w, 's> {
+impl YoleckKnobs<'_, '_> {
     pub fn knob<K>(&mut self, key: K) -> YoleckKnobHandle
     where
         K: 'static + Send + Sync + Hash + Eq,

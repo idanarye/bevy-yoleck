@@ -94,13 +94,12 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    let mut camera = Camera2dBundle::default();
-    camera.transform.translation.z = 100.0;
-    camera.transform.scale *= 2.0 * (Vec3::X + Vec3::Y) + Vec3::Z;
-    commands
-        .spawn(camera)
-        .insert(VpeolCameraState::default())
-        .insert(Vpeol2dCameraControl::default());
+    commands.spawn((
+        Camera2d,
+        Transform::from_xyz(0.0, 0.0, 100.0).with_scale(2.0 * (Vec3::X + Vec3::Y) + Vec3::Z),
+        VpeolCameraState::default(),
+        Vpeol2dCameraControl::default(),
+    ));
 }
 
 #[derive(Component)]
@@ -120,16 +119,13 @@ fn populate_player(
     mut texture_cache: Local<Option<Handle<Image>>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
-        cmd.insert((SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            texture: texture_cache
+        cmd.insert(Sprite {
+            image: texture_cache
                 .get_or_insert_with(|| asset_server.load("sprites/player.png"))
                 .clone(),
+            custom_size: Some(Vec2::new(100.0, 100.0)),
             ..Default::default()
-        },));
+        });
     });
 }
 
@@ -147,10 +143,10 @@ fn control_camera(
         let displacement = position_to_track - camera_transform.translation;
         if displacement.length_squared() < 10000.0 {
             camera_transform.translation +=
-                displacement.clamp_length_max(100.0 * time.delta_seconds());
+                displacement.clamp_length_max(100.0 * time.delta_secs());
         } else {
             camera_transform.translation +=
-                displacement.clamp_length_max(800.0 * time.delta_seconds());
+                displacement.clamp_length_max(800.0 * time.delta_secs());
         }
     }
 }
@@ -175,7 +171,7 @@ fn control_player(
     }
     velocity *= 800.0;
     for mut player_transform in player_query.iter_mut() {
-        player_transform.translation += velocity * time.delta_seconds();
+        player_transform.translation += velocity * time.delta_secs();
     }
 }
 
@@ -208,19 +204,15 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
             text = content.text.clone();
             color = css::WHITE;
         };
-        cmd.insert(Text2dBundle {
-            text: {
-                Text::from_section(
-                    text,
-                    TextStyle {
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        font_size: 72.0,
-                        color: color.into(),
-                    },
-                )
+        cmd.insert((
+            Text2d(text),
+            TextFont {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: 72.0,
+                ..Default::default()
             },
-            ..Default::default()
-        });
+            TextColor(color.into()),
+        ));
     });
 }
 
@@ -240,7 +232,7 @@ fn edit_doorway(
     };
 
     ui.horizontal(|ui| {
-        egui::ComboBox::from_id_source("doorway-level")
+        egui::ComboBox::from_id_salt("doorway-level")
             .selected_text(
                 Some(doorway.target_level.as_str())
                     .filter(|l| !l.is_empty())
@@ -270,18 +262,13 @@ fn edit_doorway_rotation(
     // TODO: do this in vpeol_2d?
     let mut rotate_knob = knobs.knob("rotate");
     let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (75.0 * Vec3::X);
-    rotate_knob.cmd.insert(SpriteBundle {
-        sprite: Sprite {
-            color: css::PURPLE.into(),
-            custom_size: Some(Vec2::new(30.0, 30.0)),
-            ..Default::default()
-        },
-        transform: Transform::from_translation(knob_position),
-        global_transform: Transform::from_translation(knob_position).into(),
-        ..Default::default()
-    });
+    rotate_knob.cmd.insert((
+        Sprite::from_color(css::PURPLE, Vec2::new(30.0, 30.0)),
+        Transform::from_translation(knob_position),
+        GlobalTransform::from(Transform::from_translation(knob_position)),
+    ));
     if let Some(rotate_to) = rotate_knob.get_passed_data::<Vec3>() {
-        rotation.0 = Vec2::X.angle_between(rotate_to.truncate() - *position);
+        rotation.0 = Vec2::X.angle_to(rotate_to.truncate() - *position);
     }
 }
 
@@ -292,7 +279,7 @@ fn populate_doorway(
     mut texture_atlas_layout_assets: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     populate.populate(|_ctx, mut cmd, ()| {
-        let (texture, texture_atlas_layout) = asset_handle_cache
+        let (image, texture_atlas_layout) = asset_handle_cache
             .get_or_insert_with(|| {
                 (
                     asset_server.load("sprites/doorway.png"),
@@ -306,26 +293,23 @@ fn populate_doorway(
                 )
             })
             .clone();
-        cmd.insert(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },
-            texture,
+        cmd.insert(Sprite {
+            image,
+            custom_size: Some(Vec2::new(100.0, 100.0)),
+            texture_atlas: Some(TextureAtlas {
+                layout: texture_atlas_layout,
+                index: 0,
+            }),
             ..Default::default()
-        });
-        cmd.insert(TextureAtlas {
-            layout: texture_atlas_layout,
-            index: 0,
         });
     });
 }
 
-fn set_doorways_sprite_index(
-    mut query: Query<(&mut TextureAtlas, Has<DoorIsOpen>), With<Doorway>>,
-) {
+fn set_doorways_sprite_index(mut query: Query<(&mut Sprite, Has<DoorIsOpen>), With<Doorway>>) {
     for (mut sprite, door_is_open) in query.iter_mut() {
-        sprite.index = if door_is_open { 1 } else { 0 };
+        if let Some(texture_atlas) = sprite.texture_atlas.as_mut() {
+            texture_atlas.index = if door_is_open { 1 } else { 0 };
+        }
     }
 }
 

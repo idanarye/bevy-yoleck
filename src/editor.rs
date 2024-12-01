@@ -32,10 +32,10 @@ pub enum YoleckEditorState {
 /// Sync the game's state back and forth when the level editor enters and exits playtest mode.
 ///
 /// Add this as a plugin. When using it, there is no need to initialize the state with `add_state`
-/// - `YoleckSyncWithEditorState` will initialize it and set its initial value to `when_editor`.
-/// This means that the state's default value should be it's initial value for non-editor mode
-/// (which is not necessarily `when_game`, because the game may start in a menu state or a loading
-/// state)
+/// because `YoleckSyncWithEditorState` will initialize it and set its initial value to
+/// `when_editor`. This means that the state's default value should be it's initial value for
+/// non-editor mode (which is not necessarily `when_game`, because the game may start in a menu
+/// state or a loading state)
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
@@ -621,7 +621,11 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         let mut prepared = frame.begin(ui);
         let content_ui = std::mem::replace(
             &mut prepared.content_ui,
-            ui.child_ui(ui.max_rect(), *ui.layout(), None),
+            ui.new_child(egui::UiBuilder {
+                max_rect: Some(ui.max_rect()),
+                layout: Some(*ui.layout()), // Is this necessary?
+                ..Default::default()
+            }),
         );
         world.insert_resource(YoleckUi(content_ui));
         world.insert_resource(passed_data);

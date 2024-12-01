@@ -102,24 +102,22 @@ fn main() {
 
 fn setup_camera(mut commands: Commands) {
     commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(0.0, 16.0, 40.0)
-                .looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
-            ..Default::default()
-        })
+        .spawn((
+            Camera3d::default(),
+            Transform::from_xyz(0.0, 16.0, 40.0).looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
+        ))
         .insert(VpeolCameraState::default())
         .insert(Vpeol3dCameraControl::topdown());
 
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+    commands.spawn((
+        DirectionalLight {
             color: Color::WHITE,
             illuminance: 50_000.0,
             shadows_enabled: true,
             ..Default::default()
         },
-        transform: Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z),
-        ..Default::default()
-    });
+        Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z),
+    ));
 }
 
 fn setup_arena(
@@ -135,12 +133,11 @@ fn setup_arena(
         .mesh(),
     ));
     let material = material_assets.add(Color::from(css::GRAY));
-    commands.spawn(PbrBundle {
-        mesh,
-        material,
-        transform: Transform::from_xyz(0.0, -10.0, 0.0),
-        ..Default::default()
-    });
+    commands.spawn((
+        Mesh3d(mesh),
+        MeshMaterial3d(material),
+        Transform::from_xyz(0.0, -10.0, 0.0),
+    ));
 }
 
 #[derive(Component)]
@@ -154,10 +151,7 @@ fn populate_spaceship(
         cmd.insert(VpeolWillContainClickableChildren);
         // Spaceship model doesn't change, so there is no need to despawn and recreated it.
         if ctx.is_first_time() {
-            cmd.insert(SceneBundle {
-                scene: asset_server.load("models/spaceship.glb#Scene0"),
-                ..Default::default()
-            });
+            cmd.insert(SceneRoot(asset_server.load("models/spaceship.glb#Scene0")));
         }
     });
 }
@@ -173,10 +167,7 @@ fn populate_planet(
         cmd.insert(VpeolWillContainClickableChildren);
         // Planet model doesn't change, so there is no need to despawn and recreated it.
         if ctx.is_first_time() {
-            cmd.insert(SceneBundle {
-                scene: asset_server.load("models/planet.glb#Scene0"),
-                ..Default::default()
-            });
+            cmd.insert(SceneRoot(asset_server.load("models/planet.glb#Scene0")));
         }
     });
 }
@@ -195,12 +186,11 @@ fn control_spaceship(
     let roll = calc_axis(KeyCode::ArrowLeft, KeyCode::ArrowRight);
     for mut spaceship_transform in spaceship_query.iter_mut() {
         let forward_direction = spaceship_transform.rotation.mul_vec3(-Vec3::Z);
-        let roll_quat =
-            Quat::from_scaled_axis(2.0 * forward_direction * time.delta_seconds() * roll);
+        let roll_quat = Quat::from_scaled_axis(2.0 * forward_direction * time.delta_secs() * roll);
         let pitch_axis = spaceship_transform.rotation.mul_vec3(Vec3::X);
-        let pitch_quat = Quat::from_scaled_axis(2.0 * pitch_axis * time.delta_seconds() * pitch);
+        let pitch_quat = Quat::from_scaled_axis(2.0 * pitch_axis * time.delta_secs() * pitch);
         spaceship_transform.rotation = roll_quat * pitch_quat * spaceship_transform.rotation;
-        spaceship_transform.translation += 2.0 * forward_direction * time.delta_seconds();
+        spaceship_transform.translation += 2.0 * forward_direction * time.delta_secs();
     }
 }
 
@@ -240,11 +230,7 @@ fn populate_simple_sphere(
             let material = material
                 .get_or_insert_with(|| material_assets.add(Color::from(css::YELLOW)))
                 .clone();
-            cmd.insert(PbrBundle {
-                mesh,
-                material,
-                ..Default::default()
-            });
+            cmd.insert((Mesh3d(mesh), MeshMaterial3d(material)));
         }
     });
 }

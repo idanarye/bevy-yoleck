@@ -23,7 +23,7 @@ pub struct YoleckEdit<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter =
     verification_query: Query<'w, 's, (), With<YoleckEditMarker>>,
 }
 
-impl<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'w, 's, Q, F> {
+impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, '_, Q, F> {
     pub fn get_single(
         &self,
     ) -> Result<<<Q as QueryData>::ReadOnly as WorldQuery>::Item<'_>, QuerySingleError> {

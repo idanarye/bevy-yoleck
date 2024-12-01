@@ -9,7 +9,7 @@ use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
-use bevy::render::mesh::VertexAttributeValues;
+use bevy::render::mesh::{MeshAabb, VertexAttributeValues};
 use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::transform::TransformSystem;
@@ -216,7 +216,9 @@ fn update_camera_world_position(
             };
             let window = window_getter.get_window(window_ref)?;
             let cursor_in_screen_pos = window.cursor_position()?;
-            camera.viewport_to_world(camera_transform, cursor_in_screen_pos)
+            camera
+                .viewport_to_world(camera_transform, cursor_in_screen_pos)
+                .ok()
         })();
     }
 }
@@ -535,7 +537,7 @@ fn add_selection_cue_before_transform_propagate(
         for (mut animation, mut transform) in query.iter_mut() {
             animation.cached_transform = *transform;
             if animation.progress < 1.0 {
-                animation.progress += time_speedup * time.delta_seconds();
+                animation.progress += time_speedup * time.delta_secs();
                 let extra = if animation.progress < 0.5 {
                     animation.progress
                 } else {
