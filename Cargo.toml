@@ -25,6 +25,7 @@ anyhow = "^1"
 bevy = { version = "^0.15", default-features = false, features = [
     "bevy_state",
     "bevy_window",
+    "bevy_asset",
 ] }
 bevy_egui = { version = "^0.31", default-features = false, features = ["default_fonts", "render"] }
 serde = "^1"
@@ -39,6 +40,7 @@ vpeol_2d = [
     "vpeol",
     "bevy/bevy_text",
     "bevy/bevy_sprite",
+    "bevy/png",
 ]
 vpeol_3d = [
     "vpeol",
@@ -79,5 +81,4 @@ required-features = ["vpeol_2d", "bevy/png"]
 all-features = true
 features = [
     "bevy/x11", # required for bevy_egui
-    "bevy/bevy_asset",
 ]
