@@ -118,12 +118,12 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
-          cargo doc --verbose --all-features --features bevy/webgl2,bevy/x11 &&
+          cargo doc --no-deps --verbose --all-features --features bevy/webgl2,bevy/x11 &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html &&
           required_features=$(
             (
               cargo metadata --no-deps --format-version 1 \
-                  | jq '.packages[].targets[] | select(.kind == ["example"]) | .["required-features"][]' -r \
+                  | jq '.packages[].targets[] | select(.kind == ["example"]) | .["required-features"][]' -r
               echo bevy/webgl2
               echo bevy/x11
             ) | tr '\n' ' '
