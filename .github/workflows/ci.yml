@@ -99,7 +99,7 @@ jobs:
       - name: Run doc tests
         run: cargo test --doc --all-features --features bevy/bevy_asset,bevy/png
       - name: Check docs
-        run: cargo doc --no-deps --all-features --features bevy/x11 --features bevy/bevy_asset
+        run: cargo doc --no-deps --all-features --features bevy/x11 --features bevy/bevy_asset,bevy/png
   docs-and-demos-ghpages:
     name: Update Docs and Demos in GitHub Pages
     runs-on: ubuntu-latest
