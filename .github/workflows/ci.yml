@@ -121,11 +121,13 @@ jobs:
           cargo doc --verbose --all-features &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html &&
           required_features=$(
+            (
               cargo metadata --no-deps --format-version 1 \
-                  | jq --arg target "example3d" '.packages[].targets[] | select(.kind == ["example"]) | .["required-features"][]' -r \
-                  | tr '\n' ' '
+                  | jq '.packages[].targets[] | select(.kind == ["example"]) | .["required-features"][]' -r \
+              echo bevy/webgl2
+            ) | tr '\n' ' '
           )
-          cargo build --examples --release --features "$required_features" --target wasm32-unknown-unknown --features bevy/webgl2 &&
+          cargo build --examples --release --features "$required_features" --target wasm32-unknown-unknown &&
           for demowasm in $(cd target/wasm32-unknown-unknown/release/examples; ls *.wasm | grep -v -); do
               wasm-bindgen target/wasm32-unknown-unknown/release/examples/$demowasm --out-dir target/doc/demos/ --target web
               cat > target/doc/demos/${demowasm%.*}.html <<EOF
