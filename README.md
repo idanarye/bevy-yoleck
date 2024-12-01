@@ -1,6 +1,7 @@
 [![Build Status](https://github.com/idanarye/bevy-yoleck/workflows/CI/badge.svg)](https://github.com/idanarye/bevy-yoleck/actions)
 [![Latest Version](https://img.shields.io/crates/v/bevy-yoleck.svg)](https://crates.io/crates/bevy-yoleck)
-[![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://idanarye.github.io/bevy-yoleck/)
+[![Rust Documentation](https://img.shields.io/badge/nightly-rustdoc-blue.svg)](https://idanarye.github.io/bevy-yoleck/)
+[![Rust Documentation](https://img.shields.io/badge/stable-rustdoc-purple.svg)](https://docs.rs/bevy-yoleck/)
 
 # Bevy YOLECK - Your Own Level Editor Creation Kit
 
