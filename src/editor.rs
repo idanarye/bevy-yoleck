@@ -617,7 +617,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         }
         system_state.apply(world);
 
-        let frame = egui::Frame::none();
+        let frame = egui::Frame::new();
         let mut prepared = frame.begin(ui);
         let content_ui = std::mem::replace(
             &mut prepared.content_ui,
