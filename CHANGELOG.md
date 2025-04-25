@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Upgrade Bevy to 0.16
 - [**BREAKING**] Rename `YoleckEdit`'s method `get_single` and `get_single_mut`
   to `single` and `single_mut` (to mirror a similar change in Bevy itself)
+- Replace anyhow usage with `BevyError`.
 
 ## 0.25.0 - 2025-02-19
 ### Changed

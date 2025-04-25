@@ -21,7 +21,6 @@ exclude = [
 
 [dependencies]
 bevy-yoleck-macros = { version = "0.9.1", path = "macros" }
-anyhow = "^1"
 bevy = { version = "^0.16", default-features = false, features = [
     "bevy_state",
     "bevy_window",
