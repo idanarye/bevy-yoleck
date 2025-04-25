@@ -99,12 +99,7 @@ jobs:
       - name: Run doc tests
         run: cargo test --doc --all-features
       - name: Check docs
-        run: |-
-          DOC_FEATURES=$(
-            cargo metadata --no-deps --format-version 1 \
-            | jq '.packages[].metadata.docs.rs.features | select(.) | join(",")' --raw-output \
-          )
-          cargo doc --no-deps --all-features --features $DOC_FEATURES
+        run: cargo doc --no-deps --all-features --features bevy/x11
   docs-and-demos-ghpages:
     name: Update Docs and Demos in GitHub Pages
     runs-on: ubuntu-latest
@@ -123,11 +118,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
-          DOC_FEATURES=$(
-            cargo metadata --no-deps --format-version 1 \
-            | jq '.packages[].metadata.docs.rs.features | select(.) | join(",")' --raw-output \
-          )
-          cargo doc --no-deps --verbose --all-features --features $DOC_FEATURES &&
+          cargo doc --no-deps --verbose --all-features --features bevy/webgl2,bevy/x11 &&
           echo "<meta http-equiv=refresh content=0;url=bevy_yoleck/index.html>" > target/doc/index.html
           required_features=$(
             (
