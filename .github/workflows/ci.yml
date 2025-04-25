@@ -45,7 +45,7 @@ jobs:
           path: ~/.cargo
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Test
-        run: cargo test --verbose --all-features -- --nocapture
+        run: cargo test --verbose --all-features --features bevy/bevy_gltf -- --nocapture
   fmt:
    name: Rustfmt
    runs-on: ubuntu-latest
@@ -97,7 +97,7 @@ jobs:
           path: ~/.cargo
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run doc tests
-        run: cargo test --doc --all-features
+        run: cargo test --doc --all-features --features bevy/bevy_gltf
       - name: Check docs
         run: cargo doc --no-deps --all-features --features bevy/x11
   docs-and-demos-ghpages:
