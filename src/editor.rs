@@ -4,7 +4,7 @@ use std::sync::Arc;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::state::state::FreelyMutableState;
-use bevy::utils::{HashMap, HashSet};
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
@@ -185,9 +185,9 @@ impl YoleckDirective {
     ///     mut edit: YoleckEdit<(&YoleckBelongsToLevel, &Vpeol2dPosition), With<Example>>,
     ///     mut writer: EventWriter<YoleckDirective>,
     /// ) {
-    ///     let Ok((belongs_to_level, position)) = edit.get_single() else { return };
+    ///     let Ok((belongs_to_level, position)) = edit.single() else { return };
     ///     if ui.button("Duplicate").clicked() {
-    ///         writer.send(
+    ///         writer.write(
     ///             YoleckDirective::spawn_entity(
     ///                 belongs_to_level.level,
     ///                 "Example",
@@ -277,7 +277,7 @@ impl YoleckPassedData {
     ///     mut edit: YoleckEdit<(Entity, &mut Example)>,
     ///     passed_data: Res<YoleckPassedData>,
     /// ) {
-    ///     let Ok((entity, mut example)) = edit.get_single_mut() else { return };
+    ///     let Ok((entity, mut example)) = edit.single_mut() else { return };
     ///     if let Some(message) = passed_data.get::<String>(entity) {
     ///         example.message = message.clone();
     ///     }
@@ -340,7 +340,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
             |ui| {
                 for entity_type in construction_specs.entity_types.iter() {
                     if ui.button(&entity_type.name).clicked() {
-                        writer.send(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                        writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
                             level: yoleck.level_being_edited,
                             type_name: entity_type.name.clone(),
                             data: serde_json::Value::Object(Default::default()),
@@ -416,11 +416,11 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                     .clicked()
                 {
                     if ui.input(|input| input.modifiers.shift) {
-                        writer.send(YoleckDirective::toggle_selected(entity));
+                        writer.write(YoleckDirective::toggle_selected(entity));
                     } else if is_selected {
-                        writer.send(YoleckDirective::set_selected(None));
+                        writer.write(YoleckDirective::set_selected(None));
                     } else {
-                        writer.send(YoleckDirective::set_selected(Some(entity)));
+                        writer.write(YoleckDirective::set_selected(Some(entity)));
                     }
                 }
             }
@@ -499,14 +499,14 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                     commands
                                         .entity(entity_to_deselect)
                                         .remove::<YoleckEditMarker>();
-                                    writer.send(YoleckEditorEvent::EntityDeselected(
+                                    writer.write(YoleckEditorEvent::EntityDeselected(
                                         entity_to_deselect,
                                     ));
                                 }
                             }
                             if !already_selected {
                                 commands.entity(*entity).insert(YoleckEditMarker);
-                                writer.send(YoleckEditorEvent::EntitySelected(*entity));
+                                writer.write(YoleckEditorEvent::EntitySelected(*entity));
                             }
                         } else {
                             for entity_to_deselect in yoleck_edited_query.iter() {
@@ -514,7 +514,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                                     .entity(entity_to_deselect)
                                     .remove::<YoleckEditMarker>();
                                 writer
-                                    .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
+                                    .write(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
                         }
                     }
@@ -530,12 +530,12 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             (None, false) | (Some(true), false) => {
                                 // Add to selection
                                 commands.entity(*entity).insert(YoleckEditMarker);
-                                writer.send(YoleckEditorEvent::EntitySelected(*entity));
+                                writer.write(YoleckEditorEvent::EntitySelected(*entity));
                             }
                             (None, true) | (Some(false), true) => {
                                 // Remove from selection
                                 commands.entity(*entity).remove::<YoleckEditMarker>();
-                                writer.send(YoleckEditorEvent::EntityDeselected(*entity));
+                                writer.write(YoleckEditorEvent::EntityDeselected(*entity));
                             }
                         }
                     }
@@ -561,14 +561,14 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                             YoleckBelongsToLevel { level: *level },
                         ));
                         if *select_created_entity {
-                            writer.send(YoleckEditorEvent::EntitySelected(cmd.id()));
+                            writer.write(YoleckEditorEvent::EntitySelected(cmd.id()));
                             cmd.insert(YoleckEditMarker);
                             for entity_to_deselect in yoleck_edited_query.iter() {
                                 commands
                                     .entity(entity_to_deselect)
                                     .remove::<YoleckEditMarker>();
                                 writer
-                                    .send(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
+                                    .write(YoleckEditorEvent::EntityDeselected(entity_to_deselect));
                             }
                             *exclusive_systems_queue =
                                 entity_creation_exclusive_systems.create_queue();
@@ -583,7 +583,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             }
 
             let entity_being_edited;
-            if let Ok((entity, mut yoleck_managed)) = yoleck_managed_query.get_single_mut() {
+            if let Ok((entity, mut yoleck_managed)) = yoleck_managed_query.single_mut() {
                 entity_being_edited = Some(entity);
                 ui.horizontal(|ui| {
                     ui.heading(format!(
@@ -591,8 +591,8 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                         format_caption(entity, &yoleck_managed)
                     ));
                     if ui.button("Delete").clicked() {
-                        commands.entity(entity).despawn_recursive();
-                        writer.send(YoleckEditorEvent::EntityDeselected(entity));
+                        commands.entity(entity).despawn();
+                        writer.write(YoleckEditorEvent::EntityDeselected(entity));
                         yoleck.level_needs_saving = true;
                     }
                 });
@@ -607,11 +607,11 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             if previously_edited_entity != entity_being_edited {
                 previously_edited_entity = entity_being_edited;
                 for knob_entity in knobs_cache.drain() {
-                    commands.entity(knob_entity).despawn_recursive();
+                    commands.entity(knob_entity).despawn();
                 }
             } else {
                 knobs_cache.clean_untouched(|knob_entity| {
-                    commands.entity(knob_entity).despawn_recursive();
+                    commands.entity(knob_entity).despawn();
                 });
             }
         }

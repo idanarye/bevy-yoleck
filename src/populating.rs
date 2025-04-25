@@ -1,9 +1,9 @@
 use std::ops::RangeFrom;
 
-use bevy::ecs::query::{QueryData, QueryFilter, WorldQuery};
+use bevy::ecs::query::{QueryData, QueryFilter};
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 
 use crate::entity_management::EntitiesToPopulate;
 
@@ -20,7 +20,7 @@ impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckPopulate<'_, '_, Q,
     /// a Bevy command.
     pub fn populate(
         &mut self,
-        mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as WorldQuery>::Item<'_>),
+        mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as QueryData>::Item<'_>),
     ) {
         for (entity, populate_reason) in self.entities_to_populate.0.iter() {
             if let Ok(data) = self.query.get_mut(*entity) {
@@ -109,7 +109,7 @@ impl FromWorld for YoleckSystemMarker {
 pub struct YoleckMarking<'w, 's> {
     designated_marker: Local<'s, YoleckSystemMarker>,
     children_query: Query<'w, 's, &'static Children>,
-    marked_query: Query<'w, 's, (&'static Parent, &'static YoleckSystemMarker)>,
+    marked_query: Query<'w, 's, (&'static ChildOf, &'static YoleckSystemMarker)>,
 }
 
 impl YoleckMarking<'_, '_> {
@@ -118,17 +118,17 @@ impl YoleckMarking<'_, '_> {
         *self.designated_marker
     }
 
-    /// Despawn (with `despawn_recursive`) all the entities marked by the current system, that are
-    /// descendants of the entity edited by the supplied `cmd`.
+    /// Despawn all the entities marked by the current system, that are descendants of the entity
+    /// edited by the supplied `cmd`.
     pub fn despawn_marked(&self, cmd: &mut EntityCommands) {
         let mut marked_children_map: HashMap<Entity, Vec<Entity>> = Default::default();
         for child in self.children_query.iter_descendants(cmd.id()) {
-            let Ok((parent, marker)) = self.marked_query.get(child) else {
+            let Ok((child_of, marker)) = self.marked_query.get(child) else {
                 continue;
             };
             if *marker == *self.designated_marker {
                 marked_children_map
-                    .entry(parent.get())
+                    .entry(child_of.parent())
                     .or_default()
                     .push(child);
             }
@@ -136,7 +136,7 @@ impl YoleckMarking<'_, '_> {
         for (parent, children) in marked_children_map {
             cmd.commands().entity(parent).remove_children(&children);
             for child in children {
-                cmd.commands().entity(child).despawn_recursive();
+                cmd.commands().entity(child).despawn();
             }
         }
     }

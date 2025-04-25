@@ -1,9 +1,10 @@
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
 
+use bevy::ecs::component::Mutable;
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::YoleckEditorState;
@@ -15,7 +16,7 @@ use crate::{BoxedAny, YoleckEntityLifecycleStatus, YoleckInternalSchedule, Yolec
 /// for spawning the actual components using [populate
 /// systems](crate::prelude::YoleckSchedule::Populate).
 pub trait YoleckComponent:
-    Default + Clone + PartialEq + Component + Serialize + for<'a> Deserialize<'a>
+    Default + Clone + PartialEq + Component<Mutability = Mutable> + Serialize + for<'a> Deserialize<'a>
 {
     const KEY: &'static str;
 }
@@ -175,11 +176,11 @@ impl<T: YoleckComponent> YoleckComponentHandlerImpl<T> {
         for (mut yoleck_managed, component) in query.iter_mut() {
             let yoleck_managed = yoleck_managed.as_mut();
             match yoleck_managed.components_data.entry(TypeId::of::<T>()) {
-                bevy::utils::hashbrown::hash_map::Entry::Vacant(entry) => {
+                bevy::platform::collections::hash_map::Entry::Vacant(entry) => {
                     yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::JustChanged;
                     entry.insert(Box::<T>::new(component.clone()));
                 }
-                bevy::utils::hashbrown::hash_map::Entry::Occupied(mut entry) => {
+                bevy::platform::collections::hash_map::Entry::Occupied(mut entry) => {
                     let existing: &mut T = entry
                         .get_mut()
                         .downcast_mut()

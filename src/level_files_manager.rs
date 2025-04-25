@@ -3,7 +3,7 @@ use std::{fs, io};
 
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
-use bevy::utils::HashSet;
+use bevy::platform::collections::HashSet;
 use bevy_egui::egui;
 
 use crate::entity_management::{
@@ -138,10 +138,10 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
 
         let mut clear_level = |commands: &mut Commands| {
             for level_entity in keep_levels_query.iter() {
-                commands.entity(level_entity).despawn_recursive();
+                commands.entity(level_entity).despawn();
             }
             for knob_entity in knobs_cache.drain() {
-                commands.entity(knob_entity).despawn_recursive();
+                commands.entity(knob_entity).despawn();
             }
         };
 

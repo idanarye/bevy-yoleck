@@ -24,7 +24,9 @@ fn main() {
         // The egui plugin is not needed for the game itself, but GameAssets won't load without it
         // because it needs `EguiContexts` which cannot be `Option` because it's a custom
         // `SystemParam`.
-        app.add_plugins(EguiPlugin);
+        app.add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        });
 
         app.add_plugins(YoleckPluginForGame);
         app.add_systems(
@@ -37,7 +39,9 @@ fn main() {
         );
         app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
     } else {
-        app.add_plugins(EguiPlugin);
+        app.add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        });
         app.add_plugins(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
@@ -240,7 +244,7 @@ fn edit_player(
     mut edit: YoleckEdit<(&IsPlayer, &Vpeol2dPosition, &mut Vpeol2dRotatation)>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((_, Vpeol2dPosition(position), mut rotation)) = edit.get_single_mut() else {
+    let Ok((_, Vpeol2dPosition(position), mut rotation)) = edit.single_mut() else {
         return;
     };
     use std::f32::consts::PI;
@@ -297,11 +301,11 @@ fn duplicate_fruit(
     edit: YoleckEdit<(&YoleckBelongsToLevel, &FruitType, &Vpeol2dPosition)>,
     mut writer: EventWriter<YoleckDirective>,
 ) {
-    let Ok((belongs_to_level, fruit_type, Vpeol2dPosition(position))) = edit.get_single() else {
+    let Ok((belongs_to_level, fruit_type, Vpeol2dPosition(position))) = edit.single() else {
         return;
     };
     if ui.button("Duplicate").clicked() {
-        writer.send(
+        writer.write(
             YoleckDirective::spawn_entity(
                 belongs_to_level.level,
                 "Fruit",
@@ -428,7 +432,7 @@ fn eat_fruits(
                 .distance_squared(fruit_transform.translation)
                 < 100.0f32.powi(2)
             {
-                commands.entity(fruit_entity).despawn_recursive();
+                commands.entity(fruit_entity).despawn();
             }
         }
     }
@@ -464,7 +468,7 @@ fn edit_text(
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
 ) {
-    let Ok((mut content, mut scale)) = edit.get_single_mut() else {
+    let Ok((mut content, mut scale)) = edit.single_mut() else {
         return;
     };
     ui.text_edit_multiline(&mut content.text);
@@ -494,7 +498,7 @@ fn edit_triangle(
     mut edit: YoleckEdit<(&mut TriangleVertices, &GlobalTransform)>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((mut triangle, triangle_transform)) = edit.get_single_mut() else {
+    let Ok((mut triangle, triangle_transform)) = edit.single_mut() else {
         return;
     };
     for (index, vertex) in triangle.vertices.iter_mut().enumerate() {
@@ -566,7 +570,7 @@ fn edit_laser_pointer(
     mut edit: YoleckEdit<&mut LaserPointer>,
     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 ) {
-    let Ok(mut laser_pointer) = edit.get_single_mut() else {
+    let Ok(mut laser_pointer) = edit.single_mut() else {
         return;
     };
 
@@ -582,7 +586,7 @@ fn edit_laser_pointer(
                     .pipe(yoleck_map_entity_to_uuid)
                     .pipe(
                         |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
-                            let Ok(mut laser_pointer) = edit.get_single_mut() else {
+                            let Ok(mut laser_pointer) = edit.single_mut() else {
                                 return YoleckExclusiveSystemDirective::Finished;
                             };
 

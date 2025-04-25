@@ -10,7 +10,7 @@ pub(crate) fn yoleck_editor_window(
     mut egui_query: Local<Option<QueryState<&mut EguiContext, With<PrimaryWindow>>>>,
 ) {
     let egui_query = egui_query.get_or_insert_with(|| world.query_filtered());
-    let mut borrowed_egui = if let Ok(mut egui_context) = egui_query.get_single_mut(world) {
+    let mut borrowed_egui = if let Ok(mut egui_context) = egui_query.single_mut(world) {
         core::mem::take(egui_context.as_mut())
     } else {
         return;
@@ -30,7 +30,7 @@ pub(crate) fn yoleck_editor_window(
                 },
             );
         });
-    if let Ok(mut egui_context) = egui_query.get_single_mut(world) {
+    if let Ok(mut egui_context) = egui_query.single_mut(world) {
         *egui_context = borrowed_egui;
     }
 }

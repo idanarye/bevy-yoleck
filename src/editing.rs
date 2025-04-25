@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bevy::ecs::query::{QueryData, QueryFilter, QueryIter, QuerySingleError, WorldQuery};
+use bevy::ecs::query::{QueryData, QueryFilter, QueryIter, QuerySingleError};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -24,19 +24,19 @@ pub struct YoleckEdit<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter =
 }
 
 impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, '_, Q, F> {
-    pub fn get_single(
+    pub fn single(
         &self,
-    ) -> Result<<<Q as QueryData>::ReadOnly as WorldQuery>::Item<'_>, QuerySingleError> {
-        let single = self.query.get_single()?;
+    ) -> Result<<<Q as QueryData>::ReadOnly as QueryData>::Item<'_>, QuerySingleError> {
+        let single = self.query.single()?;
         // This will return an error if multiple entities are selected (but only one fits F and Q)
-        self.verification_query.get_single()?;
+        self.verification_query.single()?;
         Ok(single)
     }
 
-    pub fn get_single_mut(&mut self) -> Result<<Q as WorldQuery>::Item<'_>, QuerySingleError> {
-        let single = self.query.get_single_mut()?;
+    pub fn single_mut(&mut self) -> Result<<Q as QueryData>::Item<'_>, QuerySingleError> {
+        let single = self.query.single_mut()?;
         // This will return an error if multiple entities are selected (but only one fits F and Q)
-        self.verification_query.get_single()?;
+        self.verification_query.single()?;
         Ok(single)
     }
 

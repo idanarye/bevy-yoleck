@@ -4,7 +4,7 @@ use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -214,7 +214,7 @@ pub(crate) fn process_unloading_command(
     let removed_levels: BTreeSet<Entity> = removed_levels.read().collect();
     for (entity, belongs_to_level) in level_owned_entities_query.iter() {
         if removed_levels.contains(&belongs_to_level.level) {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
     }
 }

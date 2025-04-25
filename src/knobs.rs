@@ -3,7 +3,7 @@ use std::hash::{BuildHasher, Hash};
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 
 use crate::editor::YoleckPassedData;
 use crate::BoxedArc;
@@ -104,7 +104,7 @@ impl YoleckKnobHandle<'_> {
     /// #     num_clicks_on_knob: usize,
     /// # };
     /// fn edit_example_with_knob(mut edit: YoleckEdit<&mut Example>, mut knobs: YoleckKnobs) {
-    ///     let Ok(mut example) = edit.get_single_mut() else { return };
+    ///     let Ok(mut example) = edit.single_mut() else { return };
     ///     let mut knob = knobs.knob("click-counting");
     ///     knob.cmd.insert((
     ///         // setup the knobs position and graphics

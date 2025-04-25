@@ -3,7 +3,7 @@ use std::path::Path;
 use bevy::color::palettes::css;
 use bevy::math::Affine3A;
 use bevy::prelude::*;
-use bevy::utils::HashSet;
+use bevy::platform::collections::HashSet;
 use bevy_egui::{egui, EguiPlugin};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{prelude::*, YoleckEditableLevels};
@@ -19,7 +19,9 @@ fn main() {
         std::env::args().nth(1)
     };
 
-    app.add_plugins(EguiPlugin);
+    app.add_plugins(EguiPlugin {
+        enable_multipass_for_primary_context: true,
+    });
 
     if let Some(level) = level {
         app.add_plugins(YoleckPluginForGame);
@@ -184,7 +186,7 @@ fn edit_text(
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
 ) {
-    let Ok((mut content, mut scale)) = edit.get_single_mut() else {
+    let Ok((mut content, mut scale)) = edit.single_mut() else {
         return;
     };
     ui.text_edit_multiline(&mut content.text);
@@ -227,7 +229,7 @@ fn edit_doorway(
     mut edit: YoleckEdit<&mut Doorway>,
     levels: Res<YoleckEditableLevels>,
 ) {
-    let Ok(mut doorway) = edit.get_single_mut() else {
+    let Ok(mut doorway) = edit.single_mut() else {
         return;
     };
 
@@ -254,7 +256,7 @@ fn edit_doorway_rotation(
     mut edit: YoleckEdit<(&Vpeol2dPosition, &mut Vpeol2dRotatation), With<Doorway>>,
     mut knobs: YoleckKnobs,
 ) {
-    let Ok((Vpeol2dPosition(position), mut rotation)) = edit.get_single_mut() else {
+    let Ok((Vpeol2dPosition(position), mut rotation)) = edit.single_mut() else {
         return;
     };
     use std::f32::consts::PI;
@@ -332,7 +334,7 @@ fn handle_player_entity_when_level_loads(
             continue;
         };
         if is_level_from_opened_door {
-            commands.entity(player_entity).despawn_recursive();
+            commands.entity(player_entity).despawn();
         } else {
             belongs_to_level.level = commands
                 .spawn((
@@ -379,7 +381,7 @@ fn handle_door_opening(
             if distance_sq < 10000.0 {
                 for level_entity in levels_query.iter() {
                     if level_entity != belongs_to_level.level {
-                        commands.entity(level_entity).despawn_recursive();
+                        commands.entity(level_entity).despawn();
                     }
                 }
 

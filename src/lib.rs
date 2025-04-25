@@ -146,7 +146,7 @@
 //! }
 //!
 //! fn edit_rectangle(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Rectangle>) {
-//!     let Ok(mut rectangle) = edit.get_single_mut() else { return };
+//!     let Ok(mut rectangle) = edit.single_mut() else { return };
 //!     ui.add(egui::Slider::new(&mut rectangle.width, 50.0..=500.0).prefix("Width: "));
 //!     ui.add(egui::Slider::new(&mut rectangle.height, 50.0..=500.0).prefix("Height: "));
 //! }
@@ -208,7 +208,8 @@ use std::sync::Arc;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::ecs::system::{EntityCommands, SystemId};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
+use bevy_egui::EguiContextPass;
 
 pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
@@ -283,11 +284,11 @@ impl Plugin for YoleckPluginBase {
             Update,
             (
                 entity_management::yoleck_process_raw_entries,
-                apply_deferred,
+                ApplyDeferred,
                 (
                     entity_management::yoleck_run_level_loaded_schedule,
                     entity_management::yoleck_remove_just_loaded_marker_from_levels,
-                    apply_deferred,
+                    ApplyDeferred,
                 )
                     .chain()
                     .run_if(
@@ -319,7 +320,7 @@ impl Plugin for YoleckPluginBase {
             ((
                 entity_management::process_unloading_command,
                 entity_management::process_loading_command,
-                apply_deferred,
+                ApplyDeferred,
             )
                 .chain()
                 .before(YoleckSystemSet::ProcessRawEntities),),
@@ -372,7 +373,7 @@ impl Plugin for YoleckPluginForEditor {
             YoleckRunEditSystemsSystemSet.after(YoleckSystemSet::ProcessRawEntities),
         );
         app.add_systems(
-            Update,
+            EguiContextPass,
             editor_window::yoleck_editor_window.in_set(YoleckRunEditSystemsSystemSet),
         );
 
@@ -416,7 +417,7 @@ pub trait YoleckExtForApp {
     /// app.add_yoleck_edit_system(edit_component1);
     ///
     /// fn edit_component1(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Component1>) {
-    ///     let Ok(component1) = edit.get_single_mut() else { return };
+    ///     let Ok(component1) = edit.single_mut() else { return };
     ///     // Edit `component1` with the `ui`
     /// }
     /// ```
@@ -557,7 +558,7 @@ pub struct YoleckManaged {
 /// automatically despawn all the entities that have this component and point to that level.
 ///
 /// There is no need to add this to child entities of entities that already has this marker,
-/// because Yoleck will use `despawn_recursive` when despawning these entities.
+/// because Bevy will already despawn them when despawning their parent.
 #[derive(Component, Debug, Clone)]
 pub struct YoleckBelongsToLevel {
     /// The entity which was used with [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) to
@@ -582,7 +583,6 @@ impl YoleckEditSystems {
             world
                 .run_system(*system_id)
                 .expect("edit systems handled by Yoleck - system should been properly handled");
-            apply_deferred(world);
         }
     }
 }

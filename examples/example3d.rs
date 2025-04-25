@@ -18,7 +18,9 @@ fn main() {
         // The egui plugin is not needed for the game itself, but GameAssets won't load without it
         // because it needs `EguiContexts` which cannot be `Option` because it's a custom
         // `SystemParam`.
-        app.add_plugins(EguiPlugin);
+        app.add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        });
 
         app.add_plugins(YoleckPluginForGame);
         app.add_systems(
@@ -31,7 +33,9 @@ fn main() {
         );
         app.add_plugins(Vpeol3dPluginForGame);
     } else {
-        app.add_plugins(EguiPlugin);
+        app.add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        });
         app.add_plugins(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
@@ -206,7 +210,7 @@ fn hit_planets(
                 .distance_squared(planet_transform.translation)
                 < 2.0f32.powi(2)
             {
-                commands.entity(planet_entity).despawn_recursive();
+                commands.entity(planet_entity).despawn();
             }
         }
     }
@@ -247,7 +251,7 @@ fn edit_laser_pointer(
     mut edit: YoleckEdit<&mut LaserPointer>,
     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 ) {
-    let Ok(mut laser_pointer) = edit.get_single_mut() else {
+    let Ok(mut laser_pointer) = edit.single_mut() else {
         return;
     };
 
@@ -263,7 +267,7 @@ fn edit_laser_pointer(
                     .pipe(yoleck_map_entity_to_uuid)
                     .pipe(
                         |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
-                            let Ok(mut laser_pointer) = edit.get_single_mut() else {
+                            let Ok(mut laser_pointer) = edit.single_mut() else {
                                 return YoleckExclusiveSystemDirective::Finished;
                             };
 

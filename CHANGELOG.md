@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Upgrade Bevy to 0.16
+- [**BREAKING**] Rename `YoleckEdit`'s method `get_single` and `get_single_mut`
+  to `single` and `single_mut` (to mirror a similar change in Bevy itself)
 
 ## 0.25.0 - 2025-02-19
 ### Changed

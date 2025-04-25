@@ -72,7 +72,7 @@
 //!     # }
 //!     # let mut app = App::new();
 //!     fn edit_example(mut edit: YoleckEdit<(Entity, &mut Example)>, passed_data: Res<YoleckPassedData>) {
-//!         let Ok((entity, mut example)) = edit.get_single_mut() else { return };
+//!         let Ok((entity, mut example)) = edit.single_mut() else { return };
 //!         if let Some(pos) = passed_data.get::<Vec3>(entity) {
 //!             example.position = *pos;
 //!         }
@@ -91,6 +91,8 @@
 //!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
 //!     axis knob.
 
+use std::any::TypeId;
+
 use crate::bevy_egui::egui;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
@@ -105,7 +107,7 @@ use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::view::VisibleEntities;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 
@@ -196,9 +198,9 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_systems(
             Update,
             (
-                apply_deferred,
+                ApplyDeferred,
                 handle_clickable_children_system::<With<Mesh3d>, ()>,
-                apply_deferred,
+                ApplyDeferred,
             )
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
@@ -222,7 +224,7 @@ fn update_camera_status_for_models(
             continue;
         };
         for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter::<With<Mesh3d>>())
+            entities_query.iter_many(visible_entities.iter(TypeId::of::<Mesh3d>()))
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
@@ -585,7 +587,7 @@ fn vpeol_3d_init_position(
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
-    let Ok((mut position, drag_plane)) = edit.get_single_mut() else {
+    let Ok((mut position, drag_plane)) = edit.single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;
     };
 
@@ -681,7 +683,7 @@ fn vpeol_3d_edit_third_axis_with_knob(
                 let position_along_drag_normal = entity_position + vector_along_drag_normal;
                 // NOTE: we don't need to send this to all the selected entities. This will be
                 // handled in the system that receives the passed data.
-                directives_writer.send(YoleckDirective::pass_to_entity(
+                directives_writer.write(YoleckDirective::pass_to_entity(
                     entity,
                     position_along_drag_normal,
                 ));

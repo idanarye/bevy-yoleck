@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use uuid::Uuid;
 
 /// A UUID automatically added to entity types defined with

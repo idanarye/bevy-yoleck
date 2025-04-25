@@ -64,7 +64,7 @@
 //!     # }
 //!     # let mut app = App::new();
 //!     fn edit_example(mut edit: YoleckEdit<(Entity, &mut Example)>, passed_data: Res<YoleckPassedData>) {
-//!         let Ok((entity, mut example)) = edit.get_single_mut() else { return };
+//!         let Ok((entity, mut example)) = edit.single_mut() else { return };
 //!         if let Some(pos) = passed_data.get::<Vec3>(entity) {
 //!             example.position = pos.truncate();
 //!         }
@@ -81,6 +81,8 @@
 //!     }
 //!     ```
 
+use std::any::TypeId;
+
 use crate::bevy_egui::{egui, EguiContexts};
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
@@ -95,9 +97,9 @@ use bevy::math::DVec2;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
-use bevy::sprite::{Anchor, WithSprite};
+use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{prelude::*, YoleckSchedule};
@@ -154,12 +156,12 @@ impl Plugin for Vpeol2dPluginForEditor {
         app.add_systems(
             Update,
             (
-                apply_deferred,
+                ApplyDeferred,
                 handle_clickable_children_system::<
                     Or<(With<Sprite>, (With<TextLayoutInfo>, With<Anchor>))>,
                     (),
                 >,
-                apply_deferred,
+                ApplyDeferred,
             )
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
@@ -225,7 +227,7 @@ fn update_camera_status_for_sprites(
         };
 
         for (entity, entity_transform, sprite) in
-            entities_query.iter_many(visible_entities.iter::<WithSprite>())
+            entities_query.iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
         // entities_query.iter()
         {
             let size = if let Some(custom_size) = sprite.custom_size {
@@ -268,7 +270,7 @@ fn update_camera_status_for_2d_meshes(
             continue;
         };
         for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter::<With<Mesh2d>>())
+            entities_query.iter_many(visible_entities.iter(TypeId::of::<Mesh2d>()))
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
@@ -308,7 +310,7 @@ fn update_camera_status_for_text_2d(
 
         for (entity, entity_transform, text_layout_info, anchor) in
             // Weird that it is not `WithText`...
-            entities_query.iter_many(visible_entities.iter::<WithSprite>())
+            entities_query.iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
         {
             if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;
@@ -515,7 +517,7 @@ fn vpeol_2d_init_position(
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) -> YoleckExclusiveSystemDirective {
-    let Ok(mut position) = edit.get_single_mut() else {
+    let Ok(mut position) = edit.single_mut() else {
         return YoleckExclusiveSystemDirective::Finished;
     };
 

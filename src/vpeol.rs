@@ -13,7 +13,7 @@ use bevy::render::mesh::{MeshAabb, VertexAttributeValues};
 use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::transform::TransformSystem;
-use bevy::utils::HashMap;
+use bevy::platform::collections::HashMap;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
@@ -232,7 +232,7 @@ pub(crate) struct WindowGetter<'w, 's> {
 impl WindowGetter<'_, '_> {
     pub fn get_window(&self, window_ref: WindowRef) -> Option<&Window> {
         match window_ref {
-            WindowRef::Primary => self.primary_window.get_single().ok(),
+            WindowRef::Primary => self.primary_window.single().ok(),
             WindowRef::Entity(window_id) => self.windows.get(window_id).ok(),
         }
     }
@@ -298,14 +298,14 @@ fn handle_camera_state(
             (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
                 if keyboard.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
                     if let Some((entity, _)) = &camera_state.entity_under_cursor {
-                        directives_writer.send(YoleckDirective::toggle_selected(*entity));
+                        directives_writer.write(YoleckDirective::toggle_selected(*entity));
                     }
                 } else if let Some((knob_entity, cursor_pointing)) =
                     knob_query.iter().find_map(|knob_entity| {
                         Some((knob_entity, camera_state.pointing_at_entity(knob_entity)?))
                     })
                 {
-                    directives_writer.send(YoleckDirective::pass_to_entity(
+                    directives_writer.write(YoleckDirective::pass_to_entity(
                         knob_entity,
                         YoleckKnobClick,
                     ));
@@ -333,7 +333,7 @@ fn handle_camera_state(
                         };
                         let select_on_mouse_release = selected_query.contains(*entity);
                         if !select_on_mouse_release {
-                            directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                            directives_writer.write(YoleckDirective::set_selected(Some(*entity)));
                         }
                         let Some(cursor_in_world_position) = calc_cursor_in_world_position(
                             *entity,
@@ -348,7 +348,7 @@ fn handle_camera_state(
                             select_on_mouse_release,
                         }
                     } else {
-                        directives_writer.send(YoleckDirective::set_selected(None));
+                        directives_writer.write(YoleckDirective::set_selected(None));
                         VpeolClicksOnObjectsState::Empty
                     };
                 }
@@ -372,7 +372,7 @@ fn handle_camera_state(
                     else {
                         continue;
                     };
-                    directives_writer.send(YoleckDirective::pass_to_entity(
+                    directives_writer.write(YoleckDirective::pass_to_entity(
                         *entity,
                         cursor_in_world_position - *offset,
                     ));
@@ -394,7 +394,7 @@ fn handle_camera_state(
                     select_on_mouse_release: true,
                 },
             ) => {
-                directives_writer.send(YoleckDirective::set_selected(Some(*entity)));
+                directives_writer.write(YoleckDirective::set_selected(Some(*entity)));
                 camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::Empty;
             }
             _ => {}
@@ -453,10 +453,10 @@ pub fn handle_clickable_children_system<F, B>(
             continue;
         }
         let mut any_added = false;
-        let mut children_to_check: Vec<Entity> = children.iter().copied().collect();
+        let mut children_to_check: Vec<Entity> = children.iter().collect();
         while let Some(child) = children_to_check.pop() {
             if let Ok(child_children) = children_query.get(child) {
-                children_to_check.extend(child_children.iter().copied());
+                children_to_check.extend(child_children.iter());
             }
             if should_add_query.get(child).is_ok() {
                 commands

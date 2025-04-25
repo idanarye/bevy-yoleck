@@ -43,7 +43,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 ///     mut ui: ResMut<YoleckUi>,
 ///     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 /// ) {
-///     if edit.get_single().is_err() {
+///     if edit.single().is_err() {
 ///         return;
 ///     }
 ///     if ui.button("Look At").clicked() {
@@ -58,7 +58,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 ///     ui: ResMut<YoleckUi>,
 ///     buttons: Res<ButtonInput<MouseButton>>,
 /// ) -> YoleckExclusiveSystemDirective {
-///     let Ok(mut looking_at) = edit.get_single_mut() else {
+///     let Ok(mut looking_at) = edit.single_mut() else {
 ///         return YoleckExclusiveSystemDirective::Finished;
 ///     };
 ///
