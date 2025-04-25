@@ -78,14 +78,14 @@
 //!         // on the entity in `GameState::Game`, so while the level is edited we want to be in
 //!         // `GameState::Editor` - which can be treated as a pause state. When the editor wants
 //!         // to playtest the level we want to move to `GameState::Game` so that they can play it.
-//!         app.add_plugins((
-//!             YoleckSyncWithEditorState {
-//!                 when_editor: GameState::Editor,
-//!                 when_game: GameState::Game,
-//!             },
-//!             EguiPlugin,
-//!             YoleckPluginForEditor
-//!         ));
+//!         app.add_plugins(EguiPlugin {
+//!             enable_multipass_for_primary_context: true,
+//!         });
+//!         app.add_plugins(YoleckSyncWithEditorState {
+//!             when_editor: GameState::Editor,
+//!             when_game: GameState::Game,
+//!         });
+//!         app.add_plugins(YoleckPluginForEditor);
 //!     } else {
 //!         app.add_plugins(YoleckPluginForGame);
 //!         app.init_state::<GameState>();
@@ -114,7 +114,7 @@
 //! }
 //!
 //! fn setup_camera(mut commands: Commands) {
-//!     commands.spawn(Camera2dBundle::default());
+//!     commands.spawn(Camera2d::default());
 //! }
 //!
 //! #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
@@ -134,12 +134,9 @@
 //!
 //! fn populate_rectangle(mut populate: YoleckPopulate<&Rectangle>) {
 //!     populate.populate(|_ctx, mut cmd, rectangle| {
-//!         cmd.insert(SpriteBundle {
-//!             sprite: Sprite {
-//!                 color: bevy::color::palettes::css::RED.into(),
-//!                 custom_size: Some(Vec2::new(rectangle.width, rectangle.height)),
-//!                 ..Default::default()
-//!             },
+//!         cmd.insert(Sprite {
+//!             color: bevy::color::palettes::css::RED.into(),
+//!             custom_size: Some(Vec2::new(rectangle.width, rectangle.height)),
 //!             ..Default::default()
 //!         });
 //!     });
@@ -207,8 +204,8 @@ use std::sync::Arc;
 
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::ecs::system::{EntityCommands, SystemId};
-use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
 use bevy_egui::EguiContextPass;
 
 pub mod prelude {

@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use bevy::asset::io::Reader;
 use bevy::asset::{AssetLoader, LoadContext};
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
-use bevy::platform::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

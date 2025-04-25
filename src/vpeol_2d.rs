@@ -10,10 +10,12 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugins((EguiPlugin,
-//!                 YoleckPluginForEditor,
+//! app.add_plugins(EguiPlugin {
+//!     enable_multipass_for_primary_context: true,
+//! });
+//! app.add_plugins(YoleckPluginForEditor);
 //! // Use `Vpeol2dPluginForGame` instead when setting up for game.
-//!                 Vpeol2dPluginForEditor));
+//! app.add_plugins(Vpeol2dPluginForEditor);
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -28,7 +30,7 @@
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let commands: Commands = panic!();
 //! commands
-//!     .spawn(Camera2dBundle::default())
+//!     .spawn(Camera2d::default())
 //!     .insert(VpeolCameraState::default())
 //!     .insert(Vpeol2dCameraControl::default());
 //! ```
@@ -72,9 +74,9 @@
 //!
 //!     fn populate_example(mut populate: YoleckPopulate<&Example>) {
 //!         populate.populate(|_ctx, mut cmd, example| {
-//!             cmd.insert(SpriteBundle {
-//!                 transform: Transform::from_translation(example.position.extend(0.0)),
-//!                 // Actual sprite components
+//!             cmd.insert(Transform::from_translation(example.position.extend(0.0)));
+//!             cmd.insert(Sprite {
+//!                 // Actual sprite data
 //!                 ..Default::default()
 //!             });
 //!         });
@@ -94,12 +96,12 @@ use crate::vpeol::{
 };
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec2;
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::view::VisibleEntities;
 use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
-use bevy::platform::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{prelude::*, YoleckSchedule};

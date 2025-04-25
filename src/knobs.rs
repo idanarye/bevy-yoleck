@@ -2,8 +2,8 @@ use std::any::{Any, TypeId};
 use std::hash::{BuildHasher, Hash};
 
 use bevy::ecs::system::{EntityCommands, SystemParam};
-use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
 
 use crate::editor::YoleckPassedData;
 use crate::BoxedArc;

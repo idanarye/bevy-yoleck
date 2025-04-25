@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use std::{fs, io};
 
 use bevy::ecs::system::SystemState;
-use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
+use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::entity_management::{

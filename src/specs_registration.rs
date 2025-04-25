@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use bevy::ecs::component::Mutable;
 use bevy::ecs::system::EntityCommands;
-use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::YoleckEditorState;

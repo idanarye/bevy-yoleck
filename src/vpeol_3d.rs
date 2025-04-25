@@ -10,12 +10,14 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugins((EguiPlugin,
-//!                  YoleckPluginForEditor,
+//! app.add_plugins(EguiPlugin {
+//!     enable_multipass_for_primary_context: true,
+//! });
+//! app.add_plugins(YoleckPluginForEditor);
 //! // - Use `Vpeol3dPluginForGame` instead when setting up for game.
 //! // - Use topdown is for games that utilize the XZ plane. There is also
 //! //   `Vpeol3dPluginForEditor::sidescroller` for games that mainly need the XY plane.
-//!                  Vpeol3dPluginForEditor::topdown()));
+//! app.add_plugins(Vpeol3dPluginForEditor::topdown());
 //! ```
 //!
 //! Add the following components to the camera entity:
@@ -29,7 +31,7 @@
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let commands: Commands = panic!();
 //! commands
-//!     .spawn(Camera3dBundle::default())
+//!     .spawn(Camera3d::default())
 //!     .insert(VpeolCameraState::default())
 //!     // Use a variant of the camera controls that fit the choice of editor plugin.
 //!     .insert(Vpeol3dCameraControl::topdown());
@@ -78,13 +80,13 @@
 //!         }
 //!     }
 //!
-//!     fn populate_example(mut populate: YoleckPopulate<&Example>) {
+//!     fn populate_example(
+//!         mut populate: YoleckPopulate<&Example>,
+//!         asset_server: Res<AssetServer>
+//!     ) {
 //!         populate.populate(|_ctx, mut cmd, example| {
-//!             cmd.insert(SpriteBundle {
-//!                 transform: Transform::from_translation(example.position),
-//!                 // Actual model/scene components
-//!                 ..Default::default()
-//!             });
+//!             cmd.insert(Transform::from_translation(example.position));
+//!             cmd.insert(SceneRoot(asset_server.load("scene.glb#Scene0")));
 //!         });
 //!     }
 //!     ```
@@ -105,9 +107,9 @@ use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::color::palettes::css;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy::render::view::VisibleEntities;
-use bevy::platform::collections::HashMap;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 

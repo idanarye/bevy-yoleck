@@ -82,4 +82,5 @@ required-features = ["vpeol_2d", "bevy/png"]
 all-features = true
 features = [
     "bevy/x11", # required for bevy_egui
+    "bevy/bevy_gltf",  # required for SceneRoot in vpeol_3d's doctests
 ]

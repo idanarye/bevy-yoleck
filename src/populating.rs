@@ -2,8 +2,8 @@ use std::ops::RangeFrom;
 
 use bevy::ecs::query::{QueryData, QueryFilter};
 use bevy::ecs::system::{EntityCommands, SystemParam};
-use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
+use bevy::prelude::*;
 
 use crate::entity_management::EntitiesToPopulate;
 

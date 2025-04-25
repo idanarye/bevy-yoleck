@@ -2,9 +2,9 @@ use std::any::TypeId;
 use std::sync::Arc;
 
 use bevy::ecs::system::SystemState;
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 use bevy::state::state::FreelyMutableState;
-use bevy::platform::collections::{HashMap, HashSet};
 use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
@@ -53,12 +53,14 @@ pub enum YoleckEditorState {
 /// # let executable_started_in_editor_mode = true;
 /// if executable_started_in_editor_mode {
 ///     // These two plugins are needed for editor mode:
-///     app.add_plugins((EguiPlugin,
-///                      YoleckPluginForEditor,
-///                      YoleckSyncWithEditorState {
+///     app.add_plugins(EguiPlugin {
+///         enable_multipass_for_primary_context: true,
+///     });
+///     app.add_plugins(YoleckPluginForEditor);
+///     app.add_plugins(YoleckSyncWithEditorState {
 ///         when_editor: GameState::Editor,
 ///         when_game: GameState::Game,
-///     }));
+///     });
 /// } else {
 ///     // This plugin is needed for game mode:
 ///     app.add_plugins(YoleckPluginForGame);
