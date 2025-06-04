@@ -461,7 +461,7 @@ pub fn handle_clickable_children_system<F, B>(
             if should_add_query.get(child).is_ok() {
                 commands
                     .entity(child)
-                    .insert((VpeolRouteClickTo(parent), B::default()));
+                    .try_insert((VpeolRouteClickTo(parent), B::default()));
                 any_added = true;
             }
         }
