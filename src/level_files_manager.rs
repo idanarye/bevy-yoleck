@@ -429,7 +429,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                             });
                         }
                         Err(err) => {
-                            ui.label(format!("Cannot read: {}", err));
+                            ui.label(format!("Cannot read: {err}"));
                         }
                     }
                 });
