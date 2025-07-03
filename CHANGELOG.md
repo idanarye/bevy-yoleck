@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.27.0 - 2025-07-03
+### Changed
+- Update bevy_egui version to 0.35.
+
 ## 0.26.1 - 2025-06-04
 ### Fixed
 - Don't fail when adding `VpeolRouteClickTo` to a non-existing child.
