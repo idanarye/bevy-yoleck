@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext};
 
 use crate::util::EditSpecificResources;
@@ -7,9 +6,9 @@ use crate::YoleckEditorSections;
 
 pub(crate) fn yoleck_editor_window(
     world: &mut World,
-    mut egui_query: Local<Option<QueryState<&mut EguiContext, With<PrimaryWindow>>>>,
+    mut egui_query: Local<Option<QueryState<&mut EguiContext>>>,
 ) {
-    let egui_query = egui_query.get_or_insert_with(|| world.query_filtered());
+    let egui_query = egui_query.get_or_insert_with(|| world.query());
     let mut borrowed_egui = if let Ok(mut egui_context) = egui_query.single_mut(world) {
         core::mem::take(egui_context.as_mut())
     } else {

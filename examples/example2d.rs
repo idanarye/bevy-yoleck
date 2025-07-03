@@ -24,9 +24,7 @@ fn main() {
         // The egui plugin is not needed for the game itself, but GameAssets won't load without it
         // because it needs `EguiContexts` which cannot be `Option` because it's a custom
         // `SystemParam`.
-        app.add_plugins(EguiPlugin {
-            enable_multipass_for_primary_context: true,
-        });
+        app.add_plugins(EguiPlugin::default());
 
         app.add_plugins(YoleckPluginForGame);
         app.add_systems(
@@ -39,9 +37,8 @@ fn main() {
         );
         app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
     } else {
-        app.add_plugins(EguiPlugin {
-            enable_multipass_for_primary_context: true,
-        });
+        app.add_plugins(EguiPlugin::default());
+
         app.add_plugins(YoleckPluginForEditor);
         // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
         // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support

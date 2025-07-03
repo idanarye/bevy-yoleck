@@ -331,22 +331,22 @@ fn camera_3d_pan(
         &Vpeol3dCameraControl,
     )>,
     mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec3>>,
-) {
+) -> Result {
     enum MouseButtonOp {
         JustPressed,
         BeingPressed,
     }
 
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut().is_pointer_over_area() {
-            return;
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
         }
         MouseButtonOp::JustPressed
     } else if mouse_buttons.pressed(MouseButton::Right) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_world_pos_by_camera.clear();
-        return;
+        return Ok(());
     };
 
     for (camera_entity, mut camera_transform, camera_state, camera_control) in
@@ -373,15 +373,16 @@ fn camera_3d_pan(
             }
         }
     }
+    Ok(())
 }
 
 fn camera_3d_move_along_plane_normal(
     mut egui_context: EguiContexts,
     mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
     mut wheel_events_reader: EventReader<MouseWheel>,
-) {
-    if egui_context.ctx_mut().is_pointer_over_area() {
-        return;
+) -> Result {
+    if egui_context.ctx_mut()?.is_pointer_over_area() {
+        return Ok(());
     }
 
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
@@ -403,6 +404,7 @@ fn camera_3d_move_along_plane_normal(
 
         camera_transform.translation += zoom_amount * *camera_control.plane.normal;
     }
+    Ok(())
 }
 
 fn camera_3d_rotate(
@@ -415,22 +417,22 @@ fn camera_3d_rotate(
         &Vpeol3dCameraControl,
     )>,
     mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray3d>>,
-) {
+) -> Result {
     enum MouseButtonOp {
         JustPressed,
         BeingPressed,
     }
 
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Middle) {
-        if egui_context.ctx_mut().is_pointer_over_area() {
-            return;
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
         }
         MouseButtonOp::JustPressed
     } else if mouse_buttons.pressed(MouseButton::Middle) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_ray_by_camera.clear();
-        return;
+        return Ok(());
     };
 
     for (camera_entity, mut camera_transform, camera_state, camera_control) in
@@ -457,6 +459,7 @@ fn camera_3d_rotate(
             }
         }
     }
+    Ok(())
 }
 
 /// A position component that's edited and populated by vpeol_3d.
@@ -607,7 +610,7 @@ fn vpeol_3d_init_position(
         position.0 = cursor_ray.get_point(distance_to_plane);
     };
 
-    if egui_context.ctx_mut().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
+    if egui_context.ctx_mut().unwrap().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
         return YoleckExclusiveSystemDirective::Listening;
     }
 

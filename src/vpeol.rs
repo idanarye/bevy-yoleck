@@ -251,15 +251,15 @@ fn handle_camera_state(
     mut directives_writer: EventWriter<YoleckDirective>,
     global_drag_plane: Res<VpeolDragPlane>,
     drag_plane_overrides_query: Query<&VpeolDragPlane>,
-) {
+) -> Result {
     enum MouseButtonOp {
         JustPressed,
         BeingPressed,
         JustReleased,
     }
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Left) {
-        if egui_context.ctx_mut().is_pointer_over_area() {
-            return;
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
         }
         MouseButtonOp::JustPressed
     } else if mouse_buttons.just_released(MouseButton::Left) {
@@ -270,7 +270,7 @@ fn handle_camera_state(
         for (_, mut camera_state) in query.iter_mut() {
             camera_state.clicks_on_objects_state = VpeolClicksOnObjectsState::Empty;
         }
-        return;
+        return Ok(());
     };
     for (camera, mut camera_state) in query.iter_mut() {
         let Some(cursor_ray) = camera_state.cursor_ray else {
@@ -400,6 +400,7 @@ fn handle_camera_state(
             _ => {}
         }
     }
+    Ok(())
 }
 
 /// A [passed data](crate::knobs::YoleckKnobHandle::get_passed_data) to a knob entity that indicate

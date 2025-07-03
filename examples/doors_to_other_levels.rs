@@ -19,9 +19,7 @@ fn main() {
         std::env::args().nth(1)
     };
 
-    app.add_plugins(EguiPlugin {
-        enable_multipass_for_primary_context: true,
-    });
+    app.add_plugins(EguiPlugin::default());
 
     if let Some(level) = level {
         app.add_plugins(YoleckPluginForGame);

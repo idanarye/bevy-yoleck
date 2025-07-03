@@ -206,7 +206,7 @@ use bevy::ecs::schedule::ScheduleLabel;
 use bevy::ecs::system::{EntityCommands, SystemId};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy_egui::EguiContextPass;
+use bevy_egui::EguiPrimaryContextPass;
 
 pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
@@ -370,7 +370,7 @@ impl Plugin for YoleckPluginForEditor {
             YoleckRunEditSystemsSystemSet.after(YoleckSystemSet::ProcessRawEntities),
         );
         app.add_systems(
-            EguiContextPass,
+            EguiPrimaryContextPass,
             editor_window::yoleck_editor_window.in_set(YoleckRunEditSystemsSystemSet),
         );
 

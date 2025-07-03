@@ -354,22 +354,22 @@ fn camera_2d_pan(
         With<Vpeol2dCameraControl>,
     >,
     mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec2>>,
-) {
+) -> Result {
     enum MouseButtonOp {
         JustPressed,
         BeingPressed,
     }
 
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut().is_pointer_over_area() {
-            return;
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
         }
         MouseButtonOp::JustPressed
     } else if mouse_buttons.pressed(MouseButton::Right) {
         MouseButtonOp::BeingPressed
     } else {
         last_cursor_world_pos_by_camera.clear();
-        return;
+        return Ok(());
     };
 
     for (camera_entity, mut camera_transform, camera_state) in cameras_query.iter_mut() {
@@ -390,6 +390,7 @@ fn camera_2d_pan(
             }
         }
     }
+    Ok(())
 }
 
 fn camera_2d_zoom(
@@ -402,9 +403,9 @@ fn camera_2d_zoom(
         &Vpeol2dCameraControl,
     )>,
     mut wheel_events_reader: EventReader<MouseWheel>,
-) {
-    if egui_context.ctx_mut().is_pointer_over_area() {
-        return;
+) -> Result {
+    if egui_context.ctx_mut()?.is_pointer_over_area() {
+        return Ok(());
     }
 
     for (mut camera_transform, camera_state, camera, camera_control) in cameras_query.iter_mut() {
@@ -449,6 +450,7 @@ fn camera_2d_zoom(
         let new_world_pos = new_cursor_ray.origin.truncate();
         camera_transform.translation += (world_pos - new_world_pos).extend(0.0);
     }
+    Ok(())
 }
 
 /// A position component that's edited and populated by vpeol_2d.
@@ -532,7 +534,7 @@ fn vpeol_2d_init_position(
 
     position.0 = cursor_ray.origin.truncate();
 
-    if egui_context.ctx_mut().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
+    if egui_context.ctx_mut().unwrap().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
         return YoleckExclusiveSystemDirective::Listening;
     }
 
