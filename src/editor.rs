@@ -328,32 +328,21 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
             return;
         }
 
-        let popup_id = ui.make_persistent_id("add_new_entity_popup_id");
         let button_response = ui.button("Add New Entity");
-        if button_response.clicked() {
-            ui.memory_mut(|memory| memory.toggle_popup(popup_id));
-        }
 
-        egui::popup_below_widget(
-            ui,
-            popup_id,
-            &button_response,
-            egui::PopupCloseBehavior::CloseOnClickOutside,
-            |ui| {
-                for entity_type in construction_specs.entity_types.iter() {
-                    if ui.button(&entity_type.name).clicked() {
-                        writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
-                            level: yoleck.level_being_edited,
-                            type_name: entity_type.name.clone(),
-                            data: serde_json::Value::Object(Default::default()),
-                            select_created_entity: true,
-                            modify_exclusive_systems: None,
-                        }));
-                        ui.memory_mut(|memory| memory.toggle_popup(popup_id));
-                    }
+        egui::Popup::menu(&button_response).show(|ui| {
+            for entity_type in construction_specs.entity_types.iter() {
+                if ui.button(&entity_type.name).clicked() {
+                    writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                        level: yoleck.level_being_edited,
+                        type_name: entity_type.name.clone(),
+                        data: serde_json::Value::Object(Default::default()),
+                        select_created_entity: true,
+                        modify_exclusive_systems: None,
+                    }));
                 }
-            },
-        );
+            }
+        });
 
         system_state.apply(world);
     }
