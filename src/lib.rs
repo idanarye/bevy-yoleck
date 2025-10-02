@@ -78,9 +78,7 @@
 //!         // on the entity in `GameState::Game`, so while the level is edited we want to be in
 //!         // `GameState::Editor` - which can be treated as a pause state. When the editor wants
 //!         // to playtest the level we want to move to `GameState::Game` so that they can play it.
-//!         app.add_plugins(EguiPlugin {
-//!             enable_multipass_for_primary_context: true,
-//!         });
+//!         app.add_plugins(EguiPlugin::default());
 //!         app.add_plugins(YoleckSyncWithEditorState {
 //!             when_editor: GameState::Editor,
 //!             when_game: GameState::Game,
@@ -634,6 +632,7 @@ pub(crate) struct YoleckState {
 ///             time,
 ///         ) = system_state.get_mut(world);
 ///         ui.label(format!("Time since startup is {:?}", time.elapsed()));
+///         Ok(())
 ///     }
 /// }).into());
 /// ```

@@ -10,9 +10,7 @@
 //! # use bevy_yoleck::prelude::*;
 //! # use bevy_yoleck::vpeol::prelude::*;
 //! # let mut app = App::new();
-//! app.add_plugins(EguiPlugin {
-//!     enable_multipass_for_primary_context: true,
-//! });
+//! app.add_plugins(EguiPlugin::default());
 //! app.add_plugins(YoleckPluginForEditor);
 //! // Use `Vpeol2dPluginForGame` instead when setting up for game.
 //! app.add_plugins(Vpeol2dPluginForEditor);

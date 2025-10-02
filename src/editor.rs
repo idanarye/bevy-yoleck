@@ -53,9 +53,7 @@ pub enum YoleckEditorState {
 /// # let executable_started_in_editor_mode = true;
 /// if executable_started_in_editor_mode {
 ///     // These two plugins are needed for editor mode:
-///     app.add_plugins(EguiPlugin {
-///         enable_multipass_for_primary_context: true,
-///     });
+///     app.add_plugins(EguiPlugin::default());
 ///     app.add_plugins(YoleckPluginForEditor);
 ///     app.add_plugins(YoleckSyncWithEditorState {
 ///         when_editor: GameState::Editor,
