@@ -21,13 +21,13 @@ exclude = [
 
 [dependencies]
 bevy-yoleck-macros = { version = "0.9.1", path = "macros" }
-bevy = { version = "^0.16", default-features = false, features = [
+bevy = { version = "^0.17", default-features = false, features = [
     "bevy_state",
     "bevy_window",
     "bevy_asset",
     "bevy_log",
 ] }
-bevy_egui = { version = "^0.36", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.37", default-features = false, features = ["default_fonts", "render"] }
 serde = "^1"
 serde_json = "^1"
 thiserror = "^2"
@@ -48,16 +48,22 @@ vpeol_3d = [
 ]
 
 [dev-dependencies]
-bevy = { version = "^0.16", default-features = false, features = [
+bevy = { version = "^0.17", default-features = false, features = [
     "bevy_sprite",
     "x11",
     "bevy_window",
     "bevy_text",
+    "bevy_render",
 ] }
 
 [[example]]
 name = "example2d"
-required-features = ["vpeol_2d", "bevy/png", "bevy/bevy_gizmos"]
+required-features = [
+    "vpeol_2d",
+    "bevy/png",
+    "bevy/bevy_gizmos",
+    "bevy/bevy_sprite_render",
+]
 
 [[example]]
 name = "example3d"
@@ -67,14 +73,21 @@ required-features = [
     "bevy/bevy_gltf",
     "bevy/animation",
     "bevy/ktx2",
-    "bevy/zstd",
+    "bevy/zstd_rust",
     "bevy/tonemapping_luts",
     "bevy/bevy_gizmos",
+    "bevy/reflect_auto_register",
+    "bevy/bevy_pbr",
+    "bevy/bevy_sprite_render",
 ]
 
 [[example]]
 name = "doors_to_other_levels"
-required-features = ["vpeol_2d", "bevy/png"]
+required-features = [
+    "vpeol_2d",
+    "bevy/png",
+    "bevy/bevy_sprite_render",
+]
 
 [package.metadata.docs.rs]
 

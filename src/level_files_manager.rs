@@ -40,7 +40,9 @@ const EXTENSION_WITHOUT_DOT: &str = "yol";
 pub struct YoleckEditorLevelsDirectoryPath(pub PathBuf);
 
 /// The UI part for managing level files. See [`YoleckEditorSections`](crate::YoleckEditorSections).
-pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
+pub fn level_files_manager_section(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
     let mut system_state = SystemState::<(
         Commands,
         ResMut<YoleckState>,
@@ -88,7 +90,7 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
         ) = system_state.get_mut(world);
 
         if active_exclusive_system.is_some() {
-            return;
+            return Ok(());
         }
 
         let gen_raw_level_file = || {
@@ -435,5 +437,6 @@ pub fn level_files_manager_section(world: &mut World) -> impl FnMut(&mut World, 
                 });
         }
         system_state.apply(world);
+        Ok(())
     }
 }

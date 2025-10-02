@@ -116,7 +116,7 @@ where
 ///
 /// Modules that provide editing overlays over the viewport (like [vpeol](crate::vpeol)) can
 /// use these events to update their status to match with the editor.
-#[derive(Debug, Event)]
+#[derive(Debug, Message)]
 pub enum YoleckEditorEvent {
     EntitySelected(Entity),
     EntityDeselected(Entity),
@@ -142,7 +142,7 @@ enum YoleckDirectiveInner {
 }
 
 /// Event that can be sent to control Yoleck's editor.
-#[derive(Event)]
+#[derive(Message)]
 pub struct YoleckDirective(YoleckDirectiveInner);
 
 impl YoleckDirective {
@@ -185,7 +185,7 @@ impl YoleckDirective {
     /// fn duplicate_example(
     ///     mut ui: ResMut<YoleckUi>,
     ///     mut edit: YoleckEdit<(&YoleckBelongsToLevel, &Vpeol2dPosition), With<Example>>,
-    ///     mut writer: EventWriter<YoleckDirective>,
+    ///     mut writer: MessageWriter<YoleckDirective>,
     /// ) {
     ///     let Ok((belongs_to_level, position)) = edit.single() else { return };
     ///     if ui.button("Duplicate").clicked() {
@@ -308,12 +308,12 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 }
 
 /// The UI part for creating new entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
-pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
+pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
     let mut system_state = SystemState::<(
         Res<YoleckEntityConstructionSpecs>,
         Res<YoleckState>,
         Res<State<YoleckEditorState>>,
-        EventWriter<YoleckDirective>,
+        MessageWriter<YoleckDirective>,
         Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
@@ -321,11 +321,11 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         let (construction_specs, yoleck, editor_state, mut writer, active_exclusive_system) =
             system_state.get_mut(world);
         if active_exclusive_system.is_some() {
-            return;
+            return Ok(());
         }
 
         if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
-            return;
+            return Ok(());
         }
 
         let button_response = ui.button("Add New Entity");
@@ -345,11 +345,14 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
         });
 
         system_state.apply(world);
+        Ok(())
     }
 }
 
 /// The UI part for selecting entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
-pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
+pub fn entity_selection_section(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
     let mut filter_custom_name = String::new();
     let mut filter_types = HashSet::<String>::new();
 
@@ -357,7 +360,7 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
         Res<YoleckEntityConstructionSpecs>,
         Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>)>,
         Res<State<YoleckEditorState>>,
-        EventWriter<YoleckDirective>,
+        MessageWriter<YoleckDirective>,
         Option<Res<YoleckActiveExclusiveSystem>>,
     )>::new(world);
 
@@ -370,11 +373,11 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
             active_exclusive_system,
         ) = system_state.get_mut(world);
         if active_exclusive_system.is_some() {
-            return;
+            return Ok(());
         }
 
         if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
-            return;
+            return Ok(());
         }
 
         egui::CollapsingHeader::new("Select").show(ui, |ui| {
@@ -416,19 +419,22 @@ pub fn entity_selection_section(world: &mut World) -> impl FnMut(&mut World, &mu
                 }
             }
         });
+        Ok(())
     }
 }
 
 /// The UI part for editing entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
-pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) {
+pub fn entity_editing_section(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
     let mut system_state = SystemState::<(
         ResMut<YoleckState>,
         Query<(Entity, &mut YoleckManaged), With<YoleckEditMarker>>,
         Query<Entity, With<YoleckEditMarker>>,
-        EventReader<YoleckDirective>,
+        MessageReader<YoleckDirective>,
         Commands,
         Res<State<YoleckEditorState>>,
-        EventWriter<YoleckEditorEvent>,
+        MessageWriter<YoleckEditorEvent>,
         ResMut<YoleckKnobsCache>,
         Option<Res<YoleckActiveExclusiveSystem>>,
         ResMut<YoleckExclusiveSystemsQueue>,
@@ -456,7 +462,7 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
             ) = system_state.get_mut(world);
 
             if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
-                return;
+                return Ok(());
             }
 
             let mut data_passed_to_entities: HashMap<Entity, HashMap<TypeId, BoxedArc>> =
@@ -630,7 +636,13 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
         let behavior_for_exclusive_system = if let Some(mut active_exclusive_system) =
             world.remove_resource::<YoleckActiveExclusiveSystem>()
         {
-            let result = active_exclusive_system.0.run((), world);
+            let result = active_exclusive_system
+                .0
+                .run((), world)
+                .map_err(|e| match e {
+                    bevy::ecs::system::RunSystemError::Skipped(e) => e.into(),
+                    bevy::ecs::system::RunSystemError::Failed(e) => e,
+                })?;
             match result {
                 YoleckExclusiveSystemDirective::Listening => {
                     world.insert_resource(active_exclusive_system);
@@ -653,7 +665,11 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
                     break true;
                 };
                 new_exclusive_system.initialize(world);
-                let first_run_result = new_exclusive_system.run((), world);
+                let first_run_result =
+                    new_exclusive_system.run((), world).map_err(|e| match e {
+                        bevy::ecs::system::RunSystemError::Skipped(e) => e.into(),
+                        bevy::ecs::system::RunSystemError::Failed(e) => e,
+                    })?;
                 if new_entity_created_this_frame
                     || matches!(first_run_result, YoleckExclusiveSystemDirective::Listening)
                 {
@@ -679,5 +695,6 @@ pub fn entity_editing_section(world: &mut World) -> impl FnMut(&mut World, &mut 
 
         // Some systems may have edited the entries, so we need to update them
         world.run_schedule(YoleckInternalSchedule::UpdateManagedDataFromComponents);
+        Ok(())
     }
 }

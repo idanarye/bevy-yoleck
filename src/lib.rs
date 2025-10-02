@@ -251,13 +251,13 @@ pub struct YoleckPluginForGame;
 pub struct YoleckPluginForEditor;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
-enum YoleckSystemSet {
+enum YoleckSystems {
     ProcessRawEntities,
     RunPopulateSchedule,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemSet)]
-pub(crate) struct YoleckRunEditSystemsSystemSet;
+pub(crate) struct YoleckRunEditSystems;
 
 impl Plugin for YoleckPluginBase {
     fn build(&self, app: &mut App) {
@@ -271,8 +271,8 @@ impl Plugin for YoleckPluginBase {
         app.configure_sets(
             Update,
             (
-                YoleckSystemSet::ProcessRawEntities,
-                YoleckSystemSet::RunPopulateSchedule,
+                YoleckSystems::ProcessRawEntities,
+                YoleckSystems::RunPopulateSchedule,
             )
                 .chain(),
         );
@@ -296,7 +296,7 @@ impl Plugin for YoleckPluginBase {
                     ),
             )
                 .chain()
-                .in_set(YoleckSystemSet::ProcessRawEntities),
+                .in_set(YoleckSystems::ProcessRawEntities),
         );
         app.insert_resource(EntitiesToPopulate(Default::default()));
         app.add_systems(
@@ -310,7 +310,7 @@ impl Plugin for YoleckPluginBase {
                 ),
             )
                 .chain()
-                .in_set(YoleckSystemSet::RunPopulateSchedule),
+                .in_set(YoleckSystems::RunPopulateSchedule),
         );
         app.add_systems(
             Update,
@@ -320,7 +320,7 @@ impl Plugin for YoleckPluginBase {
                 ApplyDeferred,
             )
                 .chain()
-                .before(YoleckSystemSet::ProcessRawEntities),),
+                .before(YoleckSystems::ProcessRawEntities),),
         );
         app.add_schedule(Schedule::new(YoleckSchedule::Populate));
         app.add_schedule(Schedule::new(YoleckSchedule::LevelLoaded));
@@ -344,7 +344,7 @@ impl Plugin for YoleckPluginForGame {
 impl Plugin for YoleckPluginForEditor {
     fn build(&self, app: &mut App) {
         app.init_state::<YoleckEditorState>();
-        app.add_event::<YoleckEditorEvent>();
+        app.add_message::<YoleckEditorEvent>();
         app.add_plugins(YoleckPluginBase);
         app.add_plugins(YoleckExclusiveSystemsPlugin);
         app.init_resource::<YoleckEditSystems>();
@@ -364,14 +364,14 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
             levels: Default::default(),
         }));
-        app.add_event::<YoleckDirective>();
+        app.add_message::<YoleckDirective>();
         app.configure_sets(
             Update,
-            YoleckRunEditSystemsSystemSet.after(YoleckSystemSet::ProcessRawEntities),
+            YoleckRunEditSystems.after(YoleckSystems::ProcessRawEntities),
         );
         app.add_systems(
             EguiPrimaryContextPass,
-            editor_window::yoleck_editor_window.in_set(YoleckRunEditSystemsSystemSet),
+            editor_window::yoleck_editor_window.in_set(YoleckRunEditSystems),
         );
 
         app.add_schedule(Schedule::new(

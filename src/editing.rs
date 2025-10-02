@@ -23,17 +23,17 @@ pub struct YoleckEdit<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter =
     verification_query: Query<'w, 's, (), With<YoleckEditMarker>>,
 }
 
-impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, '_, Q, F> {
+impl<'s, Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, 's, Q, F> {
     pub fn single(
         &self,
-    ) -> Result<<<Q as QueryData>::ReadOnly as QueryData>::Item<'_>, QuerySingleError> {
+    ) -> Result<<<Q as QueryData>::ReadOnly as QueryData>::Item<'_, 's>, QuerySingleError> {
         let single = self.query.single()?;
         // This will return an error if multiple entities are selected (but only one fits F and Q)
         self.verification_query.single()?;
         Ok(single)
     }
 
-    pub fn single_mut(&mut self) -> Result<<Q as QueryData>::Item<'_>, QuerySingleError> {
+    pub fn single_mut(&mut self) -> Result<<Q as QueryData>::Item<'_, 's>, QuerySingleError> {
         let single = self.query.single_mut()?;
         // This will return an error if multiple entities are selected (but only one fits F and Q)
         self.verification_query.single()?;
@@ -61,7 +61,8 @@ impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, '_, Q, F> 
     /// check [`has_nonmatching`](Self::has_nonmatching) must be checked manually.
     pub fn iter_matching(
         &mut self,
-    ) -> QueryIter<<Q as QueryData>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)> {
+    ) -> QueryIter<'_, '_, <Q as QueryData>::ReadOnly, (bevy::prelude::With<YoleckEditMarker>, F)>
+    {
         self.query.iter()
     }
 
@@ -70,7 +71,7 @@ impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, '_, Q, F> 
     /// If both matching and non-matching entities are selected, this will iterate over the
     /// matching entities only. If it is not desired to iterate at all in such cases,
     /// check [`has_nonmatching`](Self::has_nonmatching) must be checked manually.
-    pub fn iter_matching_mut(&mut self) -> QueryIter<Q, (With<YoleckEditMarker>, F)> {
+    pub fn iter_matching_mut(&mut self) -> QueryIter<'_, '_, Q, (With<YoleckEditMarker>, F)> {
         self.query.iter_mut()
     }
 }

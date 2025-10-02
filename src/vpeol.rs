@@ -5,21 +5,20 @@
 //!
 //! `vpeol` modules also support `bevy_reflect::Reflect` by enabling the feature `beavy_reflect`.
 
+use bevy::camera::primitives::{Aabb, MeshAabb};
+use bevy::camera::RenderTarget;
 use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemParam;
+use bevy::mesh::VertexAttributeValues;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
-use bevy::render::mesh::{MeshAabb, VertexAttributeValues};
-use bevy::render::primitives::Aabb;
 use bevy::render::render_resource::PrimitiveTopology;
-use bevy::transform::TransformSystem;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_egui::EguiContexts;
 
 use crate::knobs::YoleckKnobMarker;
 use crate::prelude::{YoleckEditorState, YoleckUi};
-use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged, YoleckRunEditSystemsSystemSet};
+use crate::{YoleckDirective, YoleckEditMarker, YoleckManaged, YoleckRunEditSystems};
 
 pub mod prelude {
     pub use crate::vpeol::{
@@ -40,7 +39,7 @@ pub mod prelude {
 
 /// Order of Vpeol operations. Important for abstraction and backends to talk with each other.
 #[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum VpeolSystemSet {
+pub enum VpeolSystems {
     /// Initialize [`VpeolCameraState`]
     ///
     /// * Clear all pointing.
@@ -62,22 +61,21 @@ impl Plugin for VpeolBasePlugin {
         app.configure_sets(
             Update,
             (
-                VpeolSystemSet::PrepareCameraState
-                    .run_if(in_state(YoleckEditorState::EditorActive)),
-                VpeolSystemSet::UpdateCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
-                VpeolSystemSet::HandleCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
-                YoleckRunEditSystemsSystemSet,
+                VpeolSystems::PrepareCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
+                VpeolSystems::UpdateCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
+                VpeolSystems::HandleCameraState.run_if(in_state(YoleckEditorState::EditorActive)),
+                YoleckRunEditSystems,
             )
                 .chain(), // .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
             Update,
             (prepare_camera_state, update_camera_world_position)
-                .in_set(VpeolSystemSet::PrepareCameraState),
+                .in_set(VpeolSystems::PrepareCameraState),
         );
         app.add_systems(
             Update,
-            handle_camera_state.in_set(VpeolSystemSet::HandleCameraState),
+            handle_camera_state.in_set(VpeolSystems::HandleCameraState),
         );
         #[cfg(feature = "bevy_reflect")]
         app.register_type::<VpeolDragPlane>();
@@ -248,7 +246,7 @@ fn handle_camera_state(
     global_transform_query: Query<&GlobalTransform>,
     selected_query: Query<(), With<YoleckEditMarker>>,
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
-    mut directives_writer: EventWriter<YoleckDirective>,
+    mut directives_writer: MessageWriter<YoleckDirective>,
     global_drag_plane: Res<VpeolDragPlane>,
     drag_plane_overrides_query: Query<&VpeolDragPlane>,
 ) -> Result {
@@ -499,11 +497,11 @@ impl Plugin for VpeolSelectionCuePlugin {
                 1.0 / self.effect_duration,
                 2.0 * self.effect_magnitude,
             )
-            .before(TransformSystem::TransformPropagate)
+            .before(TransformSystems::Propagate)
         });
         app.add_systems(PostUpdate, {
             restore_transform_from_cache_after_transform_propagate
-                .after(TransformSystem::TransformPropagate)
+                .after(TransformSystems::Propagate)
         });
     }
 }

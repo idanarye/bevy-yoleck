@@ -20,7 +20,7 @@ impl<Q: 'static + QueryData, F: 'static + QueryFilter> YoleckPopulate<'_, '_, Q,
     /// a Bevy command.
     pub fn populate(
         &mut self,
-        mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as QueryData>::Item<'_>),
+        mut dlg: impl FnMut(YoleckPopulateContext, EntityCommands, <Q as QueryData>::Item<'_, '_>),
     ) {
         for (entity, populate_reason) in self.entities_to_populate.0.iter() {
             if let Ok(data) = self.query.get_mut(*entity) {

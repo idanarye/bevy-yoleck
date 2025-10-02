@@ -101,15 +101,15 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
+    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
 };
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
+use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec3;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::render::view::VisibleEntities;
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 
@@ -186,7 +186,7 @@ impl Plugin for Vpeol3dPluginForEditor {
 
         app.add_systems(
             Update,
-            (update_camera_status_for_models,).in_set(VpeolSystemSet::UpdateCameraState),
+            (update_camera_status_for_models,).in_set(VpeolSystems::UpdateCameraState),
         );
         app.add_systems(
             PostUpdate, // to prevent camera shaking
@@ -232,7 +232,7 @@ fn update_camera_status_for_models(
                 continue;
             };
 
-            let inverse_transform = global_transform.compute_matrix().inverse();
+            let inverse_transform = global_transform.to_matrix().inverse();
 
             // Note: the transform may change the ray's length, which Bevy no longer supports
             // (since version 0.13), so we keep the ray length separately and apply it later to the
@@ -379,7 +379,7 @@ fn camera_3d_pan(
 fn camera_3d_move_along_plane_normal(
     mut egui_context: EguiContexts,
     mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
-    mut wheel_events_reader: EventReader<MouseWheel>,
+    mut wheel_events_reader: MessageReader<MouseWheel>,
 ) -> Result {
     if egui_context.ctx_mut()?.is_pointer_over_area() {
         return Ok(());
@@ -633,7 +633,7 @@ fn vpeol_3d_edit_third_axis_with_knob(
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
     mut mesh_and_material: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
-    mut directives_writer: EventWriter<YoleckDirective>,
+    mut directives_writer: MessageWriter<YoleckDirective>,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;

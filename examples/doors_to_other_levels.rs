@@ -105,14 +105,6 @@ fn setup_camera(mut commands: Commands) {
 #[derive(Component)]
 struct IsPlayer;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct Player {
-    #[serde(default)]
-    position: Vec2,
-    #[serde(default)]
-    rotation: f32,
-}
-
 fn populate_player(
     mut populate: YoleckPopulate<(), With<IsPlayer>>,
     asset_server: Res<AssetServer>,

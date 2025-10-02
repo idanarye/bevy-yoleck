@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Upgrade Bevy to 0.17
+- Rename:
+  - `YoleckSystemSet` -> `YoleckSystems`
+  - `VpeolSystemSet` -> `VpeolSystems`
 
 ## 0.28.0 - 2025-08-05
 ### Changed
@@ -205,7 +210,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## 0.7.0 - 2023-03-09
 ### Changed
 - Upgrade Bevy to 0.10 (and bevy_egui to 0.20)
-- [**BREAKING**] `VpeolSystemLabel` becomes `VpeolSystemSet`, and uses Bevy's
+- [**BREAKING**] `VpeolSystemLabel` becomes `VpeolSystems`, and uses Bevy's
   new system set semantics instead of the removed system label semantics. All
   sets of that system are configured to run during the `EditorActive` state.
 

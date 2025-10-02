@@ -91,15 +91,15 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystemSet,
+    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
     WindowGetter,
 };
+use bevy::camera::visibility::VisibleEntities;
+use bevy::camera::RenderTarget;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec2;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
-use bevy::render::view::VisibleEntities;
 use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use serde::{Deserialize, Serialize};
@@ -149,7 +149,7 @@ impl Plugin for Vpeol2dPluginForEditor {
                 update_camera_status_for_2d_meshes,
                 update_camera_status_for_text_2d,
             )
-                .in_set(VpeolSystemSet::UpdateCameraState),
+                .in_set(VpeolSystems::UpdateCameraState),
         );
         app.add_systems(
             PostUpdate, // to prevent camera shaking (only seen it in 3D, but still)
@@ -188,7 +188,7 @@ impl CursorInWorldPos {
 
     fn cursor_in_entity_space(&self, transform: &GlobalTransform) -> Vec2 {
         transform
-            .compute_matrix()
+            .to_matrix()
             .inverse()
             .project_point3(self.cursor_in_world_pos.extend(0.0))
             .truncate()
@@ -218,7 +218,7 @@ impl CursorInWorldPos {
 #[allow(clippy::type_complexity)]
 fn update_camera_status_for_sprites(
     mut cameras_query: Query<(&mut VpeolCameraState, &VisibleEntities)>,
-    entities_query: Query<(Entity, &GlobalTransform, &Sprite)>,
+    entities_query: Query<(Entity, &GlobalTransform, &Sprite, &Anchor)>,
     image_assets: Res<Assets<Image>>,
     texture_atlas_layout_assets: Res<Assets<TextureAtlasLayout>>,
     root_resolver: VpeolRootResolver,
@@ -228,7 +228,7 @@ fn update_camera_status_for_sprites(
             continue;
         };
 
-        for (entity, entity_transform, sprite) in
+        for (entity, entity_transform, sprite, anchor) in
             entities_query.iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
         // entities_query.iter()
         {
@@ -248,7 +248,7 @@ fn update_camera_status_for_sprites(
             } else {
                 continue;
             };
-            if cursor.check_square(entity_transform, &sprite.anchor, size) {
+            if cursor.check_square(entity_transform, &anchor, size) {
                 let z_depth = entity_transform.translation().z;
                 let Some(root_entity) = root_resolver.resolve_root(entity) else {
                     continue;
@@ -278,7 +278,7 @@ fn update_camera_status_for_2d_meshes(
                 continue;
             };
 
-            let inverse_transform = global_transform.compute_matrix().inverse();
+            let inverse_transform = global_transform.to_matrix().inverse();
 
             let ray_in_object_coords = Ray3d {
                 origin: inverse_transform.transform_point3(cursor_ray.origin),
@@ -402,7 +402,7 @@ fn camera_2d_zoom(
         &Camera,
         &Vpeol2dCameraControl,
     )>,
-    mut wheel_events_reader: EventReader<MouseWheel>,
+    mut wheel_events_reader: MessageReader<MouseWheel>,
 ) -> Result {
     if egui_context.ctx_mut()?.is_pointer_over_area() {
         return Ok(());

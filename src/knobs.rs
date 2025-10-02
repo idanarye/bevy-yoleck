@@ -131,7 +131,7 @@ pub struct YoleckKnobs<'w, 's> {
 }
 
 impl YoleckKnobs<'_, '_> {
-    pub fn knob<K>(&mut self, key: K) -> YoleckKnobHandle
+    pub fn knob<K>(&mut self, key: K) -> YoleckKnobHandle<'_>
     where
         K: 'static + Send + Sync + Hash + Eq,
     {

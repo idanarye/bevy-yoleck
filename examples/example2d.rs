@@ -1,10 +1,10 @@
 use std::path::Path;
 
+use bevy::asset::RenderAssetUsages;
 use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
+use bevy::mesh::Indices;
 use bevy::prelude::*;
-use bevy::render::mesh::Indices;
-use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use uuid::Uuid;
@@ -178,7 +178,9 @@ impl FromWorld for GameAssets {
             TextureAtlasLayout::from_grid(UVec2::new(64, 64), 3, 1, None, None);
         let fruits_egui = {
             (
-                egui_context.add_image(fruits_atlas_texture.clone()),
+                egui_context.add_image(bevy_egui::EguiTextureHandle::Strong(
+                    fruits_atlas_texture.clone(),
+                )),
                 fruits_atlas_layout
                     .textures
                     .iter()
@@ -211,14 +213,6 @@ impl FromWorld for GameAssets {
 
 #[derive(Component)]
 struct IsPlayer;
-
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct Player {
-    #[serde(default)]
-    position: Vec2,
-    #[serde(default)]
-    rotation: f32,
-}
 
 fn populate_player(
     mut populate: YoleckPopulate<(), With<IsPlayer>>,
@@ -296,7 +290,7 @@ struct FruitType {
 fn duplicate_fruit(
     mut ui: ResMut<YoleckUi>,
     edit: YoleckEdit<(&YoleckBelongsToLevel, &FruitType, &Vpeol2dPosition)>,
-    mut writer: EventWriter<YoleckDirective>,
+    mut writer: MessageWriter<YoleckDirective>,
 ) {
     let Ok((belongs_to_level, fruit_type, Vpeol2dPosition(position))) = edit.single() else {
         return;
@@ -502,7 +496,7 @@ fn edit_triangle(
         let mut knob = knobs.knob(("move-vertex", index));
         if let Some(move_to) = knob.get_passed_data::<Vec3>() {
             *vertex = triangle_transform
-                .compute_matrix()
+                .to_matrix()
                 .inverse()
                 .transform_point3(*move_to)
                 .truncate();
