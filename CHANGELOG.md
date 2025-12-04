@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.30.0 - 2025-12-04
+### Changed
+- Update bevy_egui version to 0.38.
+
 ## 0.29.0 - 2025-10-03
 ### Changed
 - Upgrade Bevy to 0.17
