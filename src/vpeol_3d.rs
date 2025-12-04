@@ -104,10 +104,10 @@ use crate::vpeol::{
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
-use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::DVec3;
-use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 
@@ -187,9 +187,9 @@ impl Plugin for Vpeol3dPluginForEditor {
             (update_camera_status_for_models,).in_set(VpeolSystems::UpdateCameraState),
         );
         app.add_systems(
-            PostUpdate, // to prevent camera shaking
+            PostUpdate,
             (
-                camera_3d_pan,
+                camera_3d_wasd_movement,
                 camera_3d_move_along_plane_normal,
                 camera_3d_rotate,
             )
@@ -279,6 +279,10 @@ pub struct Vpeol3dCameraControl {
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Pixel` units.
     pub proximity_per_scroll_pixel: f32,
+    /// Movement speed for WASD controls (units per second).
+    pub wasd_movement_speed: f32,
+    /// Mouse sensitivity for camera rotation.
+    pub mouse_sensitivity: f32,
 }
 
 impl Vpeol3dCameraControl {
@@ -296,6 +300,8 @@ impl Vpeol3dCameraControl {
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
         }
     }
 
@@ -310,66 +316,63 @@ impl Vpeol3dCameraControl {
             allow_rotation_while_maintaining_up: Some(Dir3::Y),
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
         }
-    }
-
-    fn ray_intersection(&self, ray: Ray3d) -> Option<Vec3> {
-        let distance = ray.intersect_plane(self.plane_origin, self.plane)?;
-        Some(ray.get_point(distance))
     }
 }
 
-fn camera_3d_pan(
+fn camera_3d_wasd_movement(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut cameras_query: Query<(
-        Entity,
-        &mut Transform,
-        &VpeolCameraState,
-        &Vpeol3dCameraControl,
-    )>,
-    mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec3>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
 ) -> Result {
-    enum MouseButtonOp {
-        JustPressed,
-        BeingPressed,
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
     }
 
-    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
-            return Ok(());
-        }
-        MouseButtonOp::JustPressed
-    } else if mouse_buttons.pressed(MouseButton::Right) {
-        MouseButtonOp::BeingPressed
-    } else {
-        last_cursor_world_pos_by_camera.clear();
+    let mut direction = Vec3::ZERO;
+
+    if keyboard_input.pressed(KeyCode::KeyW) {
+        direction += Vec3::NEG_Z;
+    }
+    if keyboard_input.pressed(KeyCode::KeyS) {
+        direction += Vec3::Z;
+    }
+    if keyboard_input.pressed(KeyCode::KeyA) {
+        direction += Vec3::NEG_X;
+    }
+    if keyboard_input.pressed(KeyCode::KeyD) {
+        direction += Vec3::X;
+    }
+    if keyboard_input.pressed(KeyCode::KeyE) {
+        direction += Vec3::Y;
+    }
+    if keyboard_input.pressed(KeyCode::KeyQ) {
+        direction += Vec3::NEG_Y;
+    }
+
+    if direction == Vec3::ZERO {
         return Ok(());
+    }
+
+    direction = direction.normalize_or_zero();
+
+    let speed_multiplier = if keyboard_input.pressed(KeyCode::ShiftLeft) {
+        2.0
+    } else {
+        1.0
     };
 
-    for (camera_entity, mut camera_transform, camera_state, camera_control) in
-        cameras_query.iter_mut()
-    {
-        let Some(cursor_ray) = camera_state.cursor_ray else {
-            continue;
-        };
-        match mouse_button_op {
-            MouseButtonOp::JustPressed => {
-                let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
-                    continue;
-                };
-                last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
-            }
-            MouseButtonOp::BeingPressed => {
-                if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity) {
-                    let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
-                        continue;
-                    };
-                    let movement = *prev_pos - world_pos;
-                    camera_transform.translation += movement;
-                }
-            }
-        }
+    for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
+        let movement = camera_transform.rotation
+            * direction
+            * camera_control.wasd_movement_speed
+            * speed_multiplier
+            * time.delta_secs();
+
+        camera_transform.translation += movement;
     }
     Ok(())
 }
@@ -408,54 +411,60 @@ fn camera_3d_move_along_plane_normal(
 fn camera_3d_rotate(
     mut egui_context: EguiContexts,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut cameras_query: Query<(
-        Entity,
-        &mut Transform,
-        &VpeolCameraState,
-        &Vpeol3dCameraControl,
-    )>,
-    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray3d>>,
+    mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
+    mut mouse_motion_reader: MessageReader<MouseMotion>,
+    mut cursor_options: Query<&mut CursorOptions, With<PrimaryWindow>>,
+    mut is_rotating: Local<bool>,
 ) -> Result {
-    enum MouseButtonOp {
-        JustPressed,
-        BeingPressed,
-    }
-
-    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Middle) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
-            return Ok(());
-        }
-        MouseButtonOp::JustPressed
-    } else if mouse_buttons.pressed(MouseButton::Middle) {
-        MouseButtonOp::BeingPressed
-    } else {
-        last_cursor_ray_by_camera.clear();
+    let Ok(mut cursor) = cursor_options.single_mut() else {
         return Ok(());
     };
 
-    for (camera_entity, mut camera_transform, camera_state, camera_control) in
-        cameras_query.iter_mut()
-    {
+    if mouse_buttons.just_pressed(MouseButton::Right) {
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
+        }
+        cursor.grab_mode = CursorGrabMode::Locked;
+        cursor.visible = false;
+        *is_rotating = true;
+    }
+
+    if mouse_buttons.just_released(MouseButton::Right) {
+        cursor.grab_mode = CursorGrabMode::None;
+        cursor.visible = true;
+        *is_rotating = false;
+    }
+
+    if !*is_rotating {
+        return Ok(());
+    }
+
+    let mut delta = Vec2::ZERO;
+    for motion in mouse_motion_reader.read() {
+        delta += motion.delta;
+    }
+
+    if delta == Vec2::ZERO {
+        return Ok(());
+    }
+
+    for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
         let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else {
             continue;
         };
-        let Some(cursor_ray) = camera_state.cursor_ray else {
-            continue;
-        };
-        match mouse_button_op {
-            MouseButtonOp::JustPressed => {
-                last_cursor_ray_by_camera.insert(camera_entity, cursor_ray);
-            }
-            MouseButtonOp::BeingPressed => {
-                if let Some(prev_ray) = last_cursor_ray_by_camera.get_mut(&camera_entity) {
-                    let rotation =
-                        Quat::from_rotation_arc(*cursor_ray.direction, *prev_ray.direction);
-                    camera_transform.rotate(rotation);
-                    let new_forward = camera_transform.forward();
-                    camera_transform.look_to(*new_forward, *maintaining_up);
-                }
-            }
-        }
+
+        let yaw = -delta.x * camera_control.mouse_sensitivity;
+        let pitch = -delta.y * camera_control.mouse_sensitivity;
+
+        let yaw_rotation = Quat::from_axis_angle(*maintaining_up, yaw);
+        camera_transform.rotation = yaw_rotation * camera_transform.rotation;
+
+        let right = camera_transform.right();
+        let pitch_rotation = Quat::from_axis_angle(*right, pitch);
+        camera_transform.rotation = pitch_rotation * camera_transform.rotation;
+
+        let new_forward = camera_transform.forward();
+        camera_transform.look_to(*new_forward, *maintaining_up);
     }
     Ok(())
 }
