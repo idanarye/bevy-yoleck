@@ -197,6 +197,10 @@ impl Plugin for Vpeol3dPluginForEditor {
         );
         app.add_systems(
             Update,
+            draw_scene_gizmo.run_if(in_state(YoleckEditorState::EditorActive)),
+        );
+        app.add_systems(
+            Update,
             (
                 ApplyDeferred,
                 handle_clickable_children_system::<With<Mesh3d>, ()>,
@@ -405,6 +409,181 @@ fn camera_3d_move_along_plane_normal(
 
         camera_transform.translation += zoom_amount * *camera_control.plane.normal;
     }
+    Ok(())
+}
+
+fn draw_scene_gizmo(
+    mut egui_context: EguiContexts,
+    mut cameras_query: Query<&mut Transform, With<VpeolCameraState>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+) -> Result {
+    let ctx = egui_context.ctx_mut()?;
+
+    if !ctx.is_using_pointer() && ctx.input(|i| i.viewport_rect().width() == 0.0) {
+        return Ok(());
+    }
+
+    let Ok(mut camera_transform) = cameras_query.single_mut() else {
+        return Ok(());
+    };
+
+    let gizmo_size = 60.0;
+    let axis_length = 25.0;
+    let margin = 20.0;
+    let click_radius = 10.0;
+
+    let screen_rect = ctx.input(|i| i.viewport_rect());
+    if screen_rect.width() == 0.0 || screen_rect.height() == 0.0 {
+        return Ok(());
+    }
+
+    let center = egui::Pos2::new(
+        screen_rect.max.x - margin - gizmo_size / 2.0,
+        screen_rect.min.y + margin + gizmo_size / 2.0,
+    );
+
+    let camera_rotation = camera_transform.rotation;
+    let inv_rotation = camera_rotation.inverse();
+
+    let world_x = inv_rotation * Vec3::X;
+    let world_y = inv_rotation * Vec3::Y;
+    let world_z = inv_rotation * Vec3::Z;
+
+    let to_screen = |v: Vec3| -> egui::Pos2 {
+        let perspective_scale = 1.0 / (1.0 - v.z * 0.3);
+        let screen_x = v.x * axis_length * perspective_scale;
+        let screen_y = v.y * axis_length * perspective_scale;
+
+        let len = (screen_x * screen_x + screen_y * screen_y).sqrt();
+        let min_len = 8.0;
+        let (screen_x, screen_y) = if len < min_len && len > 0.001 {
+            let scale = min_len / len;
+            (screen_x * scale, screen_y * scale)
+        } else {
+            (screen_x, screen_y)
+        };
+
+        egui::Pos2::new(center.x + screen_x, center.y - screen_y)
+    };
+
+    let x_pos = to_screen(world_x);
+    let x_neg = to_screen(-world_x);
+    let y_pos = to_screen(world_y);
+    let y_neg = to_screen(-world_y);
+    let z_pos = to_screen(world_z);
+    let z_neg = to_screen(-world_z);
+
+    let cursor_pos = ctx.input(|i| i.pointer.hover_pos());
+    let gizmo_rect = egui::Rect::from_center_size(center, egui::Vec2::splat(gizmo_size));
+
+    if let Some(cursor) = cursor_pos {
+        if mouse_buttons.just_pressed(MouseButton::Left) {
+            if gizmo_rect.contains(cursor) {
+                let distances = [
+                    (cursor.distance(x_pos), Vec3::NEG_X, Vec3::Y),
+                    (cursor.distance(x_neg), Vec3::X, Vec3::Y),
+                    (cursor.distance(y_pos), Vec3::NEG_Y, Vec3::Z),
+                    (cursor.distance(y_neg), Vec3::Y, Vec3::Z),
+                    (cursor.distance(z_pos), Vec3::NEG_Z, Vec3::Y),
+                    (cursor.distance(z_neg), Vec3::Z, Vec3::Y),
+                ];
+
+                if let Some((_, forward, up)) = distances
+                    .iter()
+                    .filter(|(d, _, _)| *d < click_radius)
+                    .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                {
+                    camera_transform.look_to(*forward, *up);
+                }
+            }
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    struct AxisData {
+        depth: f32,
+        color_bright: egui::Color32,
+        color_dim: egui::Color32,
+        pos_end: egui::Pos2,
+        neg_end: egui::Pos2,
+        world_dir: Vec3,
+    }
+
+    let mut axes = vec![
+        AxisData {
+            depth: world_x.z.abs(),
+            color_bright: egui::Color32::from_rgb(230, 60, 60),
+            color_dim: egui::Color32::from_rgb(120, 50, 50),
+            pos_end: x_pos,
+            neg_end: x_neg,
+            world_dir: world_x,
+        },
+        AxisData {
+            depth: world_y.z.abs(),
+            color_bright: egui::Color32::from_rgb(60, 230, 60),
+            color_dim: egui::Color32::from_rgb(50, 120, 50),
+            pos_end: y_pos,
+            neg_end: y_neg,
+            world_dir: world_y,
+        },
+        AxisData {
+            depth: world_z.z.abs(),
+            color_bright: egui::Color32::from_rgb(60, 120, 230),
+            color_dim: egui::Color32::from_rgb(50, 70, 120),
+            pos_end: z_pos,
+            neg_end: z_neg,
+            world_dir: world_z,
+        },
+    ];
+    axes.sort_by(|a, b| b.depth.partial_cmp(&a.depth).unwrap());
+
+    let painter = ctx.layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        egui::Id::new("scene_gizmo"),
+    ));
+
+    painter.circle_filled(center, gizmo_size / 2.0, egui::Color32::from_rgba_unmultiplied(40, 40, 40, 200));
+
+    let stroke_bright = 3.0;
+    let stroke_dim = 2.0;
+    let cone_radius_bright = 5.0;
+    let cone_radius_dim = 3.5;
+    let cone_length = 8.0;
+
+    for axis in &axes {
+        let (front_end, front_color, back_end, back_color) = if axis.world_dir.z >= 0.0 {
+            (axis.pos_end, axis.color_bright, axis.neg_end, axis.color_dim)
+        } else {
+            (axis.neg_end, axis.color_dim, axis.pos_end, axis.color_bright)
+        };
+
+        let back_dir = (back_end - center).normalized();
+        let back_line_end = back_end - back_dir * cone_length;
+        painter.line_segment([center, back_line_end], egui::Stroke::new(stroke_dim, back_color));
+
+        let back_perp = egui::Vec2::new(-back_dir.y, back_dir.x);
+        let back_cone_base = back_end - back_dir * cone_length;
+        let back_cone = vec![
+            back_end,
+            back_cone_base + back_perp * cone_radius_dim,
+            back_cone_base - back_perp * cone_radius_dim,
+        ];
+        painter.add(egui::Shape::convex_polygon(back_cone, back_color, egui::Stroke::NONE));
+
+        let front_dir = (front_end - center).normalized();
+        let front_line_end = front_end - front_dir * cone_length;
+        painter.line_segment([center, front_line_end], egui::Stroke::new(stroke_bright, front_color));
+
+        let front_perp = egui::Vec2::new(-front_dir.y, front_dir.x);
+        let front_cone_base = front_end - front_dir * cone_length;
+        let front_cone = vec![
+            front_end,
+            front_cone_base + front_perp * cone_radius_bright,
+            front_cone_base - front_perp * cone_radius_bright,
+        ];
+        painter.add(egui::Shape::convex_polygon(front_cone, front_color, egui::Stroke::NONE));
+    }
+
     Ok(())
 }
 
