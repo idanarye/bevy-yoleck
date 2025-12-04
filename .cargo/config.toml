@@ -1,0 +1,4 @@
+[alias]
+example2d = "run --example example2d --features example2d_full"
+example3d = "run --example example3d --features example3d_full"
+doors_to_other_levels = "run --example doors_to_other_levels --features doors_to_other_levels_full"

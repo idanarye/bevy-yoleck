@@ -13,9 +13,7 @@ documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
 categories = ["game-development"]
 keywords = ["bevy", "gamedev", "level-editor"]
-exclude = [
-    "assets",
-]
+exclude = ["assets"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,7 +25,10 @@ bevy = { version = "^0.17", default-features = false, features = [
     "bevy_asset",
     "bevy_log",
 ] }
-bevy_egui = { version = "^0.38", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.38", default-features = false, features = [
+    "default_fonts",
+    "render",
+] }
 serde = "^1"
 serde_json = "^1"
 thiserror = "^2"
@@ -36,16 +37,26 @@ uuid = "1.9.1"
 [features]
 bevy_reflect = []
 vpeol = []
-vpeol_2d = [
-    "vpeol",
-    "bevy/bevy_text",
-    "bevy/bevy_sprite",
-    "bevy/png",
+vpeol_2d = ["vpeol", "bevy/bevy_text", "bevy/bevy_sprite", "bevy/png"]
+vpeol_3d = ["vpeol", "bevy/bevy_pbr"]
+example2d_full = [
+    "vpeol_2d",
+    "bevy/bevy_gizmos",
+    "bevy/bevy_sprite_render",
 ]
-vpeol_3d = [
-    "vpeol",
-    "bevy/bevy_pbr",
+example3d_full = [
+    "vpeol_3d",
+    "bevy/bevy_scene",
+    "bevy/bevy_gltf",
+    "bevy/animation",
+    "bevy/ktx2",
+    "bevy/zstd_rust",
+    "bevy/tonemapping_luts",
+    "bevy/bevy_gizmos",
+    "bevy/reflect_auto_register",
+    "bevy/bevy_sprite_render",
 ]
+doors_to_other_levels_full = ["vpeol_2d", "bevy/bevy_sprite_render"]
 
 [dev-dependencies]
 bevy = { version = "^0.17", default-features = false, features = [
@@ -58,41 +69,20 @@ bevy = { version = "^0.17", default-features = false, features = [
 
 [[example]]
 name = "example2d"
-required-features = [
-    "vpeol_2d",
-    "bevy/png",
-    "bevy/bevy_gizmos",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["example2d_full"]
 
 [[example]]
 name = "example3d"
-required-features = [
-    "vpeol_3d",
-    "bevy/bevy_scene",
-    "bevy/bevy_gltf",
-    "bevy/animation",
-    "bevy/ktx2",
-    "bevy/zstd_rust",
-    "bevy/tonemapping_luts",
-    "bevy/bevy_gizmos",
-    "bevy/reflect_auto_register",
-    "bevy/bevy_pbr",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["example3d_full"]
 
 [[example]]
 name = "doors_to_other_levels"
-required-features = [
-    "vpeol_2d",
-    "bevy/png",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["doors_to_other_levels_full"]
 
 [package.metadata.docs.rs]
 
 all-features = true
 features = [
-    "bevy/x11", # required for bevy_egui
-    "bevy/bevy_gltf",  # required for SceneRoot in vpeol_3d's doctests
+    "bevy/x11",       # required for bevy_egui
+    "bevy/bevy_gltf", # required for SceneRoot in vpeol_3d's doctests
 ]
