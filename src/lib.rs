@@ -173,10 +173,12 @@
 //! }
 //! ```
 
+pub mod auto_edit;
 mod editing;
 mod editor;
 mod editor_window;
 mod entity_management;
+pub mod entity_ref;
 mod entity_upgrading;
 mod entity_uuid;
 mod errors;
@@ -207,9 +209,13 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
 pub mod prelude {
+    pub use crate::auto_edit::{YoleckAutoEdit, YoleckAutoEditEnum, YoleckAutoEditExt};
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckKeepLevel, YoleckLoadLevel, YoleckRawLevel};
+    pub use crate::entity_ref::{
+        YoleckEntityRef, YoleckEntityRefAccessor, YoleckEntityRefExt, YoleckEntityRefPlugin,
+    };
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
     pub use crate::knobs::YoleckKnobs;
@@ -220,7 +226,7 @@ pub mod prelude {
         YoleckBelongsToLevel, YoleckExtForApp, YoleckLevelInEditor, YoleckLevelInPlaytest,
         YoleckLevelJustLoaded, YoleckPluginForEditor, YoleckPluginForGame, YoleckSchedule,
     };
-    pub use bevy_yoleck_macros::YoleckComponent;
+    pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent, YoleckEntityRefs};
 }
 
 pub use self::editing::YoleckEditMarker;

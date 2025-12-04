@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.32.0 - 2025-12-04
+### Changed 
+- Added automatic UI generation for components using reflection and attributes.
+- Supported numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields.
+- Added EntityRef type with automatic UI, filtering, and runtime UUID resolution.
+- Enabled entity linking with dropdown, viewport click, and drag-and-drop selection.
+
 ## 0.31.0 - 2025-12-04
 ### Changed 
 - Make camera controls fps style 
