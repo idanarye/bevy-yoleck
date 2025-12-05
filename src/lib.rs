@@ -213,9 +213,7 @@ pub mod prelude {
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckKeepLevel, YoleckLoadLevel, YoleckRawLevel};
-    pub use crate::entity_ref::{
-        YoleckEntityRef, YoleckEntityRefAccessor, YoleckEntityRefExt, YoleckEntityRefPlugin,
-    };
+    pub use crate::entity_ref::{YoleckEntityRef, YoleckEntityRefAccessor};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
     pub use crate::knobs::YoleckKnobs;
@@ -226,7 +224,7 @@ pub mod prelude {
         YoleckBelongsToLevel, YoleckExtForApp, YoleckLevelInEditor, YoleckLevelInPlaytest,
         YoleckLevelJustLoaded, YoleckPluginForEditor, YoleckPluginForGame, YoleckSchedule,
     };
-    pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent, YoleckEntityRefs};
+    pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent};
 }
 
 pub use self::editing::YoleckEditMarker;

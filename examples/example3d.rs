@@ -41,7 +41,6 @@ fn main() {
         );
     }
 
-    app.add_plugins(YoleckEntityRefPlugin);
     app.add_systems(Startup, (setup_camera, setup_arena));
 
     app.add_yoleck_entity_type({
@@ -82,7 +81,7 @@ fn main() {
                 knob_scale: 0.5,
             })
     });
-    app.add_yoleck_entity_ref_edit::<LaserPointer>();
+    app.add_yoleck_auto_edit::<LaserPointer>();
     app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);
     app.add_systems(Update, (resolve_laser_pointers, draw_laser_pointers));
 
@@ -272,7 +271,7 @@ struct SimpleSphere;
     Deserialize,
     Component,
     YoleckComponent,
-    YoleckEntityRefs,
+    YoleckAutoEdit,
     Debug,
 )]
 struct LaserPointer {

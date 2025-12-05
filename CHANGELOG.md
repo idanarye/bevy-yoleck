@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.34.0 - 2025-12-04
+### Changed
+- `YoleckAutoEdit` derive macro now also implements `YoleckEntityRefAccessor`, eliminating the need for separate `YoleckEntityRefs` derive
+- `add_yoleck_auto_edit` now registers both auto edit and entity ref edit systems automatically
+- `YoleckEntityRef` fields are now automatically hidden from auto edit UI (rendered only by entity ref system)
+
+### Removed
+- Removed `YoleckEntityRefPlugin` (was empty/no-op)
+- Removed `add_yoleck_entity_ref_edit` method (merged into `add_yoleck_auto_edit`)
+- Removed `add_yoleck_full_edit` method (no longer needed)
+- Removed `YoleckEntityRefs` derive macro (merged into `YoleckAutoEdit`)
+
 ## 0.33.0 - 2025-12-04
 ### Changed
 - Added scene gizmo for camera orientation

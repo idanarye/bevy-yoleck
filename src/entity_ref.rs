@@ -1,14 +1,21 @@
-use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::auto_edit::YoleckAutoEdit;
+use crate::entity_uuid::YoleckUuidRegistry;
+
+#[cfg(feature = "vpeol")]
+use bevy::ecs::component::Mutable;
+#[cfg(feature = "vpeol")]
 use crate::editing::{YoleckEdit, YoleckUi};
-use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
+#[cfg(feature = "vpeol")]
+use crate::entity_uuid::YoleckEntityUuid;
+#[cfg(feature = "vpeol")]
 use crate::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
-use crate::{yoleck_exclusive_system_cancellable, YoleckExtForApp, YoleckManaged};
+#[cfg(feature = "vpeol")]
+use crate::{yoleck_exclusive_system_cancellable, YoleckManaged};
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Debug)]
 pub struct YoleckEntityRef {
@@ -83,6 +90,7 @@ impl YoleckAutoEdit for YoleckEntityRef {
     }
 }
 
+#[cfg(feature = "vpeol")]
 fn entity_ref_dropdown_ui(
     ui: &mut egui::Ui,
     current_uuid: Option<Uuid>,
@@ -144,12 +152,6 @@ fn entity_ref_dropdown_ui(
         });
 
     result
-}
-
-pub struct YoleckEntityRefPlugin;
-
-impl Plugin for YoleckEntityRefPlugin {
-    fn build(&self, _app: &mut App) {}
 }
 
 pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
@@ -236,21 +238,5 @@ fn yoleck_entity_ref_select_handler<T: Component<Mutability = Mutable> + YoleckE
         } else {
             YoleckExclusiveSystemDirective::Listening
         }
-    }
-}
-
-pub trait YoleckEntityRefExt {
-    #[cfg(feature = "vpeol")]
-    fn add_yoleck_entity_ref_edit<T: Component<Mutability = Mutable> + YoleckEntityRefAccessor>(
-        &mut self,
-    );
-}
-
-impl YoleckEntityRefExt for App {
-    #[cfg(feature = "vpeol")]
-    fn add_yoleck_entity_ref_edit<T: Component<Mutability = Mutable> + YoleckEntityRefAccessor>(
-        &mut self,
-    ) {
-        self.add_yoleck_edit_system(edit_entity_refs_system::<T>);
     }
 }

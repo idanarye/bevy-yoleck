@@ -380,15 +380,72 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
             if attrs.hidden {
                 return None;
             }
+            let type_name = get_type_name(&field.ty);
+            if type_name == "YoleckEntityRef" {
+                return None;
+            }
             Some(generate_field_ui(field, &attrs))
         })
         .collect();
+
+    let entity_ref_fields: Vec<EntityRefFieldInfo> = fields.iter()
+        .filter_map(|field| parse_entity_ref_attrs(field).ok().flatten())
+        .collect();
+    
+    let fields_array: Vec<TokenStream> = entity_ref_fields.iter()
+        .map(|info| {
+            let field_name = &info.field_name;
+            let filter = match &info.filter {
+                Some(f) => quote! { Some(#f) },
+                None => quote! { None },
+            };
+            quote! { (#field_name, #filter) }
+        })
+        .collect();
+    
+    let match_arms: Vec<TokenStream> = entity_ref_fields.iter()
+        .map(|info| {
+            let field_name = &info.field_name;
+            let field_ident = syn::Ident::new(field_name, proc_macro2::Span::call_site());
+            quote! {
+                #field_name => &mut self.#field_ident
+            }
+        })
+        .collect();
+    
+    let fields_count = entity_ref_fields.len();
+
+    let get_entity_ref_mut_body = if entity_ref_fields.is_empty() {
+        quote! {
+            panic!("No entity ref fields in {}", stringify!(#name))
+        }
+    } else {
+        quote! {
+            match field_name {
+                #(#match_arms,)*
+                _ => panic!("Unknown entity ref field: {}", field_name),
+            }
+        }
+    };
     
     let result = quote! {
         impl #impl_generics bevy_yoleck::auto_edit::YoleckAutoEdit for #name #ty_generics #where_clause {
             fn auto_edit(value: &mut Self, ui: &mut bevy_yoleck::egui::Ui) {
                 use bevy_yoleck::egui;
                 #(#field_uis)*
+            }
+        }
+
+        impl #impl_generics bevy_yoleck::entity_ref::YoleckEntityRefAccessor for #name #ty_generics #where_clause {
+            fn entity_ref_fields() -> &'static [(&'static str, Option<&'static str>)] {
+                static FIELDS: [(&'static str, Option<&'static str>); #fields_count] = [
+                    #(#fields_array),*
+                ];
+                &FIELDS
+            }
+            
+            fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut bevy_yoleck::entity_ref::YoleckEntityRef {
+                #get_entity_ref_mut_body
             }
         }
     };
@@ -438,73 +495,3 @@ fn parse_entity_ref_attrs(field: &Field) -> Result<Option<EntityRefFieldInfo>, E
     Ok(Some(info))
 }
 
-#[proc_macro_derive(YoleckEntityRefs, attributes(yoleck))]
-pub fn derive_yoleck_entity_refs(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = syn::parse_macro_input!(input as DeriveInput);
-    match impl_yoleck_entity_refs_derive(input) {
-        Ok(output) => output.into(),
-        Err(error) => error.to_compile_error().into(),
-    }
-}
-
-fn impl_yoleck_entity_refs_derive(input: DeriveInput) -> Result<TokenStream, Error> {
-    let name = &input.ident;
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    
-    let fields = match &input.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => &fields.named,
-                _ => return Err(Error::new_spanned(&input, "YoleckEntityRefs only supports structs with named fields")),
-            }
-        }
-        _ => return Err(Error::new_spanned(&input, "YoleckEntityRefs only supports structs")),
-    };
-    
-    let entity_ref_fields: Vec<EntityRefFieldInfo> = fields.iter()
-        .filter_map(|field| parse_entity_ref_attrs(field).ok().flatten())
-        .collect();
-    
-    let fields_array: Vec<TokenStream> = entity_ref_fields.iter()
-        .map(|info| {
-            let field_name = &info.field_name;
-            let filter = match &info.filter {
-                Some(f) => quote! { Some(#f) },
-                None => quote! { None },
-            };
-            quote! { (#field_name, #filter) }
-        })
-        .collect();
-    
-    let match_arms: Vec<TokenStream> = entity_ref_fields.iter()
-        .map(|info| {
-            let field_name = &info.field_name;
-            let field_ident = syn::Ident::new(field_name, proc_macro2::Span::call_site());
-            quote! {
-                #field_name => &mut self.#field_ident
-            }
-        })
-        .collect();
-    
-    let fields_count = entity_ref_fields.len();
-    
-    let result = quote! {
-        impl #impl_generics bevy_yoleck::entity_ref::YoleckEntityRefAccessor for #name #ty_generics #where_clause {
-            fn entity_ref_fields() -> &'static [(&'static str, Option<&'static str>)] {
-                static FIELDS: [(&'static str, Option<&'static str>); #fields_count] = [
-                    #(#fields_array),*
-                ];
-                &FIELDS
-            }
-            
-            fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut bevy_yoleck::entity_ref::YoleckEntityRef {
-                match field_name {
-                    #(#match_arms,)*
-                    _ => panic!("Unknown entity ref field: {}", field_name),
-                }
-            }
-        }
-    };
-    
-    Ok(result)
-}
