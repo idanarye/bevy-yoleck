@@ -48,10 +48,6 @@ fn main() {
             .with::<Vpeol3dPosition>()
             .with::<SpaceshipSettings>()
             .insert_on_init(|| IsSpaceship)
-            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
-                knob_distance: 2.0,
-                knob_scale: 0.5,
-            })
     });
     app.add_yoleck_auto_edit::<SpaceshipSettings>();
     app.add_systems(YoleckSchedule::Populate, populate_spaceship);
@@ -63,10 +59,6 @@ fn main() {
             .with::<PlanetSettings>()
             .insert_on_init(|| IsPlanet)
             .insert_on_init_during_editor(|| VpeolDragPlane::XY)
-            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
-                knob_distance: 2.0,
-                knob_scale: 0.5,
-            })
     });
     app.add_yoleck_auto_edit::<PlanetSettings>();
     app.add_systems(YoleckSchedule::Populate, populate_planet);
@@ -76,10 +68,6 @@ fn main() {
             .with::<Vpeol3dPosition>()
             .with::<LaserPointer>()
             .insert_on_init(|| SimpleSphere)
-            .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
-                knob_distance: 2.0,
-                knob_scale: 0.5,
-            })
     });
     app.add_yoleck_auto_edit::<LaserPointer>();
     app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);

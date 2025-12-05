@@ -27,13 +27,13 @@ pub mod prelude {
     };
     #[cfg(feature = "vpeol_2d")]
     pub use crate::vpeol_2d::{
-        Vpeol2dCameraControl, Vpeol2dPluginForEditor, Vpeol2dPluginForGame, Vpeol2dPosition,
-        Vpeol2dRotatation, Vpeol2dScale,
+        Vpeol2dCameraControl, Vpeol2dPluginForEditor, Vpeol2dPluginForGame,
+        Vpeol2dPosition, Vpeol2dRotatation, Vpeol2dScale,
     };
     #[cfg(feature = "vpeol_3d")]
     pub use crate::vpeol_3d::{
-        Vpeol3dCameraControl, Vpeol3dPluginForEditor, Vpeol3dPluginForGame, Vpeol3dPosition,
-        Vpeol3dRotation, Vpeol3dScale, Vpeol3dThirdAxisWithKnob,
+        Vpeol3dCameraControl, Vpeol3dKnobsConfig, Vpeol3dPluginForEditor, Vpeol3dPluginForGame,
+        Vpeol3dPosition, Vpeol3dRotation, Vpeol3dScale,
     };
 }
 

@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.35.0 - 2025-12-05
+### Changed
+- Axis knobs are now always displayed for all 3 world axes (X, Y, Z) by default
+- Axis knobs now have distinct colors (red for X, green for Y, blue for Z)
+- Scene gizmo now displays axis labels (X, Y, Z) at the end of positive axes
+
+### Removed
+- [**BREAKING**] Removed `Vpeol3dThirdAxisWithKnob` component (no longer needed as all axes have knobs by default)
+
 ## 0.34.0 - 2025-12-04
 ### Changed
 - `YoleckAutoEdit` derive macro now also implements `YoleckEntityRefAccessor`, eliminating the need for separate `YoleckEntityRefs` derive

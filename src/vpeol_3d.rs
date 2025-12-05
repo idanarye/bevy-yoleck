@@ -38,10 +38,10 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add  the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
+//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
 //!    are also [`Vpeol3dRotation`] and [`Vpeol3dScale`], but they don't currently get editing
-//!    support from vpeol_3d). To enable dragging across the third axis, add
-//!    [`Vpeol3dThirdAxisWithKnob`] as well.
+//!    support from vpeol_3d). Axis knobs (X, Y, Z) are automatically added to all entities with
+//!    `Vpeol3dPosition`. Configure them using the [`Vpeol3dKnobsConfig`] resource.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -52,13 +52,8 @@
 //!     # let mut app = App::new();
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
-//!             .with::<Vpeol3dPosition>() // vpeol_3d dragging
+//!             .with::<Vpeol3dPosition>() // vpeol_3d dragging with axis knobs
 //!             .with::<Example>() // entity's specific data and systems
-//!             // Optional:
-//!             .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
-//!                 knob_distance: 2.0,
-//!                 knob_scale: 0.5,
-//!             })
 //!     });
 //!     ```
 //! 2. Use data passing. vpeol_3d will pass a `Vec3` to the entity being dragged:
@@ -88,8 +83,6 @@
 //!         });
 //!     }
 //!     ```
-//!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
-//!     axis knob.
 
 use std::any::TypeId;
 
@@ -99,7 +92,8 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
+    VpeolCameraState, VpeolClicksOnObjectsState, VpeolDragPlane, VpeolRepositionLevel,
+    VpeolRootResolver, VpeolSystems,
 };
 use crate::{prelude::*, YoleckDirective, YoleckSchedule};
 use bevy::camera::visibility::VisibleEntities;
@@ -181,6 +175,7 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
+        app.init_resource::<Vpeol3dKnobsConfig>();
 
         app.add_systems(
             Update,
@@ -213,7 +208,7 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
-        app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
+        app.add_yoleck_edit_system(vpeol_3d_edit_axis_knobs);
     }
 }
 
@@ -416,7 +411,13 @@ fn draw_scene_gizmo(
     mut egui_context: EguiContexts,
     mut cameras_query: Query<&mut Transform, With<VpeolCameraState>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut first_frame_skipped: Local<bool>,
 ) -> Result {
+    if !*first_frame_skipped {
+        *first_frame_skipped = true;
+        return Ok(());
+    }
+
     let ctx = egui_context.ctx_mut()?;
 
     if !ctx.is_using_pointer() && ctx.input(|i| i.viewport_rect().width() == 0.0) {
@@ -542,7 +543,11 @@ fn draw_scene_gizmo(
         egui::Id::new("scene_gizmo"),
     ));
 
-    painter.circle_filled(center, gizmo_size / 2.0, egui::Color32::from_rgba_unmultiplied(40, 40, 40, 200));
+    painter.circle_filled(
+        center,
+        gizmo_size / 2.0,
+        egui::Color32::from_rgba_unmultiplied(40, 40, 40, 200),
+    );
 
     let stroke_bright = 3.0;
     let stroke_dim = 2.0;
@@ -552,14 +557,27 @@ fn draw_scene_gizmo(
 
     for axis in &axes {
         let (front_end, front_color, back_end, back_color) = if axis.world_dir.z >= 0.0 {
-            (axis.pos_end, axis.color_bright, axis.neg_end, axis.color_dim)
+            (
+                axis.pos_end,
+                axis.color_bright,
+                axis.neg_end,
+                axis.color_dim,
+            )
         } else {
-            (axis.neg_end, axis.color_dim, axis.pos_end, axis.color_bright)
+            (
+                axis.neg_end,
+                axis.color_dim,
+                axis.pos_end,
+                axis.color_bright,
+            )
         };
 
         let back_dir = (back_end - center).normalized();
         let back_line_end = back_end - back_dir * cone_length;
-        painter.line_segment([center, back_line_end], egui::Stroke::new(stroke_dim, back_color));
+        painter.line_segment(
+            [center, back_line_end],
+            egui::Stroke::new(stroke_dim, back_color),
+        );
 
         let back_perp = egui::Vec2::new(-back_dir.y, back_dir.x);
         let back_cone_base = back_end - back_dir * cone_length;
@@ -568,11 +586,18 @@ fn draw_scene_gizmo(
             back_cone_base + back_perp * cone_radius_dim,
             back_cone_base - back_perp * cone_radius_dim,
         ];
-        painter.add(egui::Shape::convex_polygon(back_cone, back_color, egui::Stroke::NONE));
+        painter.add(egui::Shape::convex_polygon(
+            back_cone,
+            back_color,
+            egui::Stroke::NONE,
+        ));
 
         let front_dir = (front_end - center).normalized();
         let front_line_end = front_end - front_dir * cone_length;
-        painter.line_segment([center, front_line_end], egui::Stroke::new(stroke_bright, front_color));
+        painter.line_segment(
+            [center, front_line_end],
+            egui::Stroke::new(stroke_bright, front_color),
+        );
 
         let front_perp = egui::Vec2::new(-front_dir.y, front_dir.x);
         let front_cone_base = front_end - front_dir * cone_length;
@@ -581,7 +606,34 @@ fn draw_scene_gizmo(
             front_cone_base + front_perp * cone_radius_bright,
             front_cone_base - front_perp * cone_radius_bright,
         ];
-        painter.add(egui::Shape::convex_polygon(front_cone, front_color, egui::Stroke::NONE));
+        painter.add(egui::Shape::convex_polygon(
+            front_cone,
+            front_color,
+            egui::Stroke::NONE,
+        ));
+    }
+
+    let label_offset = 12.0;
+    let font_id = egui::FontId::proportional(12.0);
+
+    let axis_labels = [
+        ("X", x_pos, egui::Color32::from_rgb(230, 60, 60), world_x.z),
+        ("Y", y_pos, egui::Color32::from_rgb(60, 230, 60), world_y.z),
+        ("Z", z_pos, egui::Color32::from_rgb(60, 120, 230), world_z.z),
+    ];
+
+    for (label, pos, color, depth) in axis_labels {
+        let dir = (pos - center).normalized();
+        let label_pos = pos + dir * label_offset;
+        let alpha = if depth >= 0.0 { 255 } else { 120 };
+        let label_color = egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
+        painter.text(
+            label_pos,
+            egui::Align2::CENTER_CENTER,
+            label,
+            font_id.clone(),
+            label_color,
+        );
     }
 
     Ok(())
@@ -658,18 +710,19 @@ fn camera_3d_rotate(
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
-/// Add a knob for dragging the entity perpendicular to the [`VpeolDragPlane`].
-///
-/// Dragging the knob will not actually change any component - it will only pass to the entity a
-/// `Vec3` that describes the drag. Since regular entity dragging is also implemented by passing a
-/// `Vec3`, just adding this component should be enough if there is already an edit system in place
-/// that reads that `Vec3` (such as the edit system for [`Vpeol3dPosition`])
-#[derive(Component)]
-pub struct Vpeol3dThirdAxisWithKnob {
-    /// The distance of the knob from the entity's origin.
+#[derive(Resource)]
+pub struct Vpeol3dKnobsConfig {
     pub knob_distance: f32,
-    /// A scale for the knob's model.
     pub knob_scale: f32,
+}
+
+impl Default for Vpeol3dKnobsConfig {
+    fn default() -> Self {
+        Self {
+            knob_distance: 2.0,
+            knob_scale: 0.5,
+        }
+    }
 }
 
 /// A rotation component that's populated (but not edited) by vpeol_3d.
@@ -807,77 +860,188 @@ fn vpeol_3d_init_position(
     YoleckExclusiveSystemDirective::Listening
 }
 
-fn vpeol_3d_edit_third_axis_with_knob(
-    mut edit: YoleckEdit<(
-        Entity,
-        &GlobalTransform,
-        &Vpeol3dThirdAxisWithKnob,
-        Option<&VpeolDragPlane>,
-    )>,
-    global_drag_plane: Res<VpeolDragPlane>,
+struct AxisKnobData {
+    axis: Vec3,
+    drag_plane_normal: Dir3,
+}
+
+fn vpeol_3d_edit_axis_knobs(
+    mut edit: YoleckEdit<(Entity, &GlobalTransform, &Vpeol3dPosition)>,
+    knobs_config: Res<Vpeol3dKnobsConfig>,
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
-    mut mesh_and_material: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
+    #[allow(clippy::type_complexity)] mut cached_assets: Local<
+        Option<(
+            Handle<Mesh>,
+            Handle<Mesh>,
+            [Handle<StandardMaterial>; 3],
+            [Handle<StandardMaterial>; 3],
+        )>,
+    >,
     mut directives_writer: MessageWriter<YoleckDirective>,
+    cameras_query: Query<(&GlobalTransform, &VpeolCameraState)>,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
 
-    let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
+    let (camera_position, dragged_entity) = cameras_query
+        .iter()
+        .next()
+        .map(|(t, state)| {
+            let dragged = match &state.clicks_on_objects_state {
+                VpeolClicksOnObjectsState::BeingDragged { entity, .. } => Some(*entity),
+                _ => None,
+            };
+            (t.translation(), dragged)
+        })
+        .unwrap_or((Vec3::ZERO, None));
+
+    let (cone_mesh, line_mesh, materials, materials_active) = cached_assets.get_or_insert_with(|| {
         (
-            mesh_assets.add(Mesh::from(Cylinder {
+            mesh_assets.add(Mesh::from(Cone {
                 radius: 0.5,
+                height: 1.0,
+            })),
+            mesh_assets.add(Mesh::from(Cylinder {
+                radius: 0.15,
                 half_height: 0.5,
             })),
-            material_assets.add(Color::from(css::ORANGE_RED)),
+            [
+                material_assets.add(StandardMaterial {
+                    base_color: Color::from(css::RED),
+                    unlit: true,
+                    ..default()
+                }),
+                material_assets.add(StandardMaterial {
+                    base_color: Color::from(css::GREEN),
+                    unlit: true,
+                    ..default()
+                }),
+                material_assets.add(StandardMaterial {
+                    base_color: Color::from(css::BLUE),
+                    unlit: true,
+                    ..default()
+                }),
+            ],
+            [
+                material_assets.add(StandardMaterial {
+                    base_color: Color::linear_rgb(1.0, 0.5, 0.5),
+                    unlit: true,
+                    ..default()
+                }),
+                material_assets.add(StandardMaterial {
+                    base_color: Color::linear_rgb(0.5, 1.0, 0.5),
+                    unlit: true,
+                    ..default()
+                }),
+                material_assets.add(StandardMaterial {
+                    base_color: Color::linear_rgb(0.5, 0.5, 1.0),
+                    unlit: true,
+                    ..default()
+                }),
+            ],
         )
     });
 
-    let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
-    for (_, _, _, drag_plane) in edit.iter_matching() {
-        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
-        common_drag_plane.consider(*drag_plane.normal);
-    }
-    let Some(drag_plane_normal) = common_drag_plane.shared_normal() else {
-        return;
-    };
+    let axes = [
+        AxisKnobData {
+            axis: Vec3::X,
+            drag_plane_normal: Dir3::Z,
+        },
+        AxisKnobData {
+            axis: Vec3::Y,
+            drag_plane_normal: Dir3::X,
+        },
+        AxisKnobData {
+            axis: Vec3::Z,
+            drag_plane_normal: Dir3::Y,
+        },
+    ];
 
-    for (entity, global_transform, third_axis_with_knob, _) in edit.iter_matching() {
+    for (entity, global_transform, _) in edit.iter_matching() {
         let entity_position = global_transform.translation();
+        let entity_scale = global_transform.to_scale_rotation_translation().0;
+        let entity_radius = entity_scale.max_element();
 
-        for (knob_name, drag_plane_normal) in [
-            ("vpeol-3d-third-axis-knob-positive", drag_plane_normal),
-            ("vpeol-3d-third-axis-knob-negative", -drag_plane_normal),
-        ] {
-            let mut knob = knobs.knob((entity, knob_name));
-            let knob_offset = third_axis_with_knob.knob_distance * drag_plane_normal;
-            let knob_transform = Transform {
-                translation: entity_position + knob_offset,
-                rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
-                scale: third_axis_with_knob.knob_scale * Vec3::ONE,
+        let distance_to_camera = (camera_position - entity_position).length();
+        let distance_scale = (distance_to_camera / 40.0).max(1.0);
+
+        for (axis_idx, axis_data) in axes.iter().enumerate() {
+            let knob_name = match axis_data.axis {
+                v if v == Vec3::X => "vpeol-3d-axis-knob-x",
+                v if v == Vec3::Y => "vpeol-3d-axis-knob-y",
+                _ => "vpeol-3d-axis-knob-z",
             };
+
+            let line_name = match axis_data.axis {
+                v if v == Vec3::X => "vpeol-3d-axis-line-x",
+                v if v == Vec3::Y => "vpeol-3d-axis-line-y",
+                _ => "vpeol-3d-axis-line-z",
+            };
+
+            let scaled_knob_scale = knobs_config.knob_scale * distance_scale;
+            let base_distance = knobs_config.knob_distance + entity_radius;
+            let scaled_distance = base_distance * (1.0 + (distance_scale - 1.0) * 0.3);
+
+            let knob_offset = scaled_distance * axis_data.axis;
+            let knob_position = entity_position + knob_offset;
+            let knob_transform = Transform {
+                translation: knob_position,
+                rotation: Quat::from_rotation_arc(Vec3::Y, axis_data.axis),
+                scale: scaled_knob_scale * Vec3::ONE,
+            };
+
+            let line_length = scaled_distance - scaled_knob_scale * 0.5;
+            let line_center = entity_position + axis_data.axis * line_length * 0.5;
+            let line_transform = Transform {
+                translation: line_center,
+                rotation: Quat::from_rotation_arc(Vec3::Y, axis_data.axis),
+                scale: Vec3::new(scaled_knob_scale, line_length, scaled_knob_scale),
+            };
+
+            let line_knob = knobs.knob((entity, line_name));
+            let line_knob_id = line_knob.cmd.id();
+            drop(line_knob);
+            
+            let knob = knobs.knob((entity, knob_name));
+            let knob_id = knob.cmd.id();
+            let passed_pos = knob.get_passed_data::<Vec3>().copied();
+            drop(knob);
+            
+            let is_active = dragged_entity == Some(line_knob_id) || dragged_entity == Some(knob_id);
+            
+            let material = if is_active {
+                &materials_active[axis_idx]
+            } else {
+                &materials[axis_idx]
+            };
+
+            let mut line_knob = knobs.knob((entity, line_name));
+            line_knob.cmd.insert((
+                Mesh3d(line_mesh.clone()),
+                MeshMaterial3d(material.clone()),
+                line_transform,
+                GlobalTransform::from(line_transform),
+            ));
+
+            let mut knob = knobs.knob((entity, knob_name));
             knob.cmd.insert(VpeolDragPlane(InfinitePlane3d {
-                normal: Dir3::new(drag_plane_normal.cross(Vec3::X)).unwrap_or(Dir3::Y),
+                normal: axis_data.drag_plane_normal,
             }));
             knob.cmd.insert((
-                Mesh3d(mesh.clone()),
+                Mesh3d(cone_mesh.clone()),
                 MeshMaterial3d(material.clone()),
                 knob_transform,
                 GlobalTransform::from(knob_transform),
             ));
-            if let Some(pos) = knob.get_passed_data::<Vec3>() {
-                let vector_from_entity = *pos - knob_offset - entity_position;
-                let along_drag_normal = vector_from_entity.dot(drag_plane_normal);
-                let vector_along_drag_normal = along_drag_normal * drag_plane_normal;
-                let position_along_drag_normal = entity_position + vector_along_drag_normal;
-                // NOTE: we don't need to send this to all the selected entities. This will be
-                // handled in the system that receives the passed data.
-                directives_writer.write(YoleckDirective::pass_to_entity(
-                    entity,
-                    position_along_drag_normal,
-                ));
+
+            if let Some(pos) = passed_pos {
+                let vector_from_entity = pos - knob_offset - entity_position;
+                let along_axis = vector_from_entity.dot(axis_data.axis);
+                let new_position = entity_position + along_axis * axis_data.axis;
+                directives_writer.write(YoleckDirective::pass_to_entity(entity, new_position));
             }
         }
     }
