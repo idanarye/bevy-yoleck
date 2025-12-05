@@ -7,13 +7,10 @@ use bevy::mesh::Indices;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use uuid::Uuid;
 
-use bevy_yoleck::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
-use bevy_yoleck::vpeol::{prelude::*, vpeol_read_click_on_entity};
-use bevy_yoleck::{
-    prelude::*, yoleck_exclusive_system_cancellable, yoleck_map_entity_to_uuid, YoleckDirective,
-};
+use bevy_yoleck::prelude::*;
+use bevy_yoleck::vpeol::prelude::*;
+use bevy_yoleck::YoleckDirective;
 use serde::{Deserialize, Serialize};
 
 fn main() {
@@ -21,12 +18,9 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     let level = std::env::args().nth(1);
     if let Some(level) = level {
-        // The egui plugin is not needed for the game itself, but GameAssets won't load without it
-        // because it needs `EguiContexts` which cannot be `Option` because it's a custom
-        // `SystemParam`.
         app.add_plugins(EguiPlugin::default());
-
         app.add_plugins(YoleckPluginForGame);
+        app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
         app.add_systems(
             Startup,
             move |asset_server: Res<AssetServer>, mut commands: Commands| {
@@ -35,14 +29,9 @@ fn main() {
                 ));
             },
         );
-        app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
     } else {
         app.add_plugins(EguiPlugin::default());
-
         app.add_plugins(YoleckPluginForEditor);
-        // Adding `YoleckEditorLevelsDirectoryPath` is not usually required -
-        // `YoleckPluginForEditor` will add one with "assets/levels". Here we want to support
-        // example2d and example3d in the same repository so we use different directories.
         app.insert_resource(bevy_yoleck::YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels2d"),
         ));
@@ -56,15 +45,16 @@ fn main() {
             },
         );
     }
-    app.add_systems(Startup, |world: &mut World| {
-        world.init_resource::<GameAssets>();
-    });
 
     app.add_plugins(YoleckEntityUpgradingPlugin {
         app_format_version: 1,
     });
 
-    app.add_systems(Startup, setup_camera);
+    app.add_systems(Startup, (setup_camera, setup_assets));
+
+    // ========================================================================
+    // Player
+    // ========================================================================
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Player")
@@ -79,6 +69,10 @@ fn main() {
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
+    // ========================================================================
+    // Fruit
+    // ========================================================================
+
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Fruit")
             .with_uuid()
@@ -92,7 +86,6 @@ fn main() {
         if type_name != "Fruit" {
             return;
         }
-
         let mut old_data = data.as_object_mut().unwrap().remove("Fruit").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
         data["FruitType"] = serde_json::json!({
@@ -100,20 +93,25 @@ fn main() {
         });
     });
 
+    // ========================================================================
+    // FloatingText
+    // ========================================================================
+
     app.add_yoleck_entity_type({
         YoleckEntityType::new("FloatingText")
+            .with_uuid()
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dScale>()
             .with::<TextContent>()
-            .with::<LaserPointer>()
+            .with::<TextLaserPointer>()
     });
-    app.add_yoleck_edit_system(edit_text);
+    app.add_yoleck_auto_edit::<TextContent>();
+    app.add_yoleck_auto_edit::<TextLaserPointer>();
     app.add_systems(YoleckSchedule::Populate, populate_text);
     app.add_yoleck_entity_upgrade(1, |type_name, data| {
         if type_name != "FloatingText" {
             return;
         }
-
         let mut old_data = data
             .as_object_mut()
             .unwrap()
@@ -129,6 +127,10 @@ fn main() {
         .unwrap();
     });
 
+    // ========================================================================
+    // Triangle
+    // ========================================================================
+
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Triangle")
             .with::<Vpeol2dPosition>()
@@ -137,15 +139,22 @@ fn main() {
     app.add_yoleck_edit_system(edit_triangle);
     app.add_systems(YoleckSchedule::Populate, populate_triangle);
 
-    app.add_yoleck_edit_system(edit_laser_pointer);
-    app.add_systems(Update, draw_laser_pointers);
+    // ========================================================================
+    // Common systems
+    // ========================================================================
 
+    app.add_systems(Update, (resolve_laser_pointers, draw_laser_pointers));
     app.add_systems(
         Update,
         (control_player, eat_fruits).run_if(in_state(YoleckEditorState::GameActive)),
     );
+
     app.run();
 }
+
+// ============================================================================
+// Setup
+// ============================================================================
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn((
@@ -154,6 +163,10 @@ fn setup_camera(mut commands: Commands) {
         VpeolCameraState::default(),
         Vpeol2dCameraControl::default(),
     ));
+}
+
+fn setup_assets(world: &mut World) {
+    world.init_resource::<GameAssets>();
 }
 
 #[derive(Resource)]
@@ -211,6 +224,10 @@ impl FromWorld for GameAssets {
     }
 }
 
+// ============================================================================
+// Player
+// ============================================================================
+
 #[derive(Component)]
 struct IsPlayer;
 
@@ -240,7 +257,6 @@ fn edit_player(
     };
     use std::f32::consts::PI;
     ui.add(egui::Slider::new(&mut rotation.0, PI..=-PI).prefix("Angle: "));
-    // TODO: do this in vpeol_2d?
     let mut rotate_knob = knobs.knob("rotate");
     let knob_position = position.extend(1.0) + Quat::from_rotation_z(rotation.0) * (50.0 * Vec3::Y);
     rotate_knob.cmd.insert((
@@ -277,6 +293,10 @@ fn control_player(
     }
 }
 
+// ============================================================================
+// Fruit
+// ============================================================================
+
 #[derive(Component)]
 struct IsFruit;
 
@@ -300,7 +320,7 @@ fn duplicate_fruit(
             YoleckDirective::spawn_entity(
                 belongs_to_level.level,
                 "Fruit",
-                true, // select_created_entity
+                true,
             )
             .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
             .with(FruitType {
@@ -351,7 +371,6 @@ fn edit_fruit_type(
         }
     }
     if edit.has_nonmatching() {
-        // Only show the UI if _all_ the selected entities are fruits
         return;
     }
     let selected_fruit_types = selected_fruit_types;
@@ -365,11 +384,13 @@ fn edit_fruit_type(
             if ui
                 .add_enabled(
                     are_multile_types_selected || !selected_fruit_types[index],
-                    egui::ImageButton::new(egui::load::SizedTexture {
-                        id: *texture_id,
-                        size: egui::Vec2::new(100.0, 100.0),
-                    })
-                    .uv(*rect)
+                    egui::Button::image(
+                        egui::Image::new(egui::load::SizedTexture {
+                            id: *texture_id,
+                            size: egui::Vec2::new(100.0, 100.0),
+                        })
+                        .uv(*rect),
+                    )
                     .selected(selected_fruit_types[index]),
                 )
                 .clicked()
@@ -394,8 +415,6 @@ fn populate_fruit(
             VpeolWillContainClickableChildren,
             IsFruit,
         ));
-        // Could have placed them on the main entity, but with this the children picking feature
-        // can be tested and demonstrated.
         cmd.with_children(|commands| {
             let mut child = commands.spawn(marking.marker());
             child.insert((Sprite {
@@ -429,17 +448,32 @@ fn eat_fruits(
     }
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+// ============================================================================
+// FloatingText
+// ============================================================================
+
+#[derive(
+    Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent, YoleckAutoEdit,
+)]
 pub struct TextContent {
+    #[yoleck(multiline)]
     text: String,
 }
 
-impl Default for TextContent {
-    fn default() -> Self {
-        Self {
-            text: "<TEXT>".to_owned(),
-        }
-    }
+#[derive(
+    Default,
+    Clone,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Component,
+    YoleckComponent,
+    YoleckAutoEdit,
+    Debug,
+)]
+struct TextLaserPointer {
+    #[yoleck(entity_ref = "Fruit")]
+    target: YoleckEntityRef,
 }
 
 fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAssets>) {
@@ -455,18 +489,9 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAss
     });
 }
 
-fn edit_text(
-    mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(&mut TextContent, &mut Vpeol2dScale)>,
-) {
-    let Ok((mut content, mut scale)) = edit.single_mut() else {
-        return;
-    };
-    ui.text_edit_multiline(&mut content.text);
-    // TODO: do this in vpeol_2d?
-    ui.add(egui::Slider::new(&mut scale.0.x, 0.5..=5.0).logarithmic(true));
-    scale.0.y = scale.0.x;
-}
+// ============================================================================
+// Triangle
+// ============================================================================
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 pub struct TriangleVertices {
@@ -549,77 +574,33 @@ fn populate_triangle(
     });
 }
 
-#[derive(
-    Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Component, YoleckComponent, Debug,
-)]
-struct LaserPointer {
-    target: Option<Uuid>,
-}
+// ============================================================================
+// LaserPointer (shared)
+// ============================================================================
 
-fn edit_laser_pointer(
-    mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<&mut LaserPointer>,
-    mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
+fn resolve_laser_pointers(
+    mut query: Query<&mut TextLaserPointer>,
+    uuid_registry: Res<YoleckUuidRegistry>,
 ) {
-    let Ok(mut laser_pointer) = edit.single_mut() else {
-        return;
-    };
-
-    ui.horizontal(|ui| {
-        let button = if let Some(target) = laser_pointer.target {
-            ui.button(format!("Target: {:?}", target))
-        } else {
-            ui.button("No Target")
-        };
-        if button.clicked() {
-            exclusive_queue.push_back(
-                vpeol_read_click_on_entity::<With<YoleckEntityUuid>>
-                    .pipe(yoleck_map_entity_to_uuid)
-                    .pipe(
-                        |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut LaserPointer>| {
-                            let Ok(mut laser_pointer) = edit.single_mut() else {
-                                return YoleckExclusiveSystemDirective::Finished;
-                            };
-
-                            if let Some(target) = target {
-                                laser_pointer.target = Some(target);
-                                YoleckExclusiveSystemDirective::Finished
-                            } else {
-                                YoleckExclusiveSystemDirective::Listening
-                            }
-                        },
-                    )
-                    .pipe(yoleck_exclusive_system_cancellable),
-            );
-        }
-        if laser_pointer.target.is_some() {
-            if ui.button("Clear").clicked() {
-                laser_pointer.target = None;
-            }
-        }
-    });
+    for mut laser_pointer in query.iter_mut() {
+        laser_pointer.target.resolve(&uuid_registry);
+    }
 }
 
 fn draw_laser_pointers(
-    lasers_query: Query<(&LaserPointer, &GlobalTransform)>,
-    uuid_registry: Res<YoleckUuidRegistry>,
+    query: Query<(&TextLaserPointer, &GlobalTransform)>,
     targets_query: Query<&GlobalTransform>,
     mut gizmos: Gizmos,
 ) {
-    for (laser_pointer, laser_transform) in lasers_query.iter() {
-        let Some(target_entity) = laser_pointer
-            .target
-            .and_then(|uuid| uuid_registry.get(uuid))
-        else {
-            continue;
-        };
-        let Ok(target_transform) = targets_query.get(target_entity) else {
-            continue;
-        };
-        gizmos.line(
-            laser_transform.translation(),
-            target_transform.translation(),
-            css::GREEN,
-        );
+    for (laser_pointer, source_transform) in query.iter() {
+        if let Some(target_entity) = laser_pointer.target.get() {
+            if let Ok(target_transform) = targets_query.get(target_entity) {
+                gizmos.line(
+                    source_transform.translation(),
+                    target_transform.translation(),
+                    css::GREEN,
+                );
+            }
+        }
     }
 }
