@@ -407,13 +407,32 @@ pub fn entity_selection_section(
             
             if let Some(entity_uuid) = entity_uuid {
                 let uuid = entity_uuid.get();
-                let response = ui
-                    .dnd_drag_source(egui::Id::new(("entity_drag", uuid)), uuid, |ui| {
-                        ui.selectable_label(is_selected, format_caption(entity, yoleck_managed))
-                    })
-                    .response;
+                let sense = egui::Sense::click_and_drag();
+                let caption = format_caption(entity, yoleck_managed);
+                let response = ui.selectable_label(is_selected, caption.clone())
+                    .interact(sense);
                 
-                if response.clicked() {
+                if response.drag_started() {
+                    egui::DragAndDrop::set_payload(ui.ctx(), uuid);
+                }
+                
+                if response.dragged() {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+                    
+                    if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+                        egui::Area::new(egui::Id::new("dragged_entity_preview"))
+                            .fixed_pos(pointer_pos + egui::vec2(10.0, 10.0))
+                            .order(egui::Order::Tooltip)
+                            .show(ui.ctx(), |ui| {
+                                egui::Frame::popup(ui.style())
+                                    .show(ui, |ui| {
+                                        ui.label(&caption);
+                                    });
+                            });
+                    }
+                }
+                
+                if response.clicked() && !response.drag_started() {
                     if ui.input(|input| input.modifiers.shift) {
                         writer.write(YoleckDirective::toggle_selected(entity));
                     } else if is_selected {
