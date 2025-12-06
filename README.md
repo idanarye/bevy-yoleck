@@ -11,6 +11,7 @@
 | **Colored Axis Knobs** | Color-coded axis knobs (red for X, green for Y, blue for Z) automatically displayed for all three world axes |
 | **FPS-Style Camera** | Improved camera controls with FPS-style movement for better 3D navigation |
 | **Simplified Macro API** | Streamlined derive macros with automatic trait implementations - `YoleckAutoEdit` now handles both auto edit and entity ref systems |
+| **Keyboard Shortcuts** | Delete entities with `Delete` key, copy/paste entities with `Ctrl+C`/`Ctrl+V` |
 
 # Bevy YOLECK - Your Own Level Editor Creation Kit
 
