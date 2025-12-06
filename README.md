@@ -46,12 +46,12 @@ Then you can run the examples:
 
 * 2D example:
   ```bash
-  cargo run --example example2d --features vpeol_2d
+  cargo example2d
   ```
 
 * 3D example:
   ```bash
-  cargo run --example example3d --features vpeol_3d
+  cargo example3d
   ```
 
 ## File Format
