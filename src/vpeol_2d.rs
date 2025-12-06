@@ -176,12 +176,10 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
-        app.add_yoleck_edit_system(vpeol_2d_edit_position);
+        app.add_yoleck_edit_system(vpeol_2d_edit_transform_group);
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_2d_init_position));
-        app.add_yoleck_edit_system(vpeol_2d_edit_rotation);
-        app.add_yoleck_edit_system(vpeol_2d_edit_scale);
     }
 }
 
@@ -618,15 +616,36 @@ impl Default for Vpeol2dScale {
     }
 }
 
-fn vpeol_2d_edit_position(
+fn vpeol_2d_edit_transform_group(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    position_edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    rotation_edit: YoleckEdit<&mut Vpeol2dRotatation>,
+    scale_edit: YoleckEdit<&mut Vpeol2dScale>,
     passed_data: Res<YoleckPassedData>,
+) {
+    let has_any = !position_edit.is_empty() || !rotation_edit.is_empty() || !scale_edit.is_empty();
+    if !has_any {
+        return;
+    }
+
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("Transform").strong());
+        ui.separator();
+        
+        vpeol_2d_edit_position_impl(ui, position_edit, &passed_data);
+        vpeol_2d_edit_rotation_impl(ui, rotation_edit);
+        vpeol_2d_edit_scale_impl(ui, scale_edit);
+    });
+}
+
+fn vpeol_2d_edit_position_impl(
+    ui: &mut egui::Ui,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    passed_data: &YoleckPassedData,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    // Use double precision to prevent rounding errors when there are many entities.
     let mut average = DVec2::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec2::ZERO;
@@ -656,7 +675,7 @@ fn vpeol_2d_edit_position(
     }
 }
 
-fn vpeol_2d_edit_rotation(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol2dRotatation>) {
+fn vpeol_2d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol2dRotatation>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
@@ -691,7 +710,7 @@ fn vpeol_2d_edit_rotation(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vp
     });
 }
 
-fn vpeol_2d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol2dScale>) {
+fn vpeol_2d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol2dScale>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }

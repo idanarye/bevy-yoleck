@@ -226,7 +226,12 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit>(
     let Ok(mut component) = edit.single_mut() else {
         return;
     };
-    T::auto_edit(&mut component, &mut ui);
+    
+    ui.group(|ui| {
+        ui.label(egui::RichText::new(T::KEY).strong());
+        ui.separator();
+        T::auto_edit(&mut component, ui);
+    });
 }
 
 pub trait YoleckAutoEditExt {

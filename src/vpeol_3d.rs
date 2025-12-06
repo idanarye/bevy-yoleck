@@ -214,12 +214,10 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
-        app.add_yoleck_edit_system(vpeol_3d_edit_position);
+        app.add_yoleck_edit_system(vpeol_3d_edit_transform_group);
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
-        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
-        app.add_yoleck_edit_system(vpeol_3d_edit_scale);
         app.add_yoleck_edit_system(vpeol_3d_edit_axis_knobs);
     }
 }
@@ -918,16 +916,38 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_position(
+fn vpeol_3d_edit_transform_group(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    position_edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    rotation_edit: YoleckEdit<&mut Vpeol3dRotation>,
+    scale_edit: YoleckEdit<&mut Vpeol3dScale>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
+) {
+    let has_any = !position_edit.is_empty() || !rotation_edit.is_empty() || !scale_edit.is_empty();
+    if !has_any {
+        return;
+    }
+
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("Transform").strong());
+        ui.separator();
+        
+        vpeol_3d_edit_position_impl(ui, position_edit, &global_drag_plane, &passed_data);
+        vpeol_3d_edit_rotation_impl(ui, rotation_edit);
+        vpeol_3d_edit_scale_impl(ui, scale_edit);
+    });
+}
+
+fn vpeol_3d_edit_position_impl(
+    ui: &mut egui::Ui,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    global_drag_plane: &VpeolDragPlane,
+    passed_data: &YoleckPassedData,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    // Use double precision to prevent rounding errors when there are many entities.
     let mut average = DVec3::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec3::ZERO;
@@ -935,7 +955,7 @@ fn vpeol_3d_edit_position(
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
     for (entity, position, drag_plane) in edit.iter_matching() {
-        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane);
         common_drag_plane.consider(*drag_plane.normal);
 
         if let Some(pos) = passed_data.get::<Vec3>(entity) {
@@ -971,8 +991,8 @@ fn vpeol_3d_edit_position(
     }
 }
 
-fn vpeol_3d_edit_rotation(
-    mut ui: ResMut<YoleckUi>,
+fn vpeol_3d_edit_rotation_impl(
+    ui: &mut egui::Ui,
     mut edit: YoleckEdit<&mut Vpeol3dRotation>,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
@@ -1016,8 +1036,8 @@ fn vpeol_3d_edit_rotation(
     });
 }
 
-fn vpeol_3d_edit_scale(
-    mut ui: ResMut<YoleckUi>,
+fn vpeol_3d_edit_scale_impl(
+    ui: &mut egui::Ui,
     mut edit: YoleckEdit<&mut Vpeol3dScale>,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
