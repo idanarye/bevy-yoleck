@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.38.0 - 2025-12-06
+### Added
+- Startup validation that checks if entity types used in `entity_ref` filters have `.with_uuid()` and logs an error if not
+
+### Changed
+- Improved documentation for `YoleckEntityRef`, `with_uuid()`, and entity reference requirements
+- `YoleckEntityRef` now includes comprehensive documentation about requirements and editor features
+
 ## 0.37.0 - 2025-12-06
 ### Added
 - Drag and drop support for entity references: entities with UUID can now be dragged from the entity list and dropped onto `YoleckEntityRef` fields in the properties panel

@@ -17,6 +17,51 @@ use crate::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSy
 #[cfg(feature = "vpeol")]
 use crate::{yoleck_exclusive_system_cancellable, YoleckManaged};
 
+/// A reference to another Yoleck entity, stored by UUID for persistence.
+///
+/// This allows one entity to reference another entity in a way that survives saving and loading.
+/// The reference is stored as a UUID in the level file, which gets resolved to an actual `Entity`
+/// at runtime.
+///
+/// # Requirements
+///
+/// **Important:** Only entities with `.with_uuid()` can be referenced. When defining entity types
+/// that should be referenceable, make sure to add `.with_uuid()` to the entity type:
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::prelude::*;
+/// # let mut app = App::new();
+/// app.add_yoleck_entity_type({
+///     YoleckEntityType::new("Planet")
+///         .with_uuid()  // Required for entity references!
+///         // ... other configuration
+/// #       ;YoleckEntityType::new("Planet")
+/// });
+/// ```
+///
+/// # Editor Features
+///
+/// In the editor, entity references can be set using:
+/// - Dropdown menu to select from available entities
+/// - Drag and drop from the entity list (only entities with UUID can be dragged)
+/// - Viewport click selection using the 🎯 button
+///
+/// # Usage
+///
+/// Add a `YoleckEntityRef` field to your component with the `entity_ref` attribute to filter by
+/// entity type:
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::prelude::*;
+/// # use serde::{Deserialize, Serialize};
+/// #[derive(Component, YoleckComponent, YoleckAutoEdit, Serialize, Deserialize, Clone, PartialEq, Default)]
+/// struct LaserPointer {
+///     #[yoleck(entity_ref = "Planet")]
+///     target: YoleckEntityRef,
+/// }
+/// ```
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Debug)]
 pub struct YoleckEntityRef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -157,6 +202,34 @@ fn entity_ref_dropdown_ui(
 pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
     fn entity_ref_fields() -> &'static [(&'static str, Option<&'static str>)];
     fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut YoleckEntityRef;
+}
+
+#[cfg(feature = "vpeol")]
+#[derive(Resource, Default)]
+pub(crate) struct YoleckEntityRefRequirements {
+    pub requirements: Vec<(String, String, String)>, // (component_type, field_name, required_entity_type)
+}
+
+#[cfg(feature = "vpeol")]
+pub(crate) fn validate_entity_ref_requirements(
+    requirements: Res<YoleckEntityRefRequirements>,
+    construction_specs: Res<crate::YoleckEntityConstructionSpecs>,
+) {
+    for (component_type, field_name, required_entity_type) in &requirements.requirements {
+        if let Some(entity_type_info) = construction_specs.get_entity_type_info(required_entity_type) {
+            if !entity_type_info.has_uuid {
+                error!(
+                    "Entity reference field '{}' in component '{}' requires entity type '{}' to have UUID, \
+                     but it was registered without .with_uuid(). \
+                     Add .with_uuid() when calling YoleckEntityType::new(\"{}\") in add_yoleck_entity_type().",
+                    field_name,
+                    component_type,
+                    required_entity_type,
+                    required_entity_type
+                );
+            }
+        }
+    }
 }
 
 #[cfg(feature = "vpeol")]

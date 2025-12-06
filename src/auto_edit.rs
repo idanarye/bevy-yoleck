@@ -250,6 +250,20 @@ impl YoleckAutoEditExt for App {
     ) {
         self.add_yoleck_edit_system(auto_edit_system::<T>);
         self.add_yoleck_edit_system(edit_entity_refs_system::<T>);
+        
+        let mut requirements = self.world_mut()
+            .get_resource_or_insert_with(crate::entity_ref::YoleckEntityRefRequirements::default);
+        
+        let component_type = std::any::type_name::<T>();
+        for (field_name, filter) in T::entity_ref_fields() {
+            if let Some(required_entity_type) = filter {
+                requirements.requirements.push((
+                    component_type.to_string(),
+                    field_name.to_string(),
+                    required_entity_type.to_string(),
+                ));
+            }
+        }
     }
 
     #[cfg(not(feature = "vpeol"))]

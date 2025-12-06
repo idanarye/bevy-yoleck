@@ -383,6 +383,12 @@ impl Plugin for YoleckPluginForEditor {
         app.add_schedule(Schedule::new(
             YoleckInternalSchedule::UpdateManagedDataFromComponents,
         ));
+        
+        #[cfg(feature = "vpeol")]
+        {
+            app.init_resource::<entity_ref::YoleckEntityRefRequirements>();
+            app.add_systems(Startup, entity_ref::validate_entity_ref_requirements);
+        }
     }
 }
 
