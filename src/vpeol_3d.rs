@@ -412,6 +412,7 @@ fn draw_scene_gizmo(
     mut cameras_query: Query<&mut Transform, With<VpeolCameraState>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut first_frame_skipped: Local<bool>,
+    editor_viewport: Res<crate::editor_window::YoleckEditorViewportRect>,
 ) -> Result {
     if !*first_frame_skipped {
         *first_frame_skipped = true;
@@ -428,15 +429,16 @@ fn draw_scene_gizmo(
         return Ok(());
     };
 
+    let screen_rect = editor_viewport.rect.unwrap_or_else(|| ctx.input(|i| i.viewport_rect()));
+
+    if screen_rect.width() == 0.0 || screen_rect.height() == 0.0 {
+        return Ok(());
+    }
+
     let gizmo_size = 60.0;
     let axis_length = 25.0;
     let margin = 20.0;
     let click_radius = 10.0;
-
-    let screen_rect = ctx.input(|i| i.viewport_rect());
-    if screen_rect.width() == 0.0 || screen_rect.height() == 0.0 {
-        return Ok(());
-    }
 
     let center = egui::Pos2::new(
         screen_rect.max.x - margin - gizmo_size / 2.0,

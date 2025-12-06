@@ -7,6 +7,11 @@ use crate::YoleckEditorRightPanelSections;
 use crate::YoleckEditorSections;
 use crate::YoleckEditorTopPanelSections;
 
+#[derive(Resource, Default)]
+pub struct YoleckEditorViewportRect {
+    pub rect: Option<egui::Rect>,
+}
+
 pub(crate) fn yoleck_editor_window(
     world: &mut World,
     mut egui_query: Local<Option<QueryState<&mut EguiContext, With<PrimaryEguiContext>>>>,
@@ -108,7 +113,18 @@ pub(crate) fn yoleck_editor_window(
         .rect
         .height();
 
-    // Calculate viewport for the scene camera
+    let viewport_rect = egui::Rect::from_min_max(
+        egui::Pos2::new(left, top),
+        egui::Pos2::new(
+            ctx.input(|i| i.viewport_rect().width()) - right,
+            ctx.input(|i| i.viewport_rect().height()) - bottom,
+        ),
+    );
+
+    if let Some(mut editor_viewport) = world.get_resource_mut::<YoleckEditorViewportRect>() {
+        editor_viewport.rect = Some(viewport_rect);
+    }
+
     if let Ok(window) = world
         .query_filtered::<&bevy::window::Window, With<PrimaryWindow>>()
         .single(world)

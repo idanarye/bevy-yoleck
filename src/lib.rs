@@ -231,7 +231,7 @@ pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
 use self::editor::YoleckEditorState;
-pub use self::editor_window::YoleckEditorSection;
+pub use self::editor_window::{YoleckEditorSection, YoleckEditorViewportRect};
 pub use self::picking_helpers::*;
 
 use self::entity_management::{EntitiesToPopulate, YoleckRawLevel};
@@ -365,6 +365,7 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorSections::default());
         app.insert_resource(YoleckEditorRightPanelSections::default());
         app.insert_resource(YoleckEditorTopPanelSections::default());
+        app.init_resource::<YoleckEditorViewportRect>();
         app.init_resource::<YoleckPlaytestLevel>();
         app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
             levels: Default::default(),
