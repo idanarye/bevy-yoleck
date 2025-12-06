@@ -378,45 +378,45 @@ pub fn entity_selection_section(
             return Ok(());
         }
 
-        egui::CollapsingHeader::new("Select").show(ui, |ui| {
-            egui::CollapsingHeader::new("Filter").show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("By Name:");
-                    ui.text_edit_singleline(&mut filter_custom_name);
-                });
-                for entity_type in construction_specs.entity_types.iter() {
-                    let mut should_show = filter_types.contains(&entity_type.name);
-                    if ui.checkbox(&mut should_show, &entity_type.name).changed() {
-                        if should_show {
-                            filter_types.insert(entity_type.name.clone());
-                        } else {
-                            filter_types.remove(&entity_type.name);
-                        }
-                    }
-                }
+        egui::CollapsingHeader::new("Filter").show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("By Name:");
+                ui.text_edit_singleline(&mut filter_custom_name);
             });
-            for (entity, yoleck_managed, edit_marker) in yoleck_managed_query.iter() {
-                if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
-                    continue;
-                }
-                if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
-                    continue;
-                }
-                let is_selected = edit_marker.is_some();
-                if ui
-                    .selectable_label(is_selected, format_caption(entity, yoleck_managed))
-                    .clicked()
-                {
-                    if ui.input(|input| input.modifiers.shift) {
-                        writer.write(YoleckDirective::toggle_selected(entity));
-                    } else if is_selected {
-                        writer.write(YoleckDirective::set_selected(None));
+            for entity_type in construction_specs.entity_types.iter() {
+                let mut should_show = filter_types.contains(&entity_type.name);
+                if ui.checkbox(&mut should_show, &entity_type.name).changed() {
+                    if should_show {
+                        filter_types.insert(entity_type.name.clone());
                     } else {
-                        writer.write(YoleckDirective::set_selected(Some(entity)));
+                        filter_types.remove(&entity_type.name);
                     }
                 }
             }
         });
+
+        for (entity, yoleck_managed, edit_marker) in yoleck_managed_query.iter() {
+            if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
+                continue;
+            }
+            if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
+                continue;
+            }
+            let is_selected = edit_marker.is_some();
+            if ui
+                .selectable_label(is_selected, format_caption(entity, yoleck_managed))
+                .clicked()
+            {
+                if ui.input(|input| input.modifiers.shift) {
+                    writer.write(YoleckDirective::toggle_selected(entity));
+                } else if is_selected {
+                    writer.write(YoleckDirective::set_selected(None));
+                } else {
+                    writer.write(YoleckDirective::set_selected(Some(entity)));
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -581,10 +581,7 @@ pub fn entity_editing_section(
             if let Ok((entity, mut yoleck_managed)) = yoleck_managed_query.single_mut() {
                 entity_being_edited = Some(entity);
                 ui.horizontal(|ui| {
-                    ui.heading(format!(
-                        "Editing {}",
-                        format_caption(entity, &yoleck_managed)
-                    ));
+                    ui.heading(format_caption(entity, &yoleck_managed));
                     if ui.button("Delete").clicked() {
                         commands.entity(entity).despawn();
                         writer.write(YoleckEditorEvent::EntityDeselected(entity));

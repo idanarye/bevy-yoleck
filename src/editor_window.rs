@@ -1,8 +1,11 @@
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext, PrimaryEguiContext};
 
 use crate::util::EditSpecificResources;
+use crate::YoleckEditorRightPanelSections;
 use crate::YoleckEditorSections;
+use crate::YoleckEditorTopPanelSections;
 
 pub(crate) fn yoleck_editor_window(
     world: &mut World,
@@ -14,28 +17,134 @@ pub(crate) fn yoleck_editor_window(
     } else {
         return;
     };
-    egui::Window::new("Level Editor")
-        .vscroll(true)
-        .show(borrowed_egui.get_mut(), |ui| {
-            world.resource_scope(
-                |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
-                    world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
-                        edit_specific.inject_to_world(world);
-                        for section in yoleck_editor_sections.0.iter_mut() {
-                            section.0.invoke(world, ui).unwrap();
-                        }
-                        edit_specific.take_from_world(world);
-                    });
-                },
-            );
-        });
+
+    let ctx = borrowed_egui.get_mut();
+
+    let left = egui::SidePanel::left("yoleck_left_panel")
+        .resizable(true)
+        .default_width(300.0)
+        .show(ctx, |ui| {
+            ui.label("Level Editor");
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                world.resource_scope(
+                    |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
+                        world.resource_scope(
+                            |world, mut edit_specific: Mut<EditSpecificResources>| {
+                                edit_specific.inject_to_world(world);
+                                for section in yoleck_editor_sections.0.iter_mut() {
+                                    section.0.invoke(world, ui).unwrap();
+                                }
+                                edit_specific.take_from_world(world);
+                            },
+                        );
+                    },
+                );
+            });
+        })
+        .response
+        .rect
+        .width();
+
+    let right = egui::SidePanel::right("yoleck_right_panel")
+        .resizable(true)
+        .default_width(300.0)
+        .show(ctx, |ui| {
+            ui.heading("Properties");
+            ui.separator();
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                world.resource_scope(
+                    |world, mut yoleck_editor_right_sections: Mut<YoleckEditorRightPanelSections>| {
+                        world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
+                            edit_specific.inject_to_world(world);
+                            for section in yoleck_editor_right_sections.0.iter_mut() {
+                                section.0.invoke(world, ui).unwrap();
+                            }
+                            edit_specific.take_from_world(world);
+                        });
+                    },
+                );
+            });
+        })
+        .response
+        .rect
+        .width();
+
+    let top = egui::TopBottomPanel::top("yoleck_top_panel")
+        .resizable(false)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Yoleck Editor");
+                ui.separator();
+                
+                world.resource_scope(
+                    |world, mut yoleck_editor_top_sections: Mut<YoleckEditorTopPanelSections>| {
+                        world.resource_scope(
+                            |world, mut edit_specific: Mut<EditSpecificResources>| {
+                                edit_specific.inject_to_world(world);
+                                for section in yoleck_editor_top_sections.0.iter_mut() {
+                                    section.0.invoke(world, ui).unwrap();
+                                }
+                                edit_specific.take_from_world(world);
+                            },
+                        );
+                    },
+                );
+            });
+        })
+        .response
+        .rect
+        .height();
+
+    let bottom = egui::TopBottomPanel::bottom("yoleck_bottom_panel")
+        .resizable(true)
+        .default_height(100.0)
+        .show(ctx, |ui| {
+            ui.heading("Console");
+            ui.separator();
+            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+        })
+        .response
+        .rect
+        .height();
+
+    // Calculate viewport for the scene camera
+    if let Ok(window) = world
+        .query_filtered::<&bevy::window::Window, With<PrimaryWindow>>()
+        .single(world)
+    {
+        let scale = window.scale_factor();
+
+        let left_px = (left * scale) as u32;
+        let right_px = (right * scale) as u32;
+        let top_px = (top * scale) as u32;
+        let bottom_px = (bottom * scale) as u32;
+
+        let pos = UVec2::new(left_px, top_px);
+        let size = UVec2::new(window.physical_width(), window.physical_height())
+            .saturating_sub(pos)
+            .saturating_sub(UVec2::new(right_px, bottom_px));
+
+        if size.x > 0 && size.y > 0 {
+            let mut camera_query =
+                world.query_filtered::<&mut Camera, Without<PrimaryEguiContext>>();
+            for mut camera in camera_query.iter_mut(world) {
+                camera.viewport = Some(bevy::camera::Viewport {
+                    physical_position: pos,
+                    physical_size: size,
+                    ..default()
+                });
+            }
+        }
+    }
+
     if let Ok(mut egui_context) = egui_query.single_mut(world) {
         *egui_context = borrowed_egui;
     }
 }
 
 #[allow(clippy::type_complexity)]
-enum YoleckEditorSectionInner {
+pub(crate) enum YoleckEditorSectionInner {
     Uninitialized(
         Box<
             dyn 'static
@@ -53,7 +162,7 @@ enum YoleckEditorSectionInner {
 }
 
 impl YoleckEditorSectionInner {
-    fn invoke(&mut self, world: &mut World, ui: &mut egui::Ui) -> Result {
+    pub(crate) fn invoke(&mut self, world: &mut World, ui: &mut egui::Ui) -> Result {
         match self {
             Self::Uninitialized(_) => {
                 if let Self::Uninitialized(system_constructor) =
@@ -76,7 +185,7 @@ impl YoleckEditorSectionInner {
 }
 
 /// A single section of the UI. See [`YoleckEditorSections`](crate::YoleckEditorSections).
-pub struct YoleckEditorSection(YoleckEditorSectionInner);
+pub struct YoleckEditorSection(pub(crate) YoleckEditorSectionInner);
 
 impl<C, S> From<C> for YoleckEditorSection
 where

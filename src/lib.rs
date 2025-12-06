@@ -363,6 +363,9 @@ impl Plugin for YoleckPluginForEditor {
             Path::new(".").join("assets").join("levels"),
         ));
         app.insert_resource(YoleckEditorSections::default());
+        app.insert_resource(YoleckEditorRightPanelSections::default());
+        app.insert_resource(YoleckEditorTopPanelSections::default());
+        app.init_resource::<YoleckPlaytestLevel>();
         app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
             levels: Default::default(),
         }));
@@ -643,13 +646,38 @@ pub(crate) struct YoleckState {
 #[derive(Resource)]
 pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
 
+/// Sections for the right panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorRightPanelSections(pub Vec<YoleckEditorSection>);
+
+/// Sections for the top panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorTopPanelSections(pub Vec<YoleckEditorSection>);
+
+/// The level currently being playtested, if any.
+#[derive(Default, Resource)]
+pub struct YoleckPlaytestLevel(pub Option<YoleckRawLevel>);
+
+impl Default for YoleckEditorRightPanelSections {
+    fn default() -> Self {
+        YoleckEditorRightPanelSections(vec![editor::entity_editing_section.into()])
+    }
+}
+
+impl Default for YoleckEditorTopPanelSections {
+    fn default() -> Self {
+        YoleckEditorTopPanelSections(vec![
+            level_files_manager::level_files_manager_top_section.into(),
+            level_files_manager::playtest_buttons_section.into(),
+        ])
+    }
+}
+
 impl Default for YoleckEditorSections {
     fn default() -> Self {
         YoleckEditorSections(vec![
-            level_files_manager::level_files_manager_section.into(),
             editor::new_entity_section.into(),
             editor::entity_selection_section.into(),
-            editor::entity_editing_section.into(),
         ])
     }
 }

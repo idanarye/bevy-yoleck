@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.36.0 - 2025-12-06
+### Changed
+- **Major UI/UX overhaul**: Redesigned editor interface with split-screen layout
+  - Top panel: Level file management and playmode controls
+  - Right panel: Selected entity properties editor
+  - Bottom panel: Entity list and selection controls
+  - Left panel: Entity type creation tools
+- Improved editor ergonomics with better organized workspace instead of single cluttered panel
+
 ## 0.35.0 - 2025-12-05
 ### Changed
 - Axis knobs are now always displayed for all 3 world axes (X, Y, Z) by default
