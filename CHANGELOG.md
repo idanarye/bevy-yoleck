@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.43.0 - 2025-12-06
+### Fixed
+- Fixed rotation bug allowing objects to rotate beyond 90 degrees without value constraints
+
+### Added
+- World/Local mode toggle for axis knobs in 3D editor top panel
+- Exported `Vpeol3dKnobsMode` in `vpeol::prelude`
+
+### Changed
+- **BREAKING:** `Vpeol3dRotation` now stores Euler angles (`Vec3`) instead of quaternion
+- Added `mode` field to `Vpeol3dKnobsConfig`
+
 ## 0.42.0 - 2025-12-06
 ### Changed
 - Grouped Transform fields (Position, Rotation, Scale) in properties panel for better organization in 3D editor

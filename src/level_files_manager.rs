@@ -544,39 +544,38 @@ pub fn playtest_buttons_section(
             }
         };
 
-        ui.horizontal(|ui| {
-            if let Some(level) = &playtest_level.0 {
-                let finish_playtest_response = ui.button("Finish Playtest");
-                if ui.button("Restart Playtest").clicked() {
-                    clear_level(&mut commands);
-                    let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited = commands
-                        .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
-                        .id();
-                }
-                if finish_playtest_response.clicked() {
-                    clear_level(&mut commands);
-                    next_editor_state.set(YoleckEditorState::EditorActive);
-                    let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited = commands
-                        .spawn((YoleckLevelInEditor, YoleckLoadLevel(level_asset_handle)))
-                        .id();
-                    playtest_level.0 = None;
-                }
-            } else {
-                if ui.button("Playtest").clicked() {
-                    let level = gen_raw_level_file();
-                    clear_level(&mut commands);
-                    next_editor_state.set(YoleckEditorState::GameActive);
-                    let level_asset_handle = level_assets.add(level.clone());
-                    yoleck.level_being_edited = commands
-                        .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
-                        .id();
-                    playtest_level.0 = Some(level);
-                }
+        if let Some(level) = &playtest_level.0 {
+            let finish_playtest_response = ui.button("Finish Playtest");
+            if ui.button("Restart Playtest").clicked() {
+                clear_level(&mut commands);
+                let level_asset_handle = level_assets.add(level.clone());
+                yoleck.level_being_edited = commands
+                    .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
+                    .id();
             }
-        });
+            if finish_playtest_response.clicked() {
+                clear_level(&mut commands);
+                next_editor_state.set(YoleckEditorState::EditorActive);
+                let level_asset_handle = level_assets.add(level.clone());
+                yoleck.level_being_edited = commands
+                    .spawn((YoleckLevelInEditor, YoleckLoadLevel(level_asset_handle)))
+                    .id();
+                playtest_level.0 = None;
+            }
+        } else {
+            if ui.button("Playtest").clicked() {
+                let level = gen_raw_level_file();
+                clear_level(&mut commands);
+                next_editor_state.set(YoleckEditorState::GameActive);
+                let level_asset_handle = level_assets.add(level.clone());
+                yoleck.level_being_edited = commands
+                    .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
+                    .id();
+                playtest_level.0 = Some(level);
+            }
+        }
 
+        ui.separator();
         system_state.apply(world);
         Ok(())
     }

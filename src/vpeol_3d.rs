@@ -97,12 +97,13 @@ use crate::vpeol::{
     VpeolCameraState, VpeolClicksOnObjectsState, VpeolDragPlane, VpeolRepositionLevel,
     VpeolRootResolver, VpeolSystems,
 };
-use crate::{prelude::*, YoleckDirective, YoleckSchedule, YoleckEditMarker, YoleckState, YoleckBelongsToLevel};
+use crate::{prelude::*, YoleckDirective, YoleckSchedule, YoleckEditMarker, YoleckState, YoleckBelongsToLevel, YoleckEditorTopPanelSections};
 use crate::editor::YoleckEditorEvent;
 use crate::entity_management::YoleckRawEntry;
 use crate::{YoleckManaged, YoleckEntityConstructionSpecs};
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
+use bevy::ecs::system::SystemState;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -181,6 +182,11 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
         app.init_resource::<Vpeol3dKnobsConfig>();
+
+        app.world_mut()
+            .resource_mut::<YoleckEditorTopPanelSections>()
+            .0
+            .push(vpeol_3d_knobs_mode_selector.into());
 
         app.add_systems(
             Update,
@@ -839,6 +845,26 @@ fn camera_3d_rotate(
     Ok(())
 }
 
+pub fn vpeol_3d_knobs_mode_selector(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
+    let mut system_state = SystemState::<ResMut<Vpeol3dKnobsConfig>>::new(world);
+
+    move |world, ui: &mut egui::Ui| {
+        let mut config = system_state.get_mut(world);
+
+        ui.add_space(ui.available_width());
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::Local, "Local");
+            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::World, "World");
+            ui.label("Knobs:");
+        });
+        
+        Ok(())
+    }
+}
+
 /// A position component that's edited and populated by vpeol_3d.
 ///
 /// Editing is done with egui, or by dragging the entity on a [`VpeolDragPlane`]  that passes
@@ -849,10 +875,17 @@ fn camera_3d_rotate(
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Vpeol3dKnobsMode {
+    World,
+    Local,
+}
+
 #[derive(Resource)]
 pub struct Vpeol3dKnobsConfig {
     pub knob_distance: f32,
     pub knob_scale: f32,
+    pub mode: Vpeol3dKnobsMode,
 }
 
 impl Default for Vpeol3dKnobsConfig {
@@ -860,6 +893,7 @@ impl Default for Vpeol3dKnobsConfig {
         Self {
             knob_distance: 2.0,
             knob_scale: 0.5,
+            mode: Vpeol3dKnobsMode::World,
         }
     }
 }
@@ -867,10 +901,16 @@ impl Default for Vpeol3dKnobsConfig {
 /// A rotation component that's edited and populated by vpeol_3d.
 ///
 /// Editing is done with egui using Euler angles (X, Y, Z in degrees).
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct Vpeol3dRotation(pub Quat);
+pub struct Vpeol3dRotation(pub Vec3);
+
+impl Default for Vpeol3dRotation {
+    fn default() -> Self {
+        Self(Vec3::ZERO)
+    }
+}
 
 /// A scale component that's edited and populated by vpeol_3d.
 ///
@@ -1003,8 +1043,7 @@ fn vpeol_3d_edit_rotation_impl(
     let mut num_entities = 0;
 
     for rotation in edit.iter_matching() {
-        let (roll, pitch, yaw) = rotation.0.to_euler(EulerRot::XYZ);
-        average_euler += Vec3::new(roll, pitch, yaw);
+        average_euler += rotation.0;
         num_entities += 1;
     }
     average_euler /= num_entities as f32;
@@ -1028,9 +1067,7 @@ fn vpeol_3d_edit_rotation_impl(
         
         if transition.is_finite() && transition != Vec3::ZERO {
             for mut rotation in edit.iter_matching_mut() {
-                let (roll, pitch, yaw) = rotation.0.to_euler(EulerRot::XYZ);
-                let new_rotation = Vec3::new(roll, pitch, yaw) + transition;
-                rotation.0 = Quat::from_euler(EulerRot::XYZ, new_rotation.x, new_rotation.y, new_rotation.z);
+                rotation.0 += transition;
             }
         }
     });
@@ -1107,13 +1144,14 @@ fn vpeol_3d_init_position(
     YoleckExclusiveSystemDirective::Listening
 }
 
+#[derive(Clone, Copy)]
 struct AxisKnobData {
     axis: Vec3,
     drag_plane_normal: Dir3,
 }
 
 fn vpeol_3d_edit_axis_knobs(
-    mut edit: YoleckEdit<(Entity, &GlobalTransform, &Vpeol3dPosition)>,
+    mut edit: YoleckEdit<(Entity, &GlobalTransform, &Vpeol3dPosition, Option<&Vpeol3dRotation>)>,
     knobs_config: Res<Vpeol3dKnobsConfig>,
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
@@ -1192,7 +1230,7 @@ fn vpeol_3d_edit_axis_knobs(
         )
     });
 
-    let axes = [
+    let world_axes = [
         AxisKnobData {
             axis: Vec3::X,
             drag_plane_normal: Dir3::Z,
@@ -1207,7 +1245,7 @@ fn vpeol_3d_edit_axis_knobs(
         },
     ];
 
-    for (entity, global_transform, _) in edit.iter_matching() {
+    for (entity, global_transform, _, rotation) in edit.iter_matching() {
         let entity_position = global_transform.translation();
         let entity_scale = global_transform.to_scale_rotation_translation().0;
         let entity_radius = entity_scale.max_element();
@@ -1215,16 +1253,46 @@ fn vpeol_3d_edit_axis_knobs(
         let distance_to_camera = (camera_position - entity_position).length();
         let distance_scale = (distance_to_camera / 40.0).max(1.0);
 
+        let axes = match knobs_config.mode {
+            Vpeol3dKnobsMode::World => world_axes,
+            Vpeol3dKnobsMode::Local => {
+                let rot = if let Some(Vpeol3dRotation(euler_angles)) = rotation {
+                    Quat::from_euler(EulerRot::XYZ, euler_angles.x, euler_angles.y, euler_angles.z)
+                } else {
+                    Quat::IDENTITY
+                };
+                
+                let local_x = (rot * Vec3::X).normalize();
+                let local_y = (rot * Vec3::Y).normalize();
+                let local_z = (rot * Vec3::Z).normalize();
+                
+                [
+                    AxisKnobData {
+                        axis: local_x,
+                        drag_plane_normal: Dir3::new_unchecked(local_z),
+                    },
+                    AxisKnobData {
+                        axis: local_y,
+                        drag_plane_normal: Dir3::new_unchecked(local_x),
+                    },
+                    AxisKnobData {
+                        axis: local_z,
+                        drag_plane_normal: Dir3::new_unchecked(local_y),
+                    },
+                ]
+            }
+        };
+
         for (axis_idx, axis_data) in axes.iter().enumerate() {
-            let knob_name = match axis_data.axis {
-                v if v == Vec3::X => "vpeol-3d-axis-knob-x",
-                v if v == Vec3::Y => "vpeol-3d-axis-knob-y",
+            let knob_name = match axis_idx {
+                0 => "vpeol-3d-axis-knob-x",
+                1 => "vpeol-3d-axis-knob-y",
                 _ => "vpeol-3d-axis-knob-z",
             };
 
-            let line_name = match axis_data.axis {
-                v if v == Vec3::X => "vpeol-3d-axis-line-x",
-                v if v == Vec3::Y => "vpeol-3d-axis-line-y",
+            let line_name = match axis_idx {
+                0 => "vpeol-3d-axis-line-x",
+                1 => "vpeol-3d-axis-line-y",
                 _ => "vpeol-3d-axis-line-z",
             };
 
@@ -1306,8 +1374,9 @@ fn vpeol_3d_populate_transform(
     populate.populate(
         |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
             let mut transform = Transform::from_translation(position.0);
-            if let Some(Vpeol3dRotation(rotation)) = rotation {
-                transform = transform.with_rotation(*rotation);
+            if let Some(Vpeol3dRotation(euler_angles)) = rotation {
+                let quat = Quat::from_euler(EulerRot::XYZ, euler_angles.x, euler_angles.y, euler_angles.z);
+                transform = transform.with_rotation(quat);
             }
             if let Some(Vpeol3dScale(scale)) = scale {
                 transform = transform.with_scale(*scale);
