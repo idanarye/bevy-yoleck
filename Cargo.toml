@@ -4,7 +4,7 @@ members = ["macros"]
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.39.0"
+version = "0.40.0"
 edition = "2021"
 authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
 license = "MIT OR Apache-2.0"
@@ -33,6 +33,7 @@ serde = "^1"
 serde_json = "^1"
 thiserror = "^2"
 uuid = "1.9.1"
+arboard = "3.4"
 
 [features]
 bevy_reflect = []

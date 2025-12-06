@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.40.0 - 2025-12-07
+### Added
+- Keyboard shortcut to delete selected entities: Press `Delete` key to remove selected entity from the level
+- Copy/paste support for entities: Use `Ctrl+C` to copy and `Ctrl+V` to paste entities with all their components and values
+- Cross-level entity copying: Entities can be copied between different level editors through system clipboard
+- Auto-selection of pasted entities: Newly pasted entities are automatically selected for immediate editing
+- Added `arboard` dependency for cross-platform clipboard support
+
+### Changed
+- Entity deletion now works via keyboard in addition to the existing UI button
+
 ## 0.39.0 - 2025-12-06
 ### Added
 - UI editing support for `Vpeol3dRotation` using Euler angles (X, Y, Z in degrees)
