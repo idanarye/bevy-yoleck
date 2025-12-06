@@ -4,7 +4,7 @@ members = ["macros"]
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.36.0"
+version = "0.37.0"
 edition = "2021"
 authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
 license = "MIT OR Apache-2.0"

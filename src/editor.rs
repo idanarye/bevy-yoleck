@@ -8,6 +8,7 @@ use bevy::state::state::FreelyMutableState;
 use bevy_egui::egui;
 
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
+use crate::entity_uuid::YoleckEntityUuid;
 use crate::exclusive_systems::{
     YoleckActiveExclusiveSystem, YoleckEntityCreationExclusiveSystems,
     YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue,
@@ -356,7 +357,7 @@ pub fn entity_selection_section(
 
     let mut system_state = SystemState::<(
         Res<YoleckEntityConstructionSpecs>,
-        Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>)>,
+        Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>, Option<&YoleckEntityUuid>)>,
         Res<State<YoleckEditorState>>,
         MessageWriter<YoleckDirective>,
         Option<Res<YoleckActiveExclusiveSystem>>,
@@ -395,7 +396,7 @@ pub fn entity_selection_section(
             }
         });
 
-        for (entity, yoleck_managed, edit_marker) in yoleck_managed_query.iter() {
+        for (entity, yoleck_managed, edit_marker, entity_uuid) in yoleck_managed_query.iter() {
             if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
                 continue;
             }
@@ -403,16 +404,36 @@ pub fn entity_selection_section(
                 continue;
             }
             let is_selected = edit_marker.is_some();
-            if ui
-                .selectable_label(is_selected, format_caption(entity, yoleck_managed))
-                .clicked()
-            {
-                if ui.input(|input| input.modifiers.shift) {
-                    writer.write(YoleckDirective::toggle_selected(entity));
-                } else if is_selected {
-                    writer.write(YoleckDirective::set_selected(None));
-                } else {
-                    writer.write(YoleckDirective::set_selected(Some(entity)));
+            
+            if let Some(entity_uuid) = entity_uuid {
+                let uuid = entity_uuid.get();
+                let response = ui
+                    .dnd_drag_source(egui::Id::new(("entity_drag", uuid)), uuid, |ui| {
+                        ui.selectable_label(is_selected, format_caption(entity, yoleck_managed))
+                    })
+                    .response;
+                
+                if response.clicked() {
+                    if ui.input(|input| input.modifiers.shift) {
+                        writer.write(YoleckDirective::toggle_selected(entity));
+                    } else if is_selected {
+                        writer.write(YoleckDirective::set_selected(None));
+                    } else {
+                        writer.write(YoleckDirective::set_selected(Some(entity)));
+                    }
+                }
+            } else {
+                if ui
+                    .selectable_label(is_selected, format_caption(entity, yoleck_managed))
+                    .clicked()
+                {
+                    if ui.input(|input| input.modifiers.shift) {
+                        writer.write(YoleckDirective::toggle_selected(entity));
+                    } else if is_selected {
+                        writer.write(YoleckDirective::set_selected(None));
+                    } else {
+                        writer.write(YoleckDirective::set_selected(Some(entity)));
+                    }
                 }
             }
         }

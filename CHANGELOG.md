@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Drag and drop support for entity references: entities with UUID can now be dragged from the entity list and dropped onto `YoleckEntityRef` fields in the properties panel
+- Entity type filtering is automatically applied when dropping entities onto entity reference fields with type constraints
 
 ## 0.36.0 - 2025-12-06
 ### Changed

@@ -186,7 +186,7 @@ pub fn edit_entity_refs_system<T: Component<Mutability = Mutable> + YoleckEntity
         let entity_ref = component.get_entity_ref_mut(field_name);
         let current_uuid = entity_ref.uuid;
 
-        ui.horizontal(|ui| {
+        let response = ui.horizontal(|ui| {
             ui.label(*field_name);
 
             if let Some(new_value) =
@@ -218,7 +218,21 @@ pub fn edit_entity_refs_system<T: Component<Mutability = Mutable> + YoleckEntity
             if entity_ref.is_some() && ui.small_button("✕").clicked() {
                 entity_ref.clear();
             }
-        });
+        }).response;
+
+        if let Some(dropped_uuid) = response.dnd_release_payload::<Uuid>() {
+            let dropped_uuid = *dropped_uuid;
+            let entity_ref = component.get_entity_ref_mut(field_name);
+            if filter.is_some() {
+                if let Some((_, _, type_name, _)) = entities.iter().find(|(_, uuid, _, _)| *uuid == dropped_uuid) {
+                    if filter.as_deref() == Some(type_name) {
+                        entity_ref.set(dropped_uuid);
+                    }
+                }
+            } else {
+                entity_ref.set(dropped_uuid);
+            }
+        }
     }
 }
 
