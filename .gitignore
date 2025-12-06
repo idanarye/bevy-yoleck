@@ -9,4 +9,7 @@ assets/levels3d/*.yol
 assets/levels3d/*.yoli
 !assets/levels3d/example.yol
 
+#IDES
+/.vscode
+
 # No ignored level files in levels_doors

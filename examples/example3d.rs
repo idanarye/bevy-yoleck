@@ -56,11 +56,11 @@ fn main() {
         YoleckEntityType::new("Planet")
             .with_uuid()
             .with::<Vpeol3dPosition>()
-            .with::<PlanetSettings>()
+            .with::<Vpeol3dRotation>()
+            .with::<Vpeol3dScale>()
             .insert_on_init(|| IsPlanet)
             .insert_on_init_during_editor(|| VpeolDragPlane::XY)
     });
-    app.add_yoleck_auto_edit::<PlanetSettings>();
     app.add_systems(YoleckSchedule::Populate, populate_planet);
 
     app.add_yoleck_entity_type({
@@ -200,39 +200,27 @@ fn control_spaceship(
 #[derive(Component)]
 struct IsPlanet;
 
-#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent, YoleckAutoEdit)]
-struct PlanetSettings {
-    #[yoleck(label = "Radius", range(0.5, 5.0))]
-    radius: f32,
-}
-
-impl Default for PlanetSettings {
-    fn default() -> Self {
-        Self { radius: 1.0 }
-    }
-}
-
 fn populate_planet(
-    mut populate: YoleckPopulate<&PlanetSettings, With<IsPlanet>>,
+    mut populate: YoleckPopulate<(), With<IsPlanet>>,
     asset_server: Res<AssetServer>,
 ) {
-    populate.populate(|ctx, mut cmd, settings| {
+    populate.populate(|ctx, mut cmd, ()| {
         cmd.insert(VpeolWillContainClickableChildren);
         if ctx.is_first_time() {
             cmd.insert(SceneRoot(asset_server.load("models/planet.glb#Scene0")));
         }
-        cmd.insert(Transform::from_scale(Vec3::splat(settings.radius)));
     });
 }
 
 fn hit_planets(
     spaceship_query: Query<&Transform, With<IsSpaceship>>,
-    planets_query: Query<(Entity, &Transform, &PlanetSettings), With<IsPlanet>>,
+    planets_query: Query<(Entity, &Transform), With<IsPlanet>>,
     mut commands: Commands,
 ) {
     for spaceship_transform in spaceship_query.iter() {
-        for (planet_entity, planet_transform, settings) in planets_query.iter() {
-            let hit_distance = settings.radius + 1.0;
+        for (planet_entity, planet_transform) in planets_query.iter() {
+            let planet_radius = planet_transform.scale.max_element();
+            let hit_distance = planet_radius + 1.0;
             if spaceship_transform
                 .translation
                 .distance_squared(planet_transform.translation)

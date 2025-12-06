@@ -36,9 +36,9 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add  the [`Vpeol2dPosition`] Yoleck component and use it as the source of position (there
-//!    are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but they don't currently get editing
-//!    support from vpeol_2d)
+//! 1. Add  the [`Vpeol2dPosition`] Yoleck component and use it as the source of position. Optionally
+//!    add [`Vpeol2dRotatation`] (edited in degrees) and [`Vpeol2dScale`] (edited with X, Y values)
+//!    for rotation and scale support.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -50,6 +50,8 @@
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
 //!             .with::<Vpeol2dPosition>() // vpeol_2d dragging
+//!             .with::<Vpeol2dRotatation>() // optional: rotation with egui (degrees)
+//!             .with::<Vpeol2dScale>() // optional: scale with egui
 //!             .with::<Example>() // entity's specific data and systems
 //!     });
 //!     ```
@@ -170,6 +172,8 @@ impl Plugin for Vpeol2dPluginForEditor {
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_2d_init_position));
+        app.add_yoleck_edit_system(vpeol_2d_edit_rotation);
+        app.add_yoleck_edit_system(vpeol_2d_edit_scale);
     }
 }
 
@@ -457,15 +461,17 @@ fn camera_2d_zoom(
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dPosition(pub Vec2);
 
-/// A rotation component that's populated (but not edited) by vpeol_2d.
+/// A rotation component that's edited and populated by vpeol_2d.
 ///
-/// The rotation is in radians around the Z axis.
+/// The rotation is in radians around the Z axis. Editing is done with egui using degrees.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dRotatation(pub f32);
 
-/// A scale component that's populated (but not edited) by vpeol_2d.
+/// A scale component that's edited and populated by vpeol_2d.
+///
+/// Editing is done with egui using separate drag values for X and Y axes.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
@@ -500,8 +506,11 @@ fn vpeol_2d_edit_position(
 
     ui.horizontal(|ui| {
         let mut new_average = average;
+
+        ui.add(egui::Label::new("Position"));
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
+
         transition += (new_average - average).as_vec2();
     });
 
@@ -510,6 +519,78 @@ fn vpeol_2d_edit_position(
             position.0 += transition;
         }
     }
+}
+
+fn vpeol_2d_edit_rotation(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol2dRotatation>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+
+    let mut average_rotation = 0.0_f32;
+    let mut num_entities = 0;
+
+    for rotation in edit.iter_matching() {
+        average_rotation += rotation.0;
+        num_entities += 1;
+    }
+    average_rotation /= num_entities as f32;
+
+    ui.horizontal(|ui| {
+        let mut rotation_deg = average_rotation.to_degrees();
+
+        ui.add(egui::Label::new("Rotation"));
+        ui.add(
+            egui::DragValue::new(&mut rotation_deg)
+                .speed(1.0)
+                .suffix("°"),
+        );
+
+        let new_rotation = rotation_deg.to_radians();
+        let transition = new_rotation - average_rotation;
+
+        if transition.is_finite() && transition != 0.0 {
+            for mut rotation in edit.iter_matching_mut() {
+                rotation.0 += transition;
+            }
+        }
+    });
+}
+
+fn vpeol_2d_edit_scale(mut ui: ResMut<YoleckUi>, mut edit: YoleckEdit<&mut Vpeol2dScale>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    let mut average = DVec2::ZERO;
+    let mut num_entities = 0;
+
+    for scale in edit.iter_matching() {
+        average += scale.0.as_dvec2();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
+    ui.horizontal(|ui| {
+        let mut new_average = average;
+
+        ui.add(egui::Label::new("Scale"));
+        ui.add(
+            egui::DragValue::new(&mut new_average.x)
+                .prefix("X:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.y)
+                .prefix("Y:")
+                .speed(0.01),
+        );
+        let transition = (new_average - average).as_vec2();
+
+        if transition.is_finite() && transition != Vec2::ZERO {
+            for mut scale in edit.iter_matching_mut() {
+                scale.0 += transition;
+            }
+        }
+    });
 }
 
 fn vpeol_2d_init_position(

@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.39.0 - 2025-12-06
+### Added
+- UI editing support for `Vpeol3dRotation` using Euler angles (X, Y, Z in degrees)
+- UI editing support for `Vpeol3dScale` with separate X, Y, Z drag values
+- UI editing support for `Vpeol2dRotatation` using degrees
+- UI editing support for `Vpeol2dScale` with separate X, Y drag values
+
+### Changed
+- Updated documentation for vpeol_3d and vpeol_2d to reflect that rotation and scale components now have UI editing support
+- Updated code examples in documentation to show optional rotation and scale components
+
 ## 0.38.0 - 2025-12-06
 ### Added
 - Startup validation that checks if entity types used in `entity_ref` filters have `.with_uuid()` and logs an error if not

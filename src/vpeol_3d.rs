@@ -38,10 +38,10 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
-//!    are also [`Vpeol3dRotation`] and [`Vpeol3dScale`], but they don't currently get editing
-//!    support from vpeol_3d). Axis knobs (X, Y, Z) are automatically added to all entities with
-//!    `Vpeol3dPosition`. Configure them using the [`Vpeol3dKnobsConfig`] resource.
+//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position. Axis knobs
+//!    (X, Y, Z) are automatically added to all entities with `Vpeol3dPosition`. Configure them using
+//!    the [`Vpeol3dKnobsConfig`] resource. Optionally add [`Vpeol3dRotation`] (edited with Euler
+//!    angles) and [`Vpeol3dScale`] (edited with X, Y, Z values) for rotation and scale support.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -53,6 +53,8 @@
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
 //!             .with::<Vpeol3dPosition>() // vpeol_3d dragging with axis knobs
+//!             .with::<Vpeol3dRotation>() // optional: rotation with egui (Euler angles)
+//!             .with::<Vpeol3dScale>() // optional: scale with egui
 //!             .with::<Example>() // entity's specific data and systems
 //!     });
 //!     ```
@@ -208,6 +210,8 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
+        app.add_yoleck_edit_system(vpeol_3d_edit_rotation);
+        app.add_yoleck_edit_system(vpeol_3d_edit_scale);
         app.add_yoleck_edit_system(vpeol_3d_edit_axis_knobs);
     }
 }
@@ -727,13 +731,17 @@ impl Default for Vpeol3dKnobsConfig {
     }
 }
 
-/// A rotation component that's populated (but not edited) by vpeol_3d.
+/// A rotation component that's edited and populated by vpeol_3d.
+///
+/// Editing is done with egui using Euler angles (X, Y, Z in degrees).
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dRotation(pub Quat);
 
-/// A scale component that's populated (but not edited) by vpeol_3d.
+/// A scale component that's edited and populated by vpeol_3d.
+///
+/// Editing is done with egui using separate drag values for X, Y, Z axes.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
@@ -812,9 +820,12 @@ fn vpeol_3d_edit_position(
     }
     ui.horizontal(|ui| {
         let mut new_average = average;
+
+        ui.add(egui::Label::new("Position"));
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:"));
+
         transition += (new_average - average).as_vec3();
     });
 
@@ -823,6 +834,85 @@ fn vpeol_3d_edit_position(
             position.0 += transition;
         }
     }
+}
+
+fn vpeol_3d_edit_rotation(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<&mut Vpeol3dRotation>,
+) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    
+    let mut average_euler = Vec3::ZERO;
+    let mut num_entities = 0;
+
+    for rotation in edit.iter_matching() {
+        let (roll, pitch, yaw) = rotation.0.to_euler(EulerRot::XYZ);
+        average_euler += Vec3::new(roll, pitch, yaw);
+        num_entities += 1;
+    }
+    average_euler /= num_entities as f32;
+
+    ui.horizontal(|ui| {
+        let mut new_euler = average_euler;
+        let mut x_deg = new_euler.x.to_degrees();
+        let mut y_deg = new_euler.y.to_degrees();
+        let mut z_deg = new_euler.z.to_degrees();
+        
+        ui.add(egui::Label::new("Rotation"));
+        ui.add(egui::DragValue::new(&mut x_deg).prefix("X:").speed(1.0).suffix("°"));
+        ui.add(egui::DragValue::new(&mut y_deg).prefix("Y:").speed(1.0).suffix("°"));
+        ui.add(egui::DragValue::new(&mut z_deg).prefix("Z:").speed(1.0).suffix("°"));
+        
+        new_euler.x = x_deg.to_radians();
+        new_euler.y = y_deg.to_radians();
+        new_euler.z = z_deg.to_radians();
+        
+        let transition = new_euler - average_euler;
+        
+        if transition.is_finite() && transition != Vec3::ZERO {
+            for mut rotation in edit.iter_matching_mut() {
+                let (roll, pitch, yaw) = rotation.0.to_euler(EulerRot::XYZ);
+                let new_rotation = Vec3::new(roll, pitch, yaw) + transition;
+                rotation.0 = Quat::from_euler(EulerRot::XYZ, new_rotation.x, new_rotation.y, new_rotation.z);
+            }
+        }
+    });
+}
+
+fn vpeol_3d_edit_scale(
+    mut ui: ResMut<YoleckUi>,
+    mut edit: YoleckEdit<&mut Vpeol3dScale>,
+) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    let mut average = DVec3::ZERO;
+    let mut num_entities = 0;
+
+    for scale in edit.iter_matching() {
+        average += scale.0.as_dvec3();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
+    ui.horizontal(|ui| {
+        let mut new_average = average;
+
+        ui.add(egui::Label::new("Scale"));
+        ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:").speed(0.01));
+        ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:").speed(0.01));
+        ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:").speed(0.01));
+
+        let transition = (new_average - average).as_vec3();
+        
+        if transition.is_finite() && transition != Vec3::ZERO {
+            for mut scale in edit.iter_matching_mut() {
+                scale.0 += transition;
+            }
+        }
+    });
 }
 
 fn vpeol_3d_init_position(
