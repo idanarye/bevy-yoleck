@@ -35,6 +35,43 @@
 //!     .insert(Vpeol3dCameraControl::topdown());
 //! ```
 //!
+//! ## Custom Camera Modes
+//!
+//! You can customize available camera modes using [`YoleckCameraChoices`]:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::vpeol::prelude::*;
+//! # let mut app = App::new();
+//! app.insert_resource(
+//!     YoleckCameraChoices::default()
+//!         .choice_with_transform(
+//!             "Custom Camera",
+//!             || {
+//!                 let mut control = Vpeol3dCameraControl::fps();
+//!                 control.mode_name = "Custom Camera".to_string();
+//!                 control
+//!             },
+//!             Vec3::new(10.0, 10.0, 10.0),
+//!             Vec3::ZERO,
+//!             Vec3::Y,
+//!         )
+//! );
+//!
+//! // Implement custom camera movement
+//! app.add_systems(PostUpdate, custom_camera_movement);
+//!
+//! fn custom_camera_movement(
+//!     mut cameras: Query<(&mut Transform, &Vpeol3dCameraControl)>,
+//! ) {
+//!     for (mut transform, control) in cameras.iter_mut() {
+//!         if control.mode_name == "Custom Camera" {
+//!             // Your custom camera logic here
+//!         }
+//!     }
+//! }
+//! ```
+//!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
@@ -182,7 +219,12 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
         app.init_resource::<Vpeol3dKnobsConfig>();
+        app.init_resource::<YoleckCameraChoices>();
 
+        app.world_mut()
+            .resource_mut::<YoleckEditorTopPanelSections>()
+            .0
+            .push(vpeol_3d_camera_mode_selector.into());
         app.world_mut()
             .resource_mut::<YoleckEditorTopPanelSections>()
             .0
@@ -275,15 +317,118 @@ fn update_camera_status_for_models(
     }
 }
 
-/// Move and rotate a camera entity with the mouse while inisde the editor.
+/// A single camera mode choice with its constructor and optional initial transform.
+pub struct YoleckCameraChoice {
+    pub name: String,
+    pub constructor: Box<dyn Fn() -> Vpeol3dCameraControl + Send + Sync>,
+    pub initial_transform: Option<(Vec3, Vec3, Vec3)>,
+}
+
+/// Resource that defines available camera modes in the editor.
+///
+/// This allows users to customize which camera modes are available and add custom modes.
+///
+/// # Example
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::vpeol::prelude::*;
+/// # let mut app = App::new();
+/// app.insert_resource(
+///     YoleckCameraChoices::default()
+///         .choice("Custom FPS", || Vpeol3dCameraControl::fps())
+///         .choice_with_transform(
+///             "Isometric",
+///             || {
+///                 let mut control = Vpeol3dCameraControl::fps();
+///                 control.mode_name = "Isometric".to_string();
+///                 control.allow_rotation_while_maintaining_up = None;
+///                 control
+///             },
+///             Vec3::new(10.0, 10.0, 10.0),
+///             Vec3::ZERO,
+///             Vec3::Y,
+///         )
+/// );
+/// ```
+#[derive(Resource)]
+pub struct YoleckCameraChoices {
+    pub choices: Vec<YoleckCameraChoice>,
+}
+
+impl YoleckCameraChoices {
+    pub fn new() -> Self {
+        Self {
+            choices: Vec::new(),
+        }
+    }
+
+    pub fn choice(
+        mut self,
+        name: impl Into<String>,
+        constructor: impl Fn() -> Vpeol3dCameraControl + Send + Sync + 'static,
+    ) -> Self {
+        self.choices.push(YoleckCameraChoice {
+            name: name.into(),
+            constructor: Box::new(constructor),
+            initial_transform: None,
+        });
+        self
+    }
+
+    pub fn choice_with_transform(
+        mut self,
+        name: impl Into<String>,
+        constructor: impl Fn() -> Vpeol3dCameraControl + Send + Sync + 'static,
+        position: Vec3,
+        look_at: Vec3,
+        up: Vec3,
+    ) -> Self {
+        self.choices.push(YoleckCameraChoice {
+            name: name.into(),
+            constructor: Box::new(constructor),
+            initial_transform: Some((position, look_at, up)),
+        });
+        self
+    }
+}
+
+impl Default for YoleckCameraChoices {
+    fn default() -> Self {
+        Self::new()
+            .choice_with_transform(
+                "FPS",
+                Vpeol3dCameraControl::fps,
+                Vec3::ZERO,
+                Vec3::NEG_Z,
+                Vec3::Y,
+            )
+            .choice_with_transform(
+                "Sidescroller",
+                Vpeol3dCameraControl::sidescroller,
+                Vec3::new(0.0, 0.0, 10.0),
+                Vec3::ZERO,
+                Vec3::Y,
+            )
+            .choice_with_transform(
+                "Topdown",
+                Vpeol3dCameraControl::topdown,
+                Vec3::new(0.0, 10.0, 0.0),
+                Vec3::ZERO,
+                Vec3::NEG_Z,
+            )
+    }
+}
+
+/// Move and rotate a camera entity with the mouse while inside the editor.
 #[derive(Component)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
-    /// Panning is done by dragging a plane with this as its origin.
-    pub plane_origin: Vec3,
-    /// Panning is done by dragging along this plane.
+    /// Name of the camera mode, used to identify which mode is currently active.
+    pub mode_name: String,
+    /// Defines the plane normal for mouse wheel zoom movement.
     pub plane: InfinitePlane3d,
-    /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
+    /// If `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
     ///
     /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane`].
@@ -301,14 +446,29 @@ pub struct Vpeol3dCameraControl {
 }
 
 impl Vpeol3dCameraControl {
+    /// Preset for FPS-style camera control with full rotation freedom.
+    ///
+    /// This mode allows complete free-look rotation with mouse and WASD movement.
+    pub fn fps() -> Self {
+        Self {
+            mode_name: "FPS".to_string(),
+            plane: InfinitePlane3d { normal: Dir3::Y },
+            allow_rotation_while_maintaining_up: Some(Dir3::Y),
+            proximity_per_scroll_line: 2.0,
+            proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
+        }
+    }
+
     /// Preset for sidescroller games, where the the game world is on the XY plane.
     ///
-    /// With this preset, the camera rotation is disabled.
+    /// With this preset, the camera stays fixed looking at the scene from the side.
     ///
     /// This combines well with [`Vpeol3dPluginForEditor::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
-            plane_origin: Vec3::ZERO,
+            mode_name: "Sidescroller".to_string(),
             plane: InfinitePlane3d {
                 normal: Dir3::NEG_Z,
             },
@@ -326,9 +486,9 @@ impl Vpeol3dCameraControl {
     /// This combines well with [`Vpeol3dPluginForEditor::topdown`].
     pub fn topdown() -> Self {
         Self {
-            plane_origin: Vec3::ZERO,
-            plane: InfinitePlane3d { normal: Dir3::Y },
-            allow_rotation_while_maintaining_up: Some(Dir3::Y),
+            mode_name: "Topdown".to_string(),
+            plane: InfinitePlane3d { normal: Dir3::NEG_Y },
+            allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
             wasd_movement_speed: 10.0,
@@ -381,11 +541,49 @@ fn camera_3d_wasd_movement(
     };
 
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
-        let movement = camera_transform.rotation
-            * direction
-            * camera_control.wasd_movement_speed
-            * speed_multiplier
-            * time.delta_secs();
+        let movement = if camera_control.mode_name == "Sidescroller" {
+            let mut world_direction = Vec3::ZERO;
+            if keyboard_input.pressed(KeyCode::KeyW) {
+                world_direction.y += 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyS) {
+                world_direction.y -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyA) {
+                world_direction.x -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyD) {
+                world_direction.x += 1.0;
+            }
+            world_direction.normalize_or_zero()
+                * camera_control.wasd_movement_speed
+                * speed_multiplier
+                * time.delta_secs()
+        } else if camera_control.mode_name == "Topdown" {
+            let mut world_direction = Vec3::ZERO;
+            if keyboard_input.pressed(KeyCode::KeyW) {
+                world_direction.z -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyS) {
+                world_direction.z += 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyA) {
+                world_direction.x -= 1.0;
+            }
+            if keyboard_input.pressed(KeyCode::KeyD) {
+                world_direction.x += 1.0;
+            }
+            world_direction.normalize_or_zero()
+                * camera_control.wasd_movement_speed
+                * speed_multiplier
+                * time.delta_secs()
+        } else {
+            camera_transform.rotation
+                * direction
+                * camera_control.wasd_movement_speed
+                * speed_multiplier
+                * time.delta_secs()
+        };
 
         camera_transform.translation += movement;
     }
@@ -800,9 +998,16 @@ fn camera_3d_rotate(
         if egui_context.ctx_mut()?.is_pointer_over_area() {
             return Ok(());
         }
-        cursor.grab_mode = CursorGrabMode::Locked;
-        cursor.visible = false;
-        *is_rotating = true;
+        
+        let has_rotatable_camera = cameras_query
+            .iter()
+            .any(|(_, control)| control.allow_rotation_while_maintaining_up.is_some());
+        
+        if has_rotatable_camera {
+            cursor.grab_mode = CursorGrabMode::Locked;
+            cursor.visible = false;
+            *is_rotating = true;
+        }
     }
 
     if mouse_buttons.just_released(MouseButton::Right) {
@@ -860,6 +1065,45 @@ pub fn vpeol_3d_knobs_mode_selector(
             ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::World, "World");
             ui.label("Knobs:");
         });
+        
+        Ok(())
+    }
+}
+
+pub fn vpeol_3d_camera_mode_selector(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
+    let mut system_state = SystemState::<(
+        Query<(&mut Vpeol3dCameraControl, &mut Transform)>,
+        Res<YoleckCameraChoices>,
+    )>::new(world);
+
+    move |world, ui: &mut egui::Ui| {
+        let (mut query, choices) = system_state.get_mut(world);
+        
+        if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
+            let old_mode_name = camera_control.mode_name.clone();
+
+            egui::ComboBox::from_id_salt("camera_mode_selector")
+                .selected_text(&camera_control.mode_name)
+                .show_ui(ui, |ui| {
+                    for choice in choices.choices.iter() {
+                        ui.selectable_value(&mut camera_control.mode_name, choice.name.clone(), &choice.name);
+                    }
+                });
+            
+            if old_mode_name != camera_control.mode_name {
+                if let Some(choice) = choices.choices.iter().find(|c| c.name == camera_control.mode_name) {
+                    let new_control = (choice.constructor)();
+                    *camera_control = new_control;
+                    
+                    if let Some((position, look_at, up)) = choice.initial_transform {
+                        camera_transform.translation = position;
+                        camera_transform.look_at(look_at, up);
+                    }
+                }
+            }
+        }
         
         Ok(())
     }

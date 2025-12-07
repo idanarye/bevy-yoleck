@@ -29,7 +29,7 @@ pub(crate) fn yoleck_editor_window(
         .resizable(true)
         .default_width(300.0)
         .show(ctx, |ui| {
-            ui.label("Level Editor");
+            ui.heading("Level Hierarchy");
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 world.resource_scope(
@@ -78,10 +78,14 @@ pub(crate) fn yoleck_editor_window(
     let top = egui::TopBottomPanel::top("yoleck_top_panel")
         .resizable(false)
         .show(ctx, |ui| {
+            let inner_margin = 3.;
+
+            ui.add_space(inner_margin);
             ui.horizontal(|ui| {
+                ui.add_space(inner_margin);
                 ui.label("Yoleck Editor");
                 ui.separator();
-                
+
                 world.resource_scope(
                     |world, mut yoleck_editor_top_sections: Mut<YoleckEditorTopPanelSections>| {
                         world.resource_scope(
@@ -95,7 +99,9 @@ pub(crate) fn yoleck_editor_window(
                         );
                     },
                 );
+                ui.add_space(inner_margin);
             });
+            ui.add_space(inner_margin);
         })
         .response
         .rect

@@ -34,6 +34,7 @@ pub mod prelude {
     pub use crate::vpeol_3d::{
         Vpeol3dCameraControl, Vpeol3dKnobsConfig, Vpeol3dKnobsMode, Vpeol3dPluginForEditor, 
         Vpeol3dPluginForGame, Vpeol3dPosition, Vpeol3dRotation, Vpeol3dScale,
+        YoleckCameraChoices,
     };
 }
 

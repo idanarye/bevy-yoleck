@@ -5,6 +5,26 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.44.0 - 2025-12-07
+### Added
+- `YoleckCameraChoices` resource for customizing available camera modes in 3D editor
+- Camera mode selector dropdown in editor top panel for switching between camera modes
+- `Vpeol3dCameraControl::fps()` preset for FPS-style camera with full rotation freedom
+- Support for custom camera modes with user-defined movement logic
+- `custom_camera3d.rs` example demonstrating custom camera modes (Isometric and Orbital)
+- Custom camera modes documentation in vpeol_3d module
+- Exported `YoleckCameraChoices` in `vpeol::prelude`
+
+### Changed
+- Removed unused `plane_origin` field from `Vpeol3dCameraControl`
+- Inverted mouse wheel direction in Topdown camera mode for more intuitive zooming
+- Updated `Vpeol3dCameraControl::sidescroller()` and `topdown()` presets to set correct mode names
+- Increased top panel internal margins from 4px to 3px for better spacing
+- Changed "Level Editor" to "Level Hierarchy" in left panel heading
+
+### Fixed
+- Fixed typo: "inisde" → "inside" in `Vpeol3dCameraControl` documentation
+
 ## 0.43.0 - 2025-12-06
 ### Fixed
 - Fixed rotation bug allowing objects to rotate beyond 90 degrees without value constraints
