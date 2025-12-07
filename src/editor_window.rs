@@ -6,6 +6,7 @@ use crate::util::EditSpecificResources;
 use crate::YoleckEditorRightPanelSections;
 use crate::YoleckEditorSections;
 use crate::YoleckEditorTopPanelSections;
+use crate::YoleckEditorBottomPanelSections;
 
 #[derive(Resource, Default)]
 pub struct YoleckEditorViewportRect {
@@ -109,11 +110,40 @@ pub(crate) fn yoleck_editor_window(
 
     let bottom = egui::TopBottomPanel::bottom("yoleck_bottom_panel")
         .resizable(true)
-        .default_height(100.0)
+        .default_height(200.0)
         .show(ctx, |ui| {
-            ui.heading("Console");
-            ui.separator();
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+            world.resource_scope(
+                |world, mut yoleck_editor_bottom_sections: Mut<YoleckEditorBottomPanelSections>| {
+                    world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
+                        edit_specific.inject_to_world(world);
+                        
+                        let inner_margin = 3.;
+                        ui.add_space(inner_margin);
+                        
+                        let mut new_active_tab = yoleck_editor_bottom_sections.active_tab;
+                        ui.horizontal(|ui| {
+                            for (i, tab) in yoleck_editor_bottom_sections.tabs.iter().enumerate() {
+                                if ui.selectable_label(
+                                    new_active_tab == i,
+                                    &tab.name
+                                ).clicked() {
+                                    new_active_tab = i;
+                                }
+                            }
+                        });
+                        yoleck_editor_bottom_sections.active_tab = new_active_tab;
+                        
+                        ui.separator();
+                        
+                        let active_tab = yoleck_editor_bottom_sections.active_tab;
+                        if let Some(tab) = yoleck_editor_bottom_sections.tabs.get_mut(active_tab) {
+                            tab.section.0.invoke(world, ui).unwrap();
+                        }
+                        
+                        edit_specific.take_from_world(world);
+                    });
+                },
+            );
         })
         .response
         .rect

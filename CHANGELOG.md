@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.46.0 - 2025-12-07
+### Added
+- Bottom editor panel with a tabbed console for viewing Yoleck/Bevy logs
+- `console_layer_factory` for routing Bevy logs into the Yoleck console
+- Log-level filtering (Debug / Info / Warn / Error)
+- `YoleckConsoleLogHistory` for storing up to 1000 recent log entries
+- `YoleckConsoleState` for managing console UI state
+- `YoleckEditorBottomPanelSections` for extensible bottom-panel tabs
+
 ## 0.45.0 - 2025-12-07
 ### Added
 - `Vpeol3dCameraMode` enum with variants: `Fps`, `Sidescroller`, `Topdown`, `Custom(u32)`

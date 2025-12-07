@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use bevy::color::palettes::css;
+use bevy::{color::palettes::css, log::LogPlugin};
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_yoleck::prelude::*;
@@ -9,7 +9,12 @@ use serde::{Deserialize, Serialize};
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(
+        DefaultPlugins.set(LogPlugin {
+            custom_layer: bevy_yoleck::console_layer_factory,
+            ..default()
+        })
+    );
 
     let level = std::env::args().nth(1);
     if let Some(level) = level {

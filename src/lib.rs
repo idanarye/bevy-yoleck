@@ -174,6 +174,7 @@
 //! ```
 
 pub mod auto_edit;
+mod console;
 mod editing;
 mod editor;
 mod editor_window;
@@ -227,6 +228,7 @@ pub mod prelude {
     pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent};
 }
 
+pub use self::console::{YoleckConsoleLogHistory, YoleckConsoleState, console_layer_factory};
 pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
@@ -365,7 +367,10 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorSections::default());
         app.insert_resource(YoleckEditorRightPanelSections::default());
         app.insert_resource(YoleckEditorTopPanelSections::default());
+        app.insert_resource(YoleckEditorBottomPanelSections::default());
         app.init_resource::<YoleckEditorViewportRect>();
+        app.init_resource::<YoleckConsoleState>();
+        app.init_resource::<YoleckConsoleLogHistory>();
         app.init_resource::<YoleckPlaytestLevel>();
         app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
             levels: Default::default(),
@@ -661,6 +666,28 @@ pub struct YoleckEditorRightPanelSections(pub Vec<YoleckEditorSection>);
 #[derive(Resource)]
 pub struct YoleckEditorTopPanelSections(pub Vec<YoleckEditorSection>);
 
+/// A tab in the bottom panel of the Yoleck editor window.
+pub struct YoleckEditorBottomPanelTab {
+    pub name: String,
+    pub section: YoleckEditorSection,
+}
+
+impl YoleckEditorBottomPanelTab {
+    pub fn new(name: impl Into<String>, section: YoleckEditorSection) -> Self {
+        Self {
+            name: name.into(),
+            section,
+        }
+    }
+}
+
+/// Tabs for the bottom panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorBottomPanelSections {
+    pub tabs: Vec<YoleckEditorBottomPanelTab>,
+    pub active_tab: usize,
+}
+
 /// The level currently being playtested, if any.
 #[derive(Default, Resource)]
 pub struct YoleckPlaytestLevel(pub Option<YoleckRawLevel>);
@@ -677,6 +704,17 @@ impl Default for YoleckEditorTopPanelSections {
             level_files_manager::level_files_manager_top_section.into(),
             level_files_manager::playtest_buttons_section.into(),
         ])
+    }
+}
+
+impl Default for YoleckEditorBottomPanelSections {
+    fn default() -> Self {
+        YoleckEditorBottomPanelSections {
+            tabs: vec![
+                YoleckEditorBottomPanelTab::new("Console", console::console_panel_section.into()),
+            ],
+            active_tab: 0,
+        }
     }
 }
 
