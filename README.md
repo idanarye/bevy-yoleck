@@ -12,6 +12,7 @@
 | **Camera Schemas** | Add camera controls with FPS-style movement for better 3D navigation, and ui switcher for camera modes |
 | **Simplified Macro API** | Streamlined derive macros with automatic trait implementations - `YoleckAutoEdit` now handles both auto edit and entity ref systems |
 | **Keyboard Shortcuts** | Delete entities with `Delete` key, copy/paste entities with `Ctrl+C`/`Ctrl+V` |
+| **Console System** | Optional console system for displaying logs in the UI |
 
 # Bevy YOLECK - Your Own Level Editor Creation Kit
 
