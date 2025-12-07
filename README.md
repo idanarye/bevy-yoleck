@@ -9,7 +9,7 @@
 | **EntityRef System** | Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports dropdown selection, viewport click, and drag-and-drop |
 | **Scene Gizmo** | Visual scene gizmo for camera orientation and control |
 | **Colored Axis Knobs** | Color-coded axis knobs (red for X, green for Y, blue for Z) automatically displayed for all three world axes |
-| **FPS-Style Camera** | Improved camera controls with FPS-style movement for better 3D navigation |
+| **Camera Schemas** | Add camera controls with FPS-style movement for better 3D navigation, and ui switcher for camera modes |
 | **Simplified Macro API** | Streamlined derive macros with automatic trait implementations - `YoleckAutoEdit` now handles both auto edit and entity ref systems |
 | **Keyboard Shortcuts** | Delete entities with `Delete` key, copy/paste entities with `Ctrl+C`/`Ctrl+V` |
 
