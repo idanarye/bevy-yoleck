@@ -47,9 +47,9 @@
 //!     YoleckCameraChoices::default()
 //!         .choice_with_transform(
 //!             "Custom Camera",
-//!             || {
+//!             {
 //!                 let mut control = Vpeol3dCameraControl::fps();
-//!                 control.mode_name = "Custom Camera".to_string();
+//!                 control.mode = Vpeol3dCameraMode::Custom(0);
 //!                 control
 //!             },
 //!             Vec3::new(10.0, 10.0, 10.0),
@@ -65,7 +65,7 @@
 //!     mut cameras: Query<(&mut Transform, &Vpeol3dCameraControl)>,
 //! ) {
 //!     for (mut transform, control) in cameras.iter_mut() {
-//!         if control.mode_name == "Custom Camera" {
+//!         if control.mode == Vpeol3dCameraMode::Custom(0) {
 //!             // Your custom camera logic here
 //!         }
 //!     }
@@ -317,10 +317,16 @@ fn update_camera_status_for_models(
     }
 }
 
-/// A single camera mode choice with its constructor and optional initial transform.
+/// A single camera mode choice with its control settings and optional initial transform.
+/// 
+/// The `control` field contains the camera settings that will be applied when this mode is selected.
+/// The `initial_transform` field, if present, will reposition the camera when switching to this mode.
 pub struct YoleckCameraChoice {
+    /// Display name shown in the camera mode selector UI.
     pub name: String,
-    pub constructor: Box<dyn Fn() -> Vpeol3dCameraControl + Send + Sync>,
+    /// Camera control settings for this mode.
+    pub control: Vpeol3dCameraControl,
+    /// Optional initial transform (position, look_at, up) to apply when switching to this mode.
     pub initial_transform: Option<(Vec3, Vec3, Vec3)>,
 }
 
@@ -336,12 +342,11 @@ pub struct YoleckCameraChoice {
 /// # let mut app = App::new();
 /// app.insert_resource(
 ///     YoleckCameraChoices::default()
-///         .choice("Custom FPS", || Vpeol3dCameraControl::fps())
 ///         .choice_with_transform(
 ///             "Isometric",
-///             || {
+///             {
 ///                 let mut control = Vpeol3dCameraControl::fps();
-///                 control.mode_name = "Isometric".to_string();
+///                 control.mode = Vpeol3dCameraMode::Custom(2);
 ///                 control.allow_rotation_while_maintaining_up = None;
 ///                 control
 ///             },
@@ -363,30 +368,37 @@ impl YoleckCameraChoices {
         }
     }
 
+    /// Add a camera mode choice without initial transform.
+    /// 
+    /// The camera will keep its current position when switching to this mode.
     pub fn choice(
         mut self,
         name: impl Into<String>,
-        constructor: impl Fn() -> Vpeol3dCameraControl + Send + Sync + 'static,
+        control: Vpeol3dCameraControl,
     ) -> Self {
         self.choices.push(YoleckCameraChoice {
             name: name.into(),
-            constructor: Box::new(constructor),
+            control,
             initial_transform: None,
         });
         self
     }
 
+    /// Add a camera mode choice with initial transform.
+    /// 
+    /// When switching to this mode, the camera will be repositioned according to
+    /// the provided `position`, `look_at`, and `up` parameters.
     pub fn choice_with_transform(
         mut self,
         name: impl Into<String>,
-        constructor: impl Fn() -> Vpeol3dCameraControl + Send + Sync + 'static,
+        control: Vpeol3dCameraControl,
         position: Vec3,
         look_at: Vec3,
         up: Vec3,
     ) -> Self {
         self.choices.push(YoleckCameraChoice {
             name: name.into(),
-            constructor: Box::new(constructor),
+            control,
             initial_transform: Some((position, look_at, up)),
         });
         self
@@ -398,21 +410,21 @@ impl Default for YoleckCameraChoices {
         Self::new()
             .choice_with_transform(
                 "FPS",
-                Vpeol3dCameraControl::fps,
+                Vpeol3dCameraControl::fps(),
                 Vec3::ZERO,
                 Vec3::NEG_Z,
                 Vec3::Y,
             )
             .choice_with_transform(
                 "Sidescroller",
-                Vpeol3dCameraControl::sidescroller,
+                Vpeol3dCameraControl::sidescroller(),
                 Vec3::new(0.0, 0.0, 10.0),
                 Vec3::ZERO,
                 Vec3::Y,
             )
             .choice_with_transform(
                 "Topdown",
-                Vpeol3dCameraControl::topdown,
+                Vpeol3dCameraControl::topdown(),
                 Vec3::new(0.0, 10.0, 0.0),
                 Vec3::ZERO,
                 Vec3::NEG_Z,
@@ -420,12 +432,32 @@ impl Default for YoleckCameraChoices {
     }
 }
 
+/// Camera mode identifier for type-safe camera mode comparisons.
+/// 
+/// Use this enum to identify which camera mode is currently active, instead of string comparisons.
+/// The built-in modes (`Fps`, `Sidescroller`, `Topdown`) are provided by default.
+/// Use `Custom(u32)` for user-defined camera modes with unique identifiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
+pub enum Vpeol3dCameraMode {
+    /// FPS-style camera with full rotation freedom.
+    Fps,
+    /// Fixed camera for sidescroller games (XY plane).
+    Sidescroller,
+    /// Top-down camera for games using XZ plane.
+    Topdown,
+    /// Custom camera mode with a unique identifier.
+    Custom(u32),
+}
+
 /// Move and rotate a camera entity with the mouse while inside the editor.
-#[derive(Component)]
+#[derive(Component, Clone)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
-    /// Name of the camera mode, used to identify which mode is currently active.
-    pub mode_name: String,
+    /// Camera mode identifier for type-safe mode comparisons.
+    /// 
+    /// Use this to identify which camera mode is active in custom camera systems.
+    pub mode: Vpeol3dCameraMode,
     /// Defines the plane normal for mouse wheel zoom movement.
     pub plane: InfinitePlane3d,
     /// If `Some`, enable mouse rotation. The up direction of the camera will be the specific
@@ -451,7 +483,7 @@ impl Vpeol3dCameraControl {
     /// This mode allows complete free-look rotation with mouse and WASD movement.
     pub fn fps() -> Self {
         Self {
-            mode_name: "FPS".to_string(),
+            mode: Vpeol3dCameraMode::Fps,
             plane: InfinitePlane3d { normal: Dir3::Y },
             allow_rotation_while_maintaining_up: Some(Dir3::Y),
             proximity_per_scroll_line: 2.0,
@@ -468,7 +500,7 @@ impl Vpeol3dCameraControl {
     /// This combines well with [`Vpeol3dPluginForEditor::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
-            mode_name: "Sidescroller".to_string(),
+            mode: Vpeol3dCameraMode::Sidescroller,
             plane: InfinitePlane3d {
                 normal: Dir3::NEG_Z,
             },
@@ -486,7 +518,7 @@ impl Vpeol3dCameraControl {
     /// This combines well with [`Vpeol3dPluginForEditor::topdown`].
     pub fn topdown() -> Self {
         Self {
-            mode_name: "Topdown".to_string(),
+            mode: Vpeol3dCameraMode::Topdown,
             plane: InfinitePlane3d { normal: Dir3::NEG_Y },
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
@@ -541,48 +573,52 @@ fn camera_3d_wasd_movement(
     };
 
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
-        let movement = if camera_control.mode_name == "Sidescroller" {
-            let mut world_direction = Vec3::ZERO;
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                world_direction.y += 1.0;
+        let movement = match camera_control.mode {
+            Vpeol3dCameraMode::Sidescroller => {
+                let mut world_direction = Vec3::ZERO;
+                if keyboard_input.pressed(KeyCode::KeyW) {
+                    world_direction.y += 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyS) {
+                    world_direction.y -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyA) {
+                    world_direction.x -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyD) {
+                    world_direction.x += 1.0;
+                }
+                world_direction.normalize_or_zero()
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
             }
-            if keyboard_input.pressed(KeyCode::KeyS) {
-                world_direction.y -= 1.0;
+            Vpeol3dCameraMode::Topdown => {
+                let mut world_direction = Vec3::ZERO;
+                if keyboard_input.pressed(KeyCode::KeyW) {
+                    world_direction.z -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyS) {
+                    world_direction.z += 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyA) {
+                    world_direction.x -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyD) {
+                    world_direction.x += 1.0;
+                }
+                world_direction.normalize_or_zero()
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
             }
-            if keyboard_input.pressed(KeyCode::KeyA) {
-                world_direction.x -= 1.0;
+            _ => {
+                camera_transform.rotation
+                    * direction
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
             }
-            if keyboard_input.pressed(KeyCode::KeyD) {
-                world_direction.x += 1.0;
-            }
-            world_direction.normalize_or_zero()
-                * camera_control.wasd_movement_speed
-                * speed_multiplier
-                * time.delta_secs()
-        } else if camera_control.mode_name == "Topdown" {
-            let mut world_direction = Vec3::ZERO;
-            if keyboard_input.pressed(KeyCode::KeyW) {
-                world_direction.z -= 1.0;
-            }
-            if keyboard_input.pressed(KeyCode::KeyS) {
-                world_direction.z += 1.0;
-            }
-            if keyboard_input.pressed(KeyCode::KeyA) {
-                world_direction.x -= 1.0;
-            }
-            if keyboard_input.pressed(KeyCode::KeyD) {
-                world_direction.x += 1.0;
-            }
-            world_direction.normalize_or_zero()
-                * camera_control.wasd_movement_speed
-                * speed_multiplier
-                * time.delta_secs()
-        } else {
-            camera_transform.rotation
-                * direction
-                * camera_control.wasd_movement_speed
-                * speed_multiplier
-                * time.delta_secs()
         };
 
         camera_transform.translation += movement;
@@ -1082,20 +1118,22 @@ pub fn vpeol_3d_camera_mode_selector(
         let (mut query, choices) = system_state.get_mut(world);
         
         if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
-            let old_mode_name = camera_control.mode_name.clone();
+            let old_mode = camera_control.mode;
+            
+            let current_choice = choices.choices.iter().find(|c| c.control.mode == camera_control.mode);
+            let selected_text = current_choice.map(|c| c.name.as_str()).unwrap_or("Unknown");
 
             egui::ComboBox::from_id_salt("camera_mode_selector")
-                .selected_text(&camera_control.mode_name)
+                .selected_text(selected_text)
                 .show_ui(ui, |ui| {
                     for choice in choices.choices.iter() {
-                        ui.selectable_value(&mut camera_control.mode_name, choice.name.clone(), &choice.name);
+                        ui.selectable_value(&mut camera_control.mode, choice.control.mode, &choice.name);
                     }
                 });
             
-            if old_mode_name != camera_control.mode_name {
-                if let Some(choice) = choices.choices.iter().find(|c| c.name == camera_control.mode_name) {
-                    let new_control = (choice.constructor)();
-                    *camera_control = new_control;
+            if old_mode != camera_control.mode {
+                if let Some(choice) = choices.choices.iter().find(|c| c.control.mode == camera_control.mode) {
+                    *camera_control = choice.control.clone();
                     
                     if let Some((position, look_at, up)) = choice.initial_transform {
                         camera_transform.translation = position;

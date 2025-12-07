@@ -7,6 +7,11 @@ use bevy_yoleck::prelude::*;
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::YoleckEditMarker;
 
+/// Custom camera mode for isometric view with diagonal movement.
+const CAMERA_MODE_ISOMETRIC: Vpeol3dCameraMode = Vpeol3dCameraMode::Custom(0);
+/// Custom camera mode for orbital rotation around selected entities.
+const CAMERA_MODE_ORBITAL: Vpeol3dCameraMode = Vpeol3dCameraMode::Custom(1);
+
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
@@ -44,9 +49,9 @@ fn main() {
             YoleckCameraChoices::default()
                 .choice_with_transform(
                     "Isometric",
-                    || {
+                    {
                         let mut control = Vpeol3dCameraControl::fps();
-                        control.mode_name = "Isometric".to_string();
+                        control.mode = CAMERA_MODE_ISOMETRIC;
                         control.allow_rotation_while_maintaining_up = None;
                         control.wasd_movement_speed = 15.0;
                         control
@@ -57,9 +62,9 @@ fn main() {
                 )
                 .choice_with_transform(
                     "Orbital",
-                    || {
+                    {
                         let mut control = Vpeol3dCameraControl::fps();
-                        control.mode_name = "Orbital".to_string();
+                        control.mode = CAMERA_MODE_ORBITAL;
                         control.allow_rotation_while_maintaining_up = None;
                         control.wasd_movement_speed = 0.0;
                         control.mouse_sensitivity = 0.005;
@@ -151,7 +156,7 @@ fn isometric_camera_movement(
     }
 
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
-        if camera_control.mode_name != "Isometric" {
+        if camera_control.mode != CAMERA_MODE_ISOMETRIC {
             continue;
         }
 
@@ -200,7 +205,7 @@ fn orbital_camera_movement(
     selected_entities: Query<&GlobalTransform, With<YoleckEditMarker>>,
 ) {
     for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
-        if camera_control.mode_name != "Orbital" {
+        if camera_control.mode != CAMERA_MODE_ORBITAL {
             continue;
         }
 
