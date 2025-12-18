@@ -1,8 +1,7 @@
 use proc_macro2::TokenStream;
 
 use quote::quote;
-use syn::{DeriveInput, Error, Field, Fields, Data, Type, Expr, Lit, ExprLit, UnOp, Token, punctuated::Punctuated};
-use syn::parse::Parse;
+use syn::{Data, DeriveInput, Error, Field, Fields, Token, Type};
 
 #[proc_macro_derive(YoleckComponent)]
 pub fn derive_yoleck_component(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -39,14 +38,33 @@ struct YoleckFieldAttrs {
     speed: Option<f64>,
 }
 
+fn parse_number(expr: &syn::Expr) -> syn::Result<f64> {
+    match expr {
+        syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Int(i),
+            ..
+        }) => Ok(i.base10_parse::<f64>()?),
+        syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Float(f),
+            ..
+        }) => Ok(f.base10_parse::<f64>()?),
+        syn::Expr::Unary(syn::ExprUnary {
+            op: syn::UnOp::Neg(_),
+            expr: inner,
+            ..
+        }) => Ok(-parse_number(inner)?),
+        _ => Err(syn::Error::new_spanned(expr, "Expected numeric literal")),
+    }
+}
+
 fn parse_field_attrs(field: &Field) -> Result<YoleckFieldAttrs, Error> {
     let mut attrs = YoleckFieldAttrs::default();
-    
+
     for attr in &field.attrs {
         if !attr.path().is_ident("yoleck") {
             continue;
         }
-        
+
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("readonly") {
                 attrs.readonly = true;
@@ -64,7 +82,7 @@ fn parse_field_attrs(field: &Field) -> Result<YoleckFieldAttrs, Error> {
                 attrs.color_picker = true;
                 return Ok(());
             }
-            
+
             if meta.path.is_ident("label") {
                 let value: syn::LitStr = meta.value()?.parse()?;
                 attrs.label = Some(value.value());
@@ -88,7 +106,11 @@ fn parse_field_attrs(field: &Field) -> Result<YoleckFieldAttrs, Error> {
             if meta.path.is_ident("asset") {
                 let value: syn::LitStr = meta.value()?.parse()?;
                 attrs.asset_extensions = Some(
-                    value.value().split(',').map(|s| s.trim().to_string()).collect()
+                    value
+                        .value()
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .collect(),
                 );
                 return Ok(());
             }
@@ -100,65 +122,63 @@ fn parse_field_attrs(field: &Field) -> Result<YoleckFieldAttrs, Error> {
             if meta.path.is_ident("range") {
                 let content;
                 syn::parenthesized!(content in meta.input);
-                let values: Punctuated<syn::Expr, Token![,]> = content.parse_terminated(syn::Expr::parse, Token![,])?;
-                let nums: Vec<f64> = values.iter().filter_map(|expr| {
-                    if let Expr::Lit(ExprLit { lit: Lit::Float(f), .. }) = expr {
-                        f.base10_parse().ok()
-                    } else if let Expr::Lit(ExprLit { lit: Lit::Int(i), .. }) = expr {
-                        i.base10_parse::<i64>().ok().map(|v| v as f64)
-                    } else if let Expr::Unary(unary) = expr {
-                        if let UnOp::Neg(_) = unary.op {
-                            if let Expr::Lit(ExprLit { lit: Lit::Float(f), .. }) = unary.expr.as_ref() {
-                                f.base10_parse::<f64>().ok().map(|v| -v)
-                            } else if let Expr::Lit(ExprLit { lit: Lit::Int(i), .. }) = unary.expr.as_ref() {
-                                i.base10_parse::<i64>().ok().map(|v| -(v as f64))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
+
+                let expr: syn::Expr = content.parse()?;
+                match expr {
+                    syn::Expr::Range(syn::ExprRange {
+                        start: Some(start),
+                        end: Some(end),
+                        limits: syn::RangeLimits::Closed(_),
+                        ..
+                    }) => {
+                        let start_val = parse_number(&start)?;
+                        let end_val = parse_number(&end)?;
+                        attrs.range = Some((start_val, end_val));
+                        return Ok(());
                     }
-                }).collect();
-                if nums.len() == 2 {
-                    attrs.range = Some((nums[0], nums[1]));
+                    _ => {
+                        return Err(syn::Error::new_spanned(
+                            expr,
+                            "Expected closed numeric range, e.g., `0.5..=10.0`",
+                        ));
+                    }
                 }
-                return Ok(());
             }
-            
+
             Err(meta.error("unknown yoleck attribute"))
         })?;
     }
-    
+
     Ok(attrs)
 }
 
 fn get_type_name(ty: &Type) -> String {
     match ty {
-        Type::Path(type_path) => {
-            type_path.path.segments.last()
-                .map(|s| s.ident.to_string())
-                .unwrap_or_default()
-        }
-        _ => String::new()
+        Type::Path(type_path) => type_path
+            .path
+            .segments
+            .last()
+            .map(|s| s.ident.to_string())
+            .unwrap_or_default(),
+        _ => String::new(),
     }
 }
 
 fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
     let field_name = field.ident.as_ref().unwrap();
-    let field_name_str = attrs.label.clone()
+    let field_name_str = attrs
+        .label
+        .clone()
         .unwrap_or_else(|| field_name.to_string().replace('_', " "));
-    
+
     let type_name = get_type_name(&field.ty);
-    
+
     let tooltip_code = if let Some(tooltip) = &attrs.tooltip {
         quote! { .on_hover_text(#tooltip) }
     } else {
         quote! {}
     };
-    
+
     let widget = match type_name.as_str() {
         "f32" | "f64" => {
             if let Some((min, max)) = attrs.range {
@@ -339,7 +359,7 @@ fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
             }
         }
     };
-    
+
     if attrs.readonly {
         quote! {
             ui.add_enabled_ui(false, |ui| {
@@ -363,36 +383,47 @@ pub fn derive_yoleck_auto_edit(input: proc_macro::TokenStream) -> proc_macro::To
 fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    
-    let fields = match &input.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => &fields.named,
-                _ => return Err(Error::new_spanned(&input, "YoleckAutoEdit only supports structs with named fields")),
-            }
-        }
-        _ => return Err(Error::new_spanned(&input, "YoleckAutoEdit only supports structs")),
-    };
-    
-    let field_uis: Vec<TokenStream> = fields.iter()
-        .filter_map(|field| {
-            let attrs = parse_field_attrs(field).ok()?;
-            if attrs.hidden {
-                return None;
-            }
-            let type_name = get_type_name(&field.ty);
-            if type_name == "YoleckEntityRef" {
-                return None;
-            }
-            Some(generate_field_ui(field, &attrs))
-        })
-        .collect();
 
-    let entity_ref_fields: Vec<EntityRefFieldInfo> = fields.iter()
-        .filter_map(|field| parse_entity_ref_attrs(field).ok().flatten())
-        .collect();
-    
-    let fields_array: Vec<TokenStream> = entity_ref_fields.iter()
+    let fields = match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => &fields.named,
+            _ => {
+                return Err(Error::new_spanned(
+                    &input,
+                    "YoleckAutoEdit only supports structs with named fields",
+                ))
+            }
+        },
+        _ => {
+            return Err(Error::new_spanned(
+                &input,
+                "YoleckAutoEdit only supports structs",
+            ))
+        }
+    };
+
+    let mut field_uis = Vec::new();
+    for field in fields {
+        let attrs = parse_field_attrs(field)?;
+        if attrs.hidden {
+            continue;
+        }
+        let type_name = get_type_name(&field.ty);
+        if type_name == "YoleckEntityRef" {
+            continue;
+        }
+        field_uis.push(generate_field_ui(field, &attrs));
+    }
+
+    let mut entity_ref_fields = Vec::new();
+    for field in fields {
+        if let Some(info) = parse_entity_ref_attrs(field)? {
+            entity_ref_fields.push(info);
+        }
+    }
+
+    let fields_array: Vec<TokenStream> = entity_ref_fields
+        .iter()
         .map(|info| {
             let field_name = &info.field_name;
             let filter = match &info.filter {
@@ -402,8 +433,9 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
             quote! { (#field_name, #filter) }
         })
         .collect();
-    
-    let match_arms: Vec<TokenStream> = entity_ref_fields.iter()
+
+    let match_arms: Vec<TokenStream> = entity_ref_fields
+        .iter()
         .map(|info| {
             let field_name = &info.field_name;
             let field_ident = syn::Ident::new(field_name, proc_macro2::Span::call_site());
@@ -412,7 +444,7 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
             }
         })
         .collect();
-    
+
     let fields_count = entity_ref_fields.len();
 
     let get_entity_ref_mut_body = if entity_ref_fields.is_empty() {
@@ -427,7 +459,7 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
             }
         }
     };
-    
+
     let result = quote! {
         impl #impl_generics bevy_yoleck::auto_edit::YoleckAutoEdit for #name #ty_generics #where_clause {
             fn auto_edit(value: &mut Self, ui: &mut bevy_yoleck::egui::Ui) {
@@ -443,13 +475,13 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
                 ];
                 &FIELDS
             }
-            
+
             fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut bevy_yoleck::entity_ref::YoleckEntityRef {
                 #get_entity_ref_mut_body
             }
         }
     };
-    
+
     Ok(result)
 }
 
@@ -461,25 +493,27 @@ struct EntityRefFieldInfo {
 
 fn parse_entity_ref_attrs(field: &Field) -> Result<Option<EntityRefFieldInfo>, Error> {
     let type_name = get_type_name(&field.ty);
-    
+
     if type_name != "YoleckEntityRef" {
         return Ok(None);
     }
-    
-    let field_name = field.ident.as_ref()
+
+    let field_name = field
+        .ident
+        .as_ref()
         .map(|i| i.to_string())
         .unwrap_or_default();
-    
+
     let mut info = EntityRefFieldInfo {
         field_name,
         filter: None,
     };
-    
+
     for attr in &field.attrs {
         if !attr.path().is_ident("yoleck") {
             continue;
         }
-        
+
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("entity_ref") {
                 if meta.input.peek(Token![=]) {
@@ -491,7 +525,6 @@ fn parse_entity_ref_attrs(field: &Field) -> Result<Option<EntityRefFieldInfo>, E
             Ok(())
         })?;
     }
-    
+
     Ok(Some(info))
 }
-

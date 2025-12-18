@@ -138,9 +138,9 @@ struct IsSpaceship;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent, YoleckAutoEdit)]
 struct SpaceshipSettings {
-    #[yoleck(label = "Speed", range(0.5, 10.0))]
+    #[yoleck(label = "Speed", range(0.5..=10.0))]
     speed: f32,
-    #[yoleck(label = "Rotation Speed", range(0.5, 5.0))]
+    #[yoleck(label = "Rotation Speed", range(0.5..=5.0))]
     rotation_speed: f32,
     #[yoleck(label = "Enabled")]
     enabled: bool,
