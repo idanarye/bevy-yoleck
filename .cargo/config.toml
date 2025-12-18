@@ -1,5 +1,5 @@
 [alias]
-example2d = "run --example example2d --features example2d_full"
-example3d = "run --example example3d --features example3d_full"
-custom_camera3d = "run --example custom_camera3d --features example3d_full"
-doors_to_other_levels = "run --example doors_to_other_levels --features doors_to_other_levels_full"
+example2d = "run --example example2d --features _example2d_full"
+example3d = "run --example example3d --features _example3d_full"
+custom_camera3d = "run --example custom_camera3d --features _example3d_full"
+doors_to_other_levels = "run --example doors_to_other_levels --features _doors_to_other_levels_full"

@@ -4,11 +4,11 @@ members = ["macros"]
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.46.0"
+version = "0.30.0"
 edition = "2021"
 authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/dexsper/bevy-yoleck-fork"
+repository = "https://github.com/idanarye/bevy-yoleck"
 documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
 categories = ["game-development"]
@@ -40,8 +40,8 @@ bevy_reflect = []
 vpeol = []
 vpeol_2d = ["vpeol", "bevy/bevy_text", "bevy/bevy_sprite", "bevy/png"]
 vpeol_3d = ["vpeol", "bevy/bevy_pbr"]
-example2d_full = ["vpeol_2d", "bevy/bevy_gizmos", "bevy/bevy_sprite_render"]
-example3d_full = [
+_example2d_full = ["vpeol_2d", "bevy/bevy_gizmos", "bevy/bevy_sprite_render"]
+_example3d_full = [
     "vpeol_3d",
     "bevy/bevy_scene",
     "bevy/bevy_gltf",
@@ -53,7 +53,7 @@ example3d_full = [
     "bevy/reflect_auto_register",
     "bevy/bevy_sprite_render",
 ]
-doors_to_other_levels_full = ["vpeol_2d", "bevy/bevy_sprite_render"]
+_doors_to_other_levels_full = ["vpeol_2d", "bevy/bevy_sprite_render"]
 
 [dev-dependencies]
 bevy = { version = "^0.17", default-features = false, features = [
@@ -66,19 +66,19 @@ bevy = { version = "^0.17", default-features = false, features = [
 
 [[example]]
 name = "example2d"
-required-features = ["example2d_full"]
+required-features = ["_example2d_full"]
 
 [[example]]
 name = "example3d"
-required-features = ["example3d_full"]
+required-features = ["_example3d_full"]
 
 [[example]]
 name = "custom_camera3d"
-required-features = ["example3d_full"]
+required-features = ["_example3d_full"]
 
 [[example]]
 name = "doors_to_other_levels"
-required-features = ["doors_to_other_levels_full"]
+required-features = ["_doors_to_other_levels_full"]
 
 [package.metadata.docs.rs]
 

@@ -5,149 +5,59 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## 0.46.0 - 2025-12-07
+## 0.30.0 - 2025-12-04
 ### Added
-- Bottom editor panel with a tabbed console for viewing Yoleck/Bevy logs
 - `console_layer_factory` for routing Bevy logs into the Yoleck console
-- Log-level filtering (Debug / Info / Warn / Error)
 - `YoleckConsoleLogHistory` for storing up to 1000 recent log entries
 - `YoleckConsoleState` for managing console UI state
 - `YoleckEditorBottomPanelSections` for extensible bottom-panel tabs
-
-## 0.45.0 - 2025-12-07
-### Added
 - `Vpeol3dCameraMode` enum with variants: `Fps`, `Sidescroller`, `Topdown`, `Custom(u32)`
-- Enhanced documentation for `YoleckCameraChoice`
-
-### Changed
-- **BREAKING:** Replaced `Vpeol3dCameraControl::mode_name` (String) with type-safe `mode` field (enum `Vpeol3dCameraMode`)
-
-## 0.44.0 - 2025-12-07
-### Added
 - `YoleckCameraChoices` resource for customizing available camera modes in 3D editor
 - Camera mode selector dropdown in editor top panel for switching between camera modes
 - `Vpeol3dCameraControl::fps()` preset for FPS-style camera with full rotation freedom
 - Support for custom camera modes with user-defined movement logic
 - `custom_camera3d.rs` example demonstrating custom camera modes (Isometric and Orbital)
 - Custom camera modes documentation in vpeol_3d module
-- Exported `YoleckCameraChoices` in `vpeol::prelude`
-
-### Changed
-- Removed unused `plane_origin` field from `Vpeol3dCameraControl`
-- Inverted mouse wheel direction in Topdown camera mode for more intuitive zooming
-- Updated `Vpeol3dCameraControl::sidescroller()` and `topdown()` presets to set correct mode names
-- Increased top panel internal margins from 4px to 3px for better spacing
-- Changed "Level Editor" to "Level Hierarchy" in left panel heading
-
-### Fixed
-- Fixed typo: "inisde" → "inside" in `Vpeol3dCameraControl` documentation
-
-## 0.43.0 - 2025-12-06
-### Fixed
-- Fixed rotation bug allowing objects to rotate beyond 90 degrees without value constraints
-
-### Added
 - World/Local mode toggle for axis knobs in 3D editor top panel
-- Exported `Vpeol3dKnobsMode` in `vpeol::prelude`
-
-### Changed
-- **BREAKING:** `Vpeol3dRotation` now stores Euler angles (`Vec3`) instead of quaternion
-- Added `mode` field to `Vpeol3dKnobsConfig`
-
-## 0.42.0 - 2025-12-06
-### Changed
-- Grouped Transform fields (Position, Rotation, Scale) in properties panel for better organization in 3D editor
-- Grouped Transform fields (Position, Rotation, Scale) in properties panel for better organization in 2D editor
-- All component fields with YoleckAutoEdit are now automatically grouped by component name for improved visual hierarchy
-
-## 0.41.0 - 2025-12-06
-### Fixed
-- Entity selection in entity list now works properly: short clicks select entities, drag only starts when mouse moves
-- Added visual feedback when dragging entities: dragged entity name now follows cursor
-
-## 0.40.0 - 2025-12-07
-### Added
 - Keyboard shortcut to delete selected entities: Press `Delete` key to remove selected entity from the level
 - Copy/paste support for entities: Use `Ctrl+C` to copy and `Ctrl+V` to paste entities with all their components and values
 - Cross-level entity copying: Entities can be copied between different level editors through system clipboard
 - Auto-selection of pasted entities: Newly pasted entities are automatically selected for immediate editing
-- Added `arboard` dependency for cross-platform clipboard support
-
-### Changed
-- Entity deletion now works via keyboard in addition to the existing UI button
-
-## 0.39.0 - 2025-12-06
-### Added
 - UI editing support for `Vpeol3dRotation` using Euler angles (X, Y, Z in degrees)
 - UI editing support for `Vpeol3dScale` with separate X, Y, Z drag values
 - UI editing support for `Vpeol2dRotatation` using degrees
 - UI editing support for `Vpeol2dScale` with separate X, Y drag values
-
-### Changed
-- Updated documentation for vpeol_3d and vpeol_2d to reflect that rotation and scale components now have UI editing support
-- Updated code examples in documentation to show optional rotation and scale components
-
-## 0.38.0 - 2025-12-06
-### Added
-- Startup validation that checks if entity types used in `entity_ref` filters have `.with_uuid()` and logs an error if not
-
-### Changed
-- Improved documentation for `YoleckEntityRef`, `with_uuid()`, and entity reference requirements
-- `YoleckEntityRef` now includes comprehensive documentation about requirements and editor features
-
-## 0.37.0 - 2025-12-06
-### Added
 - Drag and drop support for entity references: entities with UUID can now be dragged from the entity list and dropped onto `YoleckEntityRef` fields in the properties panel
 - Entity type filtering is automatically applied when dropping entities onto entity reference fields with type constraints
 
-## 0.36.0 - 2025-12-06
 ### Changed
-- **Major UI/UX overhaul**: Redesigned editor interface with split-screen layout
-  - Top panel: Level file management and playmode controls
-  - Right panel: Selected entity properties editor
-  - Bottom panel: Entity list and selection controls
-  - Left panel: Entity type creation tools
+- Removed unused `plane_origin` field from `Vpeol3dCameraControl`
+- **BREAKING:** `Vpeol3dRotation` now stores Euler angles (`Vec3`) instead of quaternion
+- Entity deletion now works via keyboard in addition to the existing UI button
+- Updated documentation for vpeol_3d and vpeol_2d to reflect that rotation and scale components now have UI editing support
+- Updated code examples in documentation to show optional rotation and scale components
+- Improved documentation for `YoleckEntityRef`, `with_uuid()`, and entity reference requirements
+- `YoleckEntityRef` now includes comprehensive documentation about requirements and editor features
 - Improved editor ergonomics with better organized workspace instead of single cluttered panel
-
-## 0.35.0 - 2025-12-05
-### Changed
 - Axis knobs are now always displayed for all 3 world axes (X, Y, Z) by default
-- Axis knobs now have distinct colors (red for X, green for Y, blue for Z)
 - Scene gizmo now displays axis labels (X, Y, Z) at the end of positive axes
-
-### Removed
-- [**BREAKING**] Removed `Vpeol3dThirdAxisWithKnob` component (no longer needed as all axes have knobs by default)
-
-## 0.34.0 - 2025-12-04
-### Changed
 - `YoleckAutoEdit` derive macro now also implements `YoleckEntityRefAccessor`, eliminating the need for separate `YoleckEntityRefs` derive
 - `add_yoleck_auto_edit` now registers both auto edit and entity ref edit systems automatically
 - `YoleckEntityRef` fields are now automatically hidden from auto edit UI (rendered only by entity ref system)
-
-### Removed
-- Removed `YoleckEntityRefPlugin` (was empty/no-op)
-- Removed `add_yoleck_entity_ref_edit` method (merged into `add_yoleck_auto_edit`)
-- Removed `add_yoleck_full_edit` method (no longer needed)
-- Removed `YoleckEntityRefs` derive macro (merged into `YoleckAutoEdit`)
-
-## 0.33.0 - 2025-12-04
-### Changed
 - Added scene gizmo for camera orientation
-
-## 0.32.0 - 2025-12-04
-### Changed 
 - Added automatic UI generation for components using reflection and attributes.
 - Supported numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields.
 - Added EntityRef type with automatic UI, filtering, and runtime UUID resolution.
 - Enabled entity linking with dropdown, viewport click, and drag-and-drop selection.
-
-## 0.31.0 - 2025-12-04
-### Changed 
 - Make camera controls fps style 
-
-## 0.30.0 - 2025-12-04
-### Changed
 - Update bevy_egui version to 0.38.
+
+### Removed
+- [**BREAKING**] Removed `Vpeol3dThirdAxisWithKnob` component (no longer needed as all axes have knobs by default)
+- Removed `YoleckEntityRefPlugin` (was empty/no-op)
+- Removed `add_yoleck_entity_ref_edit` method (merged into `add_yoleck_auto_edit`)
+- Removed `add_yoleck_full_edit` method (no longer needed)
+- Removed `YoleckEntityRefs` derive macro (merged into `YoleckAutoEdit`)
 
 ## 0.29.0 - 2025-10-03
 ### Changed
