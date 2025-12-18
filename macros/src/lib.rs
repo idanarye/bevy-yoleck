@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 
 use quote::quote;
-use syn::{Data, DeriveInput, Error, Field, Fields, Token, Type};
+use syn::{Data, DeriveInput, Error, Field, Fields, LitStr, Token, Type};
 
 #[proc_macro_derive(YoleckComponent)]
 pub fn derive_yoleck_component(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -425,22 +425,25 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
     let fields_array: Vec<TokenStream> = entity_ref_fields
         .iter()
         .map(|info| {
-            let field_name = &info.field_name;
+            let field_ident = &info.field_ident;
+            let field_ident_str = LitStr::new(&field_ident.to_string(), field_ident.span());
             let filter = match &info.filter {
                 Some(f) => quote! { Some(#f) },
                 None => quote! { None },
             };
-            quote! { (#field_name, #filter) }
+
+            quote! { (#field_ident_str, #filter) }
         })
         .collect();
 
     let match_arms: Vec<TokenStream> = entity_ref_fields
         .iter()
         .map(|info| {
-            let field_name = &info.field_name;
-            let field_ident = syn::Ident::new(field_name, proc_macro2::Span::call_site());
+            let field_ident = &info.field_ident;
+            let field_ident_str = LitStr::new(&field_ident.to_string(), field_ident.span());
+
             quote! {
-                #field_name => &mut self.#field_ident
+                #field_ident_str => &mut self.#field_ident
             }
         })
         .collect();
@@ -485,9 +488,9 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
     Ok(result)
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct EntityRefFieldInfo {
-    field_name: String,
+    field_ident: syn::Ident,
     filter: Option<String>,
 }
 
@@ -498,14 +501,14 @@ fn parse_entity_ref_attrs(field: &Field) -> Result<Option<EntityRefFieldInfo>, E
         return Ok(None);
     }
 
-    let field_name = field
+    let field_ident = field
         .ident
         .as_ref()
-        .map(|i| i.to_string())
-        .unwrap_or_default();
+        .ok_or_else(|| Error::new_spanned(field, "Expected named field"))?
+        .clone();
 
     let mut info = EntityRefFieldInfo {
-        field_name,
+        field_ident,
         filter: None,
     };
 
