@@ -65,7 +65,7 @@ use crate::{yoleck_exclusive_system_cancellable, YoleckManaged};
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Debug)]
 pub struct YoleckEntityRef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uuid: Option<Uuid>,
+    uuid: Option<Uuid>,
     #[serde(skip)]
     resolved: Option<Entity>,
 }
