@@ -235,11 +235,11 @@ pub(crate) fn validate_entity_ref_requirements(
 #[cfg(feature = "vpeol")]
 pub fn edit_entity_refs_system<T: Component<Mutability = Mutable> + YoleckEntityRefAccessor>(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut T)>,
+    mut edit: YoleckEdit<&mut T>,
     entities_query: Query<(Entity, &YoleckEntityUuid, &YoleckManaged)>,
     mut exclusive_queue: ResMut<YoleckExclusiveSystemsQueue>,
 ) {
-    let Ok((_source_entity, mut component)) = edit.single_mut() else {
+    let Ok(mut component) = edit.single_mut() else {
         return;
     };
 
