@@ -93,7 +93,7 @@ impl YoleckEntityRef {
         self.uuid.is_none()
     }
 
-    pub fn get(&self) -> Option<Entity> {
+    pub fn get_entity(&self) -> Option<Entity> {
         self.resolved
     }
 
