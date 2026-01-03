@@ -1,19 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
-use std::any::Any;
 
 pub trait YoleckAutoEdit: Send + Sync + 'static {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui);
-}
-
-pub trait YoleckAutoEditDyn: Send + Sync + Any {
-    fn auto_edit_dyn(&mut self, ui: &mut egui::Ui);
-}
-
-impl<T: YoleckAutoEdit> YoleckAutoEditDyn for T {
-    fn auto_edit_dyn(&mut self, ui: &mut egui::Ui) {
-        T::auto_edit(self, ui);
-    }
 }
 
 pub fn render_auto_edit_value<T: YoleckAutoEdit>(ui: &mut egui::Ui, value: &mut T) {
@@ -184,7 +173,7 @@ impl<T: YoleckAutoEdit + Default> YoleckAutoEdit for Vec<T> {
     }
 }
 
-impl<const N: usize, T: YoleckAutoEdit + Default> YoleckAutoEdit for [T; N] {
+impl<T: YoleckAutoEdit> YoleckAutoEdit for [T] {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui) {
         for (idx, item) in value.iter_mut().enumerate() {
             ui.horizontal(|ui| {
