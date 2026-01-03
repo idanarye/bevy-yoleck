@@ -210,7 +210,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
 pub mod prelude {
-    pub use crate::auto_edit::{YoleckAutoEdit, YoleckAutoEditEnum, YoleckAutoEditExt};
+    pub use crate::auto_edit::{YoleckAutoEdit, YoleckAutoEditExt};
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckKeepLevel, YoleckLoadLevel, YoleckRawLevel};

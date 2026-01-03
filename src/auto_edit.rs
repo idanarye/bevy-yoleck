@@ -184,21 +184,6 @@ impl<T: YoleckAutoEdit> YoleckAutoEdit for [T] {
     }
 }
 
-pub trait YoleckAutoEditEnum: Sized + Clone + PartialEq + 'static {
-    fn variants() -> &'static [Self];
-    fn variant_name(&self) -> &'static str;
-}
-
-pub fn auto_edit_enum<T: YoleckAutoEditEnum>(value: &mut T, ui: &mut egui::Ui) {
-    egui::ComboBox::from_id_salt(std::any::type_name::<T>())
-        .selected_text(value.variant_name())
-        .show_ui(ui, |ui| {
-            for variant in T::variants() {
-                ui.selectable_value(value, variant.clone(), variant.variant_name());
-            }
-        });
-}
-
 use crate::editing::{YoleckEdit, YoleckUi};
 use crate::specs_registration::YoleckComponent;
 use crate::YoleckExtForApp;
