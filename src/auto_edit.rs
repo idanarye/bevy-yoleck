@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::entity_ref::EntityRefRequirement;
+use crate::entity_ref::validate_entity_ref_requirements_for;
 
 pub trait YoleckAutoEdit: Send + Sync + 'static {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui);
@@ -262,19 +262,12 @@ impl YoleckAutoEditExt for App {
         self.add_yoleck_edit_system(auto_edit_system::<T>);
         self.add_yoleck_edit_system(edit_entity_refs_system::<T>);
 
-        let mut requirements = self
+        let construction_specs = self
             .world_mut()
-            .get_resource_or_insert_with(crate::entity_ref::YoleckEntityRefRequirements::default);
+            .get_resource::<crate::YoleckEntityConstructionSpecs>();
 
-        let component_type = std::any::type_name::<T>();
-        for (field_name, filter) in T::entity_ref_fields() {
-            if let Some(required_entity_type) = filter {
-                requirements.requirements.push(EntityRefRequirement {
-                    component_type: component_type.to_string(),
-                    field_name: field_name.to_string(),
-                    required_entity_type: required_entity_type.to_string(),
-                });
-            }
+        if let Some(specs) = construction_specs {
+            validate_entity_ref_requirements_for::<T>(specs);
         }
     }
 

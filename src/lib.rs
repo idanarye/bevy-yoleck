@@ -228,7 +228,7 @@ pub mod prelude {
     pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent};
 }
 
-pub use self::console::{YoleckConsoleLogHistory, YoleckConsoleState, console_layer_factory};
+pub use self::console::{console_layer_factory, YoleckConsoleLogHistory, YoleckConsoleState};
 pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
@@ -388,12 +388,6 @@ impl Plugin for YoleckPluginForEditor {
         app.add_schedule(Schedule::new(
             YoleckInternalSchedule::UpdateManagedDataFromComponents,
         ));
-        
-        #[cfg(feature = "vpeol")]
-        {
-            app.init_resource::<entity_ref::YoleckEntityRefRequirements>();
-            app.add_systems(Startup, entity_ref::validate_entity_ref_requirements);
-        }
     }
 }
 
@@ -710,9 +704,10 @@ impl Default for YoleckEditorTopPanelSections {
 impl Default for YoleckEditorBottomPanelSections {
     fn default() -> Self {
         YoleckEditorBottomPanelSections {
-            tabs: vec![
-                YoleckEditorBottomPanelTab::new("Console", console::console_panel_section.into()),
-            ],
+            tabs: vec![YoleckEditorBottomPanelTab::new(
+                "Console",
+                console::console_panel_section.into(),
+            )],
             active_tab: 0,
         }
     }

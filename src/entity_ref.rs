@@ -141,37 +141,22 @@ pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
 }
 
 #[cfg(feature = "vpeol")]
-#[derive(Resource, Default)]
-pub(crate) struct YoleckEntityRefRequirements {
-    pub requirements: Vec<EntityRefRequirement>,
-}
-
-#[derive(Debug, Clone)]
-pub struct EntityRefRequirement {
-    pub component_type: String,
-    pub field_name: String,
-    pub required_entity_type: String,
-}
-
-#[cfg(feature = "vpeol")]
-pub(crate) fn validate_entity_ref_requirements(
-    requirements: Res<YoleckEntityRefRequirements>,
-    construction_specs: Res<crate::YoleckEntityConstructionSpecs>,
+pub(crate) fn validate_entity_ref_requirements_for<T: YoleckEntityRefAccessor>(
+    construction_specs: &crate::YoleckEntityConstructionSpecs,
 ) {
-    for requirements in &requirements.requirements {
-        if let Some(entity_type_info) =
-            construction_specs.get_entity_type_info(&requirements.required_entity_type)
-        {
-            if !entity_type_info.has_uuid {
-                error!(
-                    "Entity reference field '{}' in component '{}' requires entity type '{}' to have UUID, \
-                     but it was registered without .with_uuid(). \
-                     Add .with_uuid() when calling YoleckEntityType::new(\"{}\") in add_yoleck_entity_type().",
-                    requirements.field_name,
-                    requirements.component_type,
-                    requirements.required_entity_type,
-                    requirements.required_entity_type
-                );
+    for (field_name, filter) in T::entity_ref_fields() {
+        if let Some(required_entity_type) = filter {
+            if let Some(entity_type_info) =
+                construction_specs.get_entity_type_info(required_entity_type)
+            {
+                if !entity_type_info.has_uuid {
+                    error!(
+                        "Component '{}' field '{}' requires entity type '{}' to have UUID.",
+                        std::any::type_name::<T>(),
+                        field_name,
+                        required_entity_type
+                    );
+                }
             }
         }
     }
