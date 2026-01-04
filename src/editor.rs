@@ -306,7 +306,7 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
     }
 }
 
-/// The UI part for creating new entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
+/// The UI part for creating new entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
 pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
     let mut system_state = SystemState::<(
         Res<YoleckEntityConstructionSpecs>,
@@ -348,7 +348,7 @@ pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui
     }
 }
 
-/// The UI part for selecting entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
+/// The UI part for selecting entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
 pub fn entity_selection_section(
     world: &mut World,
 ) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
@@ -461,7 +461,7 @@ pub fn entity_selection_section(
     }
 }
 
-/// The UI part for editing entities. See [`YoleckEditorSections`](crate::YoleckEditorSections).
+/// The UI part for editing entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
 pub fn entity_editing_section(
     world: &mut World,
 ) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {

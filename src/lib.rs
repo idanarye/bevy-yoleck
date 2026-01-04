@@ -364,7 +364,7 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels"),
         ));
-        app.insert_resource(YoleckEditorSections::default());
+        app.insert_resource(YoleckEditorLeftPanelSections::default());
         app.insert_resource(YoleckEditorRightPanelSections::default());
         app.insert_resource(YoleckEditorTopPanelSections::default());
         app.insert_resource(YoleckEditorBottomPanelSections::default());
@@ -624,7 +624,7 @@ pub(crate) struct YoleckState {
     level_needs_saving: bool,
 }
 
-/// Sections for the Yoleck editor window.
+/// Sections for the left panel of the Yoleck editor window.
 ///
 /// Already contains sections by default, but can be used to customize the editor by adding more
 /// sections. Each section is a function/closure that accepts a world and returns a closure that
@@ -634,9 +634,9 @@ pub(crate) struct YoleckState {
 /// ```no_run
 /// # use bevy::prelude::*;
 /// use bevy::ecs::system::SystemState;
-/// # use bevy_yoleck::{YoleckEditorSections, egui};
+/// # use bevy_yoleck::{YoleckEditorLeftPanelSections, egui};
 /// # let mut app = App::new();
-/// app.world_mut().resource_mut::<YoleckEditorSections>().0.push((|world: &mut World| {
+/// app.world_mut().resource_mut::<YoleckEditorLeftPanelSections>().0.push((|world: &mut World| {
 ///     let mut system_state = SystemState::<(
 ///         Res<Time>,
 ///     )>::new(world);
@@ -650,7 +650,7 @@ pub(crate) struct YoleckState {
 /// }).into());
 /// ```
 #[derive(Resource)]
-pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
+pub struct YoleckEditorLeftPanelSections(pub Vec<YoleckEditorSection>);
 
 /// Sections for the right panel of the Yoleck editor window.
 #[derive(Resource)]
@@ -713,9 +713,9 @@ impl Default for YoleckEditorBottomPanelSections {
     }
 }
 
-impl Default for YoleckEditorSections {
+impl Default for YoleckEditorLeftPanelSections {
     fn default() -> Self {
-        YoleckEditorSections(vec![
+        YoleckEditorLeftPanelSections(vec![
             editor::new_entity_section.into(),
             editor::entity_selection_section.into(),
         ])

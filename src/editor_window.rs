@@ -4,7 +4,7 @@ use bevy_egui::{egui, EguiContext, PrimaryEguiContext};
 
 use crate::util::EditSpecificResources;
 use crate::YoleckEditorRightPanelSections;
-use crate::YoleckEditorSections;
+use crate::YoleckEditorLeftPanelSections;
 use crate::YoleckEditorTopPanelSections;
 use crate::YoleckEditorBottomPanelSections;
 
@@ -34,7 +34,7 @@ pub(crate) fn yoleck_editor_window(
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 world.resource_scope(
-                    |world, mut yoleck_editor_sections: Mut<YoleckEditorSections>| {
+                    |world, mut yoleck_editor_sections: Mut<YoleckEditorLeftPanelSections>| {
                         world.resource_scope(
                             |world, mut edit_specific: Mut<EditSpecificResources>| {
                                 edit_specific.inject_to_world(world);
@@ -236,7 +236,7 @@ impl YoleckEditorSectionInner {
     }
 }
 
-/// A single section of the UI. See [`YoleckEditorSections`](crate::YoleckEditorSections).
+/// A single section of the UI. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
 pub struct YoleckEditorSection(pub(crate) YoleckEditorSectionInner);
 
 impl<C, S> From<C> for YoleckEditorSection
