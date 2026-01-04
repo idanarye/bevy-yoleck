@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
+use crate::entity_ref::EntityRefRequirement;
+
 pub trait YoleckAutoEdit: Send + Sync + 'static {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui);
 }
@@ -105,13 +107,34 @@ impl YoleckAutoEdit for Quat {
         yaw = yaw.to_degrees();
         pitch = pitch.to_degrees();
         roll = roll.to_degrees();
-        
+
         ui.horizontal(|ui| {
             let mut changed = false;
-            changed |= ui.add(egui::DragValue::new(&mut yaw).prefix("yaw: ").speed(1.0).suffix("°")).changed();
-            changed |= ui.add(egui::DragValue::new(&mut pitch).prefix("pitch: ").speed(1.0).suffix("°")).changed();
-            changed |= ui.add(egui::DragValue::new(&mut roll).prefix("roll: ").speed(1.0).suffix("°")).changed();
-            
+            changed |= ui
+                .add(
+                    egui::DragValue::new(&mut yaw)
+                        .prefix("yaw: ")
+                        .speed(1.0)
+                        .suffix("°"),
+                )
+                .changed();
+            changed |= ui
+                .add(
+                    egui::DragValue::new(&mut pitch)
+                        .prefix("pitch: ")
+                        .speed(1.0)
+                        .suffix("°"),
+                )
+                .changed();
+            changed |= ui
+                .add(
+                    egui::DragValue::new(&mut roll)
+                        .prefix("roll: ")
+                        .speed(1.0)
+                        .suffix("°"),
+                )
+                .changed();
+
             if changed {
                 *value = Quat::from_euler(
                     EulerRot::YXZ,
@@ -128,7 +151,10 @@ impl YoleckAutoEdit for Color {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui) {
         let srgba = value.to_srgba();
         let mut color_arr = [srgba.red, srgba.green, srgba.blue, srgba.alpha];
-        if ui.color_edit_button_rgba_unmultiplied(&mut color_arr).changed() {
+        if ui
+            .color_edit_button_rgba_unmultiplied(&mut color_arr)
+            .changed()
+        {
             *value = Color::srgba(color_arr[0], color_arr[1], color_arr[2], color_arr[3]);
         }
     }
@@ -189,9 +215,9 @@ use crate::specs_registration::YoleckComponent;
 use crate::YoleckExtForApp;
 
 #[cfg(feature = "vpeol")]
-use bevy::ecs::component::Mutable;
-#[cfg(feature = "vpeol")]
 use crate::entity_ref::{edit_entity_refs_system, YoleckEntityRefAccessor};
+#[cfg(feature = "vpeol")]
+use bevy::ecs::component::Mutable;
 
 pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit>(
     mut ui: ResMut<YoleckUi>,
@@ -200,7 +226,7 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit>(
     let Ok(mut component) = edit.single_mut() else {
         return;
     };
-    
+
     ui.group(|ui| {
         ui.label(egui::RichText::new(T::KEY).strong());
         ui.separator();
@@ -211,7 +237,10 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit>(
 pub trait YoleckAutoEditExt {
     #[cfg(feature = "vpeol")]
     fn add_yoleck_auto_edit<
-        T: Component<Mutability = Mutable> + YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor,
+        T: Component<Mutability = Mutable>
+            + YoleckComponent
+            + YoleckAutoEdit
+            + YoleckEntityRefAccessor,
     >(
         &mut self,
     );
@@ -223,24 +252,28 @@ pub trait YoleckAutoEditExt {
 impl YoleckAutoEditExt for App {
     #[cfg(feature = "vpeol")]
     fn add_yoleck_auto_edit<
-        T: Component<Mutability = Mutable> + YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor,
+        T: Component<Mutability = Mutable>
+            + YoleckComponent
+            + YoleckAutoEdit
+            + YoleckEntityRefAccessor,
     >(
         &mut self,
     ) {
         self.add_yoleck_edit_system(auto_edit_system::<T>);
         self.add_yoleck_edit_system(edit_entity_refs_system::<T>);
-        
-        let mut requirements = self.world_mut()
+
+        let mut requirements = self
+            .world_mut()
             .get_resource_or_insert_with(crate::entity_ref::YoleckEntityRefRequirements::default);
-        
+
         let component_type = std::any::type_name::<T>();
         for (field_name, filter) in T::entity_ref_fields() {
             if let Some(required_entity_type) = filter {
-                requirements.requirements.push((
-                    component_type.to_string(),
-                    field_name.to_string(),
-                    required_entity_type.to_string(),
-                ));
+                requirements.requirements.push(EntityRefRequirement {
+                    component_type: component_type.to_string(),
+                    field_name: field_name.to_string(),
+                    required_entity_type: required_entity_type.to_string(),
+                });
             }
         }
     }
@@ -250,4 +283,3 @@ impl YoleckAutoEditExt for App {
         self.add_yoleck_edit_system(auto_edit_system::<T>);
     }
 }
-
