@@ -188,6 +188,7 @@ fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
     let speed = quote_option(&attrs.speed, |s| quote! { #s });
     let label_opt = quote_option(&attrs.label, |l| quote! { #l.to_string() });
     let tooltip = quote_option(&attrs.tooltip, |t| quote! { #t.to_string() });
+    let entity_filter = quote_option(&attrs.entity_filter, |f| quote! { #f.to_string() });
 
     let readonly = attrs.readonly;
     let multiline = attrs.multiline;
@@ -202,6 +203,7 @@ fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
                 speed: #speed,
                 readonly: #readonly,
                 multiline: #multiline,
+                entity_filter: #entity_filter,
             };
             YoleckAutoEdit::auto_edit_with_label_and_attrs(
                 &mut value.#field_name,
@@ -248,10 +250,6 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
     for field in fields {
         let attrs = parse_field_attrs(field)?;
         if attrs.hidden {
-            continue;
-        }
-        let type_name = get_type_name(&field.ty);
-        if type_name == "YoleckEntityRef" {
             continue;
         }
         field_uis.push(generate_field_ui(field, &attrs));
