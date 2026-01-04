@@ -164,6 +164,19 @@ fn get_type_name(ty: &Type) -> String {
     }
 }
 
+fn quote_option<T, F>(opt: &Option<T>, f: F) -> TokenStream
+where
+    F: FnOnce(&T) -> TokenStream,
+{
+    match opt {
+        Some(value) => {
+            let inner = f(value);
+            quote! { Some(#inner) }
+        }
+        None => quote! { None },
+    }
+}
+
 fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
     let field_name = field.ident.as_ref().unwrap();
     let field_name_str = attrs
@@ -171,203 +184,32 @@ fn generate_field_ui(field: &Field, attrs: &YoleckFieldAttrs) -> TokenStream {
         .clone()
         .unwrap_or_else(|| field_name.to_string().replace('_', " "));
 
-    let type_name = get_type_name(&field.ty);
+    let range = quote_option(&attrs.range, |(min, max)| quote! { (#min, #max) });
+    let speed = quote_option(&attrs.speed, |s| quote! { #s });
+    let label_opt = quote_option(&attrs.label, |l| quote! { #l.to_string() });
+    let tooltip = quote_option(&attrs.tooltip, |t| quote! { #t.to_string() });
 
-    let tooltip_code = if let Some(tooltip) = &attrs.tooltip {
-        quote! { .on_hover_text(#tooltip) }
-    } else {
-        quote! {}
-    };
+    let readonly = attrs.readonly;
+    let multiline = attrs.multiline;
 
-    let widget = match type_name.as_str() {
-        "f32" | "f64" => {
-            if let Some((min, max)) = attrs.range {
-                let min = min as f32;
-                let max = max as f32;
-                quote! {
-                    ui.horizontal(|ui| {
-                        ui.label(#field_name_str);
-                        ui.add(egui::Slider::new(&mut value.#field_name, #min..=#max))#tooltip_code;
-                    });
-                }
-            } else {
-                let speed = attrs.speed.unwrap_or(0.1) as f32;
-                quote! {
-                    ui.horizontal(|ui| {
-                        ui.label(#field_name_str);
-                        ui.add(egui::DragValue::new(&mut value.#field_name).speed(#speed))#tooltip_code;
-                    });
-                }
-            }
+    quote! {
+        {
+            use bevy_yoleck::auto_edit::{YoleckAutoEdit, FieldAttrs};
+            let attrs = FieldAttrs {
+                label: #label_opt,
+                tooltip: #tooltip,
+                range: #range,
+                speed: #speed,
+                readonly: #readonly,
+                multiline: #multiline,
+            };
+            YoleckAutoEdit::auto_edit_with_label_and_attrs(
+                &mut value.#field_name,
+                ui,
+                #field_name_str,
+                &attrs,
+            );
         }
-        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "isize" | "usize" => {
-            if let Some((min, max)) = attrs.range {
-                let min = min as i64;
-                let max = max as i64;
-                quote! {
-                    ui.horizontal(|ui| {
-                        ui.label(#field_name_str);
-                        ui.add(egui::Slider::new(&mut value.#field_name, #min as _..=#max as _))#tooltip_code;
-                    });
-                }
-            } else {
-                let speed = attrs.speed.unwrap_or(1.0) as f32;
-                quote! {
-                    ui.horizontal(|ui| {
-                        ui.label(#field_name_str);
-                        ui.add(egui::DragValue::new(&mut value.#field_name).speed(#speed))#tooltip_code;
-                    });
-                }
-            }
-        }
-        "bool" => {
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.checkbox(&mut value.#field_name, #field_name_str)#tooltip_code;
-                });
-            }
-        }
-        "String" => {
-            if attrs.multiline {
-                quote! {
-                    ui.label(#field_name_str);
-                    ui.text_edit_multiline(&mut value.#field_name)#tooltip_code;
-                }
-            } else {
-                quote! {
-                    ui.horizontal(|ui| {
-                        ui.label(#field_name_str);
-                        ui.text_edit_singleline(&mut value.#field_name)#tooltip_code;
-                    });
-                }
-            }
-        }
-        "Vec2" => {
-            let speed = attrs.speed.unwrap_or(0.1) as f32;
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    ui.add(egui::DragValue::new(&mut value.#field_name.x).prefix("x: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.y).prefix("y: ").speed(#speed));
-                })#tooltip_code;
-            }
-        }
-        "Vec3" => {
-            let speed = attrs.speed.unwrap_or(0.1) as f32;
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    ui.add(egui::DragValue::new(&mut value.#field_name.x).prefix("x: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.y).prefix("y: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.z).prefix("z: ").speed(#speed));
-                })#tooltip_code;
-            }
-        }
-        "Vec4" => {
-            let speed = attrs.speed.unwrap_or(0.1) as f32;
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    ui.add(egui::DragValue::new(&mut value.#field_name.x).prefix("x: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.y).prefix("y: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.z).prefix("z: ").speed(#speed));
-                    ui.add(egui::DragValue::new(&mut value.#field_name.w).prefix("w: ").speed(#speed));
-                })#tooltip_code;
-            }
-        }
-        "Quat" => {
-            let speed = attrs.speed.unwrap_or(1.0) as f32;
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    let (mut yaw, mut pitch, mut roll) = value.#field_name.to_euler(bevy::prelude::EulerRot::YXZ);
-                    yaw = yaw.to_degrees();
-                    pitch = pitch.to_degrees();
-                    roll = roll.to_degrees();
-                    let mut changed = false;
-                    changed |= ui.add(egui::DragValue::new(&mut yaw).prefix("yaw: ").speed(#speed).suffix("°")).changed();
-                    changed |= ui.add(egui::DragValue::new(&mut pitch).prefix("pitch: ").speed(#speed).suffix("°")).changed();
-                    changed |= ui.add(egui::DragValue::new(&mut roll).prefix("roll: ").speed(#speed).suffix("°")).changed();
-                    if changed {
-                        value.#field_name = bevy::prelude::Quat::from_euler(
-                            bevy::prelude::EulerRot::YXZ,
-                            yaw.to_radians(),
-                            pitch.to_radians(),
-                            roll.to_radians(),
-                        );
-                    }
-                })#tooltip_code;
-            }
-        }
-        "Color" | "Srgba" | "LinearRgba" => {
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    let srgba = value.#field_name.to_srgba();
-                    let mut color_arr = [srgba.red, srgba.green, srgba.blue, srgba.alpha];
-                    if ui.color_edit_button_rgba_unmultiplied(&mut color_arr).changed() {
-                        value.#field_name = bevy::prelude::Color::srgba(color_arr[0], color_arr[1], color_arr[2], color_arr[3]);
-                    }
-                })#tooltip_code;
-            }
-        }
-        "Option" => {
-            quote! {
-                ui.horizontal(|ui| {
-                    ui.label(#field_name_str);
-                    let mut has_value = value.#field_name.is_some();
-                    if ui.checkbox(&mut has_value, "").changed() {
-                        if has_value {
-                            value.#field_name = Some(Default::default());
-                        } else {
-                            value.#field_name = None;
-                        }
-                    }
-                    if let Some(ref mut inner) = value.#field_name {
-                        bevy_yoleck::auto_edit::render_auto_edit_value(ui, inner);
-                    }
-                })#tooltip_code;
-            }
-        }
-        "Vec" => {
-            quote! {
-                ui.collapsing(#field_name_str, |ui| {
-                    let mut to_remove = None;
-                    for (idx, item) in value.#field_name.iter_mut().enumerate() {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("[{}]", idx));
-                            bevy_yoleck::auto_edit::render_auto_edit_value(ui, item);
-                            if ui.small_button("−").clicked() {
-                                to_remove = Some(idx);
-                            }
-                        });
-                    }
-                    if let Some(idx) = to_remove {
-                        value.#field_name.remove(idx);
-                    }
-                    if ui.small_button("+").clicked() {
-                        value.#field_name.push(Default::default());
-                    }
-                })#tooltip_code;
-            }
-        }
-        _ => {
-            quote! {
-                ui.collapsing(#field_name_str, |ui| {
-                    bevy_yoleck::auto_edit::render_auto_edit_value(ui, &mut value.#field_name);
-                })#tooltip_code;
-            }
-        }
-    };
-
-    if attrs.readonly {
-        quote! {
-            ui.add_enabled_ui(false, |ui| {
-                #widget
-            });
-        }
-    } else {
-        widget
     }
 }
 
