@@ -496,8 +496,7 @@ fn handle_copy_entity_key(
         return Ok(());
     }
 
-    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft) 
-        || keyboard_input.pressed(KeyCode::ControlRight);
+    let ctrl_pressed = keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyC) {
         let entities: Vec<YoleckRawEntry> = query

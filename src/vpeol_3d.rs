@@ -126,6 +126,8 @@
 use std::any::TypeId;
 
 use crate::bevy_egui::egui;
+use crate::editor::YoleckEditorEvent;
+use crate::entity_management::YoleckRawEntry;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
 };
@@ -134,10 +136,11 @@ use crate::vpeol::{
     VpeolCameraState, VpeolClicksOnObjectsState, VpeolDragPlane, VpeolRepositionLevel,
     VpeolRootResolver, VpeolSystems,
 };
-use crate::{prelude::*, YoleckDirective, YoleckSchedule, YoleckEditMarker, YoleckState, YoleckBelongsToLevel, YoleckEditorTopPanelSections};
-use crate::editor::YoleckEditorEvent;
-use crate::entity_management::YoleckRawEntry;
-use crate::{YoleckManaged, YoleckEntityConstructionSpecs};
+use crate::{
+    prelude::*, YoleckBelongsToLevel, YoleckDirective, YoleckEditMarker,
+    YoleckEditorTopPanelSections, YoleckSchedule, YoleckState,
+};
+use crate::{YoleckEntityConstructionSpecs, YoleckManaged};
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
@@ -245,7 +248,11 @@ impl Plugin for Vpeol3dPluginForEditor {
         );
         app.add_systems(
             Update,
-            (handle_delete_entity_key, handle_copy_entity_key, handle_paste_entity_key)
+            (
+                handle_delete_entity_key,
+                handle_copy_entity_key,
+                handle_paste_entity_key,
+            )
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
@@ -318,7 +325,7 @@ fn update_camera_status_for_models(
 }
 
 /// A single camera mode choice with its control settings and optional initial transform.
-/// 
+///
 /// The `control` field contains the camera settings that will be applied when this mode is selected.
 /// The `initial_transform` field, if present, will reposition the camera when switching to this mode.
 pub struct YoleckCameraChoice {
@@ -369,13 +376,9 @@ impl YoleckCameraChoices {
     }
 
     /// Add a camera mode choice without initial transform.
-    /// 
+    ///
     /// The camera will keep its current position when switching to this mode.
-    pub fn choice(
-        mut self,
-        name: impl Into<String>,
-        control: Vpeol3dCameraControl,
-    ) -> Self {
+    pub fn choice(mut self, name: impl Into<String>, control: Vpeol3dCameraControl) -> Self {
         self.choices.push(YoleckCameraChoice {
             name: name.into(),
             control,
@@ -385,7 +388,7 @@ impl YoleckCameraChoices {
     }
 
     /// Add a camera mode choice with initial transform.
-    /// 
+    ///
     /// When switching to this mode, the camera will be repositioned according to
     /// the provided `position`, `look_at`, and `up` parameters.
     pub fn choice_with_transform(
@@ -433,7 +436,7 @@ impl Default for YoleckCameraChoices {
 }
 
 /// Camera mode identifier for type-safe camera mode comparisons.
-/// 
+///
 /// Use this enum to identify which camera mode is currently active, instead of string comparisons.
 /// The built-in modes (`Fps`, `Sidescroller`, `Topdown`) are provided by default.
 /// Use `Custom(u32)` for user-defined camera modes with unique identifiers.
@@ -455,7 +458,7 @@ pub enum Vpeol3dCameraMode {
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
     /// Camera mode identifier for type-safe mode comparisons.
-    /// 
+    ///
     /// Use this to identify which camera mode is active in custom camera systems.
     pub mode: Vpeol3dCameraMode,
     /// Defines the plane normal for mouse wheel zoom movement.
@@ -519,7 +522,9 @@ impl Vpeol3dCameraControl {
     pub fn topdown() -> Self {
         Self {
             mode: Vpeol3dCameraMode::Topdown,
-            plane: InfinitePlane3d { normal: Dir3::NEG_Y },
+            plane: InfinitePlane3d {
+                normal: Dir3::NEG_Y,
+            },
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
@@ -692,15 +697,15 @@ fn handle_copy_entity_key(
         return Ok(());
     }
 
-    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft) 
-        || keyboard_input.pressed(KeyCode::ControlRight);
+    let ctrl_pressed = keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyC) {
         let entities: Vec<YoleckRawEntry> = query
             .iter()
             .filter_map(|yoleck_managed| {
-                let entity_type = construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
-                
+                let entity_type =
+                    construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
+
                 let data: serde_json::Map<String, serde_json::Value> = entity_type
                     .components
                     .iter()
@@ -748,7 +753,7 @@ fn handle_paste_entity_key(
         return Ok(());
     }
 
-    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft) 
+    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft)
         || keyboard_input.pressed(KeyCode::ControlRight);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
@@ -760,21 +765,23 @@ fn handle_paste_entity_key(
                         commands.entity(prev_selected).remove::<YoleckEditMarker>();
                         writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
                     }
-                    
+
                     let level_being_edited = yoleck_state.level_being_edited;
-                    
+
                     for entry in entities {
-                        let entity_id = commands.spawn((
-                            entry,
-                            YoleckBelongsToLevel {
-                                level: level_being_edited,
-                            },
-                            YoleckEditMarker,
-                        )).id();
-                        
+                        let entity_id = commands
+                            .spawn((
+                                entry,
+                                YoleckBelongsToLevel {
+                                    level: level_being_edited,
+                                },
+                                YoleckEditMarker,
+                            ))
+                            .id();
+
                         writer.write(YoleckEditorEvent::EntitySelected(entity_id));
                     }
-                    
+
                     yoleck_state.level_needs_saving = true;
                 }
             }
@@ -806,7 +813,9 @@ fn draw_scene_gizmo(
         return Ok(());
     };
 
-    let screen_rect = editor_viewport.rect.unwrap_or_else(|| ctx.input(|i| i.viewport_rect()));
+    let screen_rect = editor_viewport
+        .rect
+        .unwrap_or_else(|| ctx.input(|i| i.viewport_rect()));
 
     if screen_rect.width() == 0.0 || screen_rect.height() == 0.0 {
         return Ok(());
@@ -1005,7 +1014,8 @@ fn draw_scene_gizmo(
         let dir = (pos - center).normalized();
         let label_pos = pos + dir * label_offset;
         let alpha = if depth >= 0.0 { 255 } else { 120 };
-        let label_color = egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
+        let label_color =
+            egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
         painter.text(
             label_pos,
             egui::Align2::CENTER_CENTER,
@@ -1034,11 +1044,11 @@ fn camera_3d_rotate(
         if egui_context.ctx_mut()?.is_pointer_over_area() {
             return Ok(());
         }
-        
+
         let has_rotatable_camera = cameras_query
             .iter()
             .any(|(_, control)| control.allow_rotation_while_maintaining_up.is_some());
-        
+
         if has_rotatable_camera {
             cursor.grab_mode = CursorGrabMode::Locked;
             cursor.visible = false;
@@ -1101,7 +1111,7 @@ pub fn vpeol_3d_knobs_mode_selector(
             ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::World, "World");
             ui.label("Knobs:");
         });
-        
+
         Ok(())
     }
 }
@@ -1116,25 +1126,36 @@ pub fn vpeol_3d_camera_mode_selector(
 
     move |world, ui: &mut egui::Ui| {
         let (mut query, choices) = system_state.get_mut(world);
-        
+
         if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
             let old_mode = camera_control.mode;
-            
-            let current_choice = choices.choices.iter().find(|c| c.control.mode == camera_control.mode);
+
+            let current_choice = choices
+                .choices
+                .iter()
+                .find(|c| c.control.mode == camera_control.mode);
             let selected_text = current_choice.map(|c| c.name.as_str()).unwrap_or("Unknown");
 
             egui::ComboBox::from_id_salt("camera_mode_selector")
                 .selected_text(selected_text)
                 .show_ui(ui, |ui| {
                     for choice in choices.choices.iter() {
-                        ui.selectable_value(&mut camera_control.mode, choice.control.mode, &choice.name);
+                        ui.selectable_value(
+                            &mut camera_control.mode,
+                            choice.control.mode,
+                            &choice.name,
+                        );
                     }
                 });
-            
+
             if old_mode != camera_control.mode {
-                if let Some(choice) = choices.choices.iter().find(|c| c.control.mode == camera_control.mode) {
+                if let Some(choice) = choices
+                    .choices
+                    .iter()
+                    .find(|c| c.control.mode == camera_control.mode)
+                {
                     *camera_control = choice.control.clone();
-                    
+
                     if let Some((position, look_at, up)) = choice.initial_transform {
                         camera_transform.translation = position;
                         camera_transform.look_at(look_at, up);
@@ -1142,7 +1163,7 @@ pub fn vpeol_3d_camera_mode_selector(
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -1254,7 +1275,7 @@ fn vpeol_3d_edit_transform_group(
     ui.group(|ui| {
         ui.label(egui::RichText::new("Transform").strong());
         ui.separator();
-        
+
         vpeol_3d_edit_position_impl(ui, position_edit, &global_drag_plane, &passed_data);
         vpeol_3d_edit_rotation_impl(ui, rotation_edit);
         vpeol_3d_edit_scale_impl(ui, scale_edit);
@@ -1313,14 +1334,11 @@ fn vpeol_3d_edit_position_impl(
     }
 }
 
-fn vpeol_3d_edit_rotation_impl(
-    ui: &mut egui::Ui,
-    mut edit: YoleckEdit<&mut Vpeol3dRotation>,
-) {
+fn vpeol_3d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3dRotation>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    
+
     let mut average_euler = Vec3::ZERO;
     let mut num_entities = 0;
 
@@ -1335,18 +1353,33 @@ fn vpeol_3d_edit_rotation_impl(
         let mut x_deg = new_euler.x.to_degrees();
         let mut y_deg = new_euler.y.to_degrees();
         let mut z_deg = new_euler.z.to_degrees();
-        
+
         ui.add(egui::Label::new("Rotation"));
-        ui.add(egui::DragValue::new(&mut x_deg).prefix("X:").speed(1.0).suffix("°"));
-        ui.add(egui::DragValue::new(&mut y_deg).prefix("Y:").speed(1.0).suffix("°"));
-        ui.add(egui::DragValue::new(&mut z_deg).prefix("Z:").speed(1.0).suffix("°"));
-        
+        ui.add(
+            egui::DragValue::new(&mut x_deg)
+                .prefix("X:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+        ui.add(
+            egui::DragValue::new(&mut y_deg)
+                .prefix("Y:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+        ui.add(
+            egui::DragValue::new(&mut z_deg)
+                .prefix("Z:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+
         new_euler.x = x_deg.to_radians();
         new_euler.y = y_deg.to_radians();
         new_euler.z = z_deg.to_radians();
-        
+
         let transition = new_euler - average_euler;
-        
+
         if transition.is_finite() && transition != Vec3::ZERO {
             for mut rotation in edit.iter_matching_mut() {
                 rotation.0 += transition;
@@ -1355,10 +1388,7 @@ fn vpeol_3d_edit_rotation_impl(
     });
 }
 
-fn vpeol_3d_edit_scale_impl(
-    ui: &mut egui::Ui,
-    mut edit: YoleckEdit<&mut Vpeol3dScale>,
-) {
+fn vpeol_3d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3dScale>) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
@@ -1375,12 +1405,24 @@ fn vpeol_3d_edit_scale_impl(
         let mut new_average = average;
 
         ui.add(egui::Label::new("Scale"));
-        ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:").speed(0.01));
-        ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:").speed(0.01));
-        ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:").speed(0.01));
+        ui.add(
+            egui::DragValue::new(&mut new_average.x)
+                .prefix("X:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.y)
+                .prefix("Y:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.z)
+                .prefix("Z:")
+                .speed(0.01),
+        );
 
         let transition = (new_average - average).as_vec3();
-        
+
         if transition.is_finite() && transition != Vec3::ZERO {
             for mut scale in edit.iter_matching_mut() {
                 scale.0 += transition;
@@ -1433,7 +1475,12 @@ struct AxisKnobData {
 }
 
 fn vpeol_3d_edit_axis_knobs(
-    mut edit: YoleckEdit<(Entity, &GlobalTransform, &Vpeol3dPosition, Option<&Vpeol3dRotation>)>,
+    mut edit: YoleckEdit<(
+        Entity,
+        &GlobalTransform,
+        &Vpeol3dPosition,
+        Option<&Vpeol3dRotation>,
+    )>,
     knobs_config: Res<Vpeol3dKnobsConfig>,
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
@@ -1465,52 +1512,53 @@ fn vpeol_3d_edit_axis_knobs(
         })
         .unwrap_or((Vec3::ZERO, None));
 
-    let (cone_mesh, line_mesh, materials, materials_active) = cached_assets.get_or_insert_with(|| {
-        (
-            mesh_assets.add(Mesh::from(Cone {
-                radius: 0.5,
-                height: 1.0,
-            })),
-            mesh_assets.add(Mesh::from(Cylinder {
-                radius: 0.15,
-                half_height: 0.5,
-            })),
-            [
-                material_assets.add(StandardMaterial {
-                    base_color: Color::from(css::RED),
-                    unlit: true,
-                    ..default()
-                }),
-                material_assets.add(StandardMaterial {
-                    base_color: Color::from(css::GREEN),
-                    unlit: true,
-                    ..default()
-                }),
-                material_assets.add(StandardMaterial {
-                    base_color: Color::from(css::BLUE),
-                    unlit: true,
-                    ..default()
-                }),
-            ],
-            [
-                material_assets.add(StandardMaterial {
-                    base_color: Color::linear_rgb(1.0, 0.5, 0.5),
-                    unlit: true,
-                    ..default()
-                }),
-                material_assets.add(StandardMaterial {
-                    base_color: Color::linear_rgb(0.5, 1.0, 0.5),
-                    unlit: true,
-                    ..default()
-                }),
-                material_assets.add(StandardMaterial {
-                    base_color: Color::linear_rgb(0.5, 0.5, 1.0),
-                    unlit: true,
-                    ..default()
-                }),
-            ],
-        )
-    });
+    let (cone_mesh, line_mesh, materials, materials_active) =
+        cached_assets.get_or_insert_with(|| {
+            (
+                mesh_assets.add(Mesh::from(Cone {
+                    radius: 0.5,
+                    height: 1.0,
+                })),
+                mesh_assets.add(Mesh::from(Cylinder {
+                    radius: 0.15,
+                    half_height: 0.5,
+                })),
+                [
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::RED),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::GREEN),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::BLUE),
+                        unlit: true,
+                        ..default()
+                    }),
+                ],
+                [
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(1.0, 0.5, 0.5),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(0.5, 1.0, 0.5),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(0.5, 0.5, 1.0),
+                        unlit: true,
+                        ..default()
+                    }),
+                ],
+            )
+        });
 
     let world_axes = [
         AxisKnobData {
@@ -1539,15 +1587,20 @@ fn vpeol_3d_edit_axis_knobs(
             Vpeol3dKnobsMode::World => world_axes,
             Vpeol3dKnobsMode::Local => {
                 let rot = if let Some(Vpeol3dRotation(euler_angles)) = rotation {
-                    Quat::from_euler(EulerRot::XYZ, euler_angles.x, euler_angles.y, euler_angles.z)
+                    Quat::from_euler(
+                        EulerRot::XYZ,
+                        euler_angles.x,
+                        euler_angles.y,
+                        euler_angles.z,
+                    )
                 } else {
                     Quat::IDENTITY
                 };
-                
+
                 let local_x = (rot * Vec3::X).normalize();
                 let local_y = (rot * Vec3::Y).normalize();
                 let local_z = (rot * Vec3::Z).normalize();
-                
+
                 [
                     AxisKnobData {
                         axis: local_x,
@@ -1601,14 +1654,14 @@ fn vpeol_3d_edit_axis_knobs(
             let line_knob = knobs.knob((entity, line_name));
             let line_knob_id = line_knob.cmd.id();
             drop(line_knob);
-            
+
             let knob = knobs.knob((entity, knob_name));
             let knob_id = knob.cmd.id();
             let passed_pos = knob.get_passed_data::<Vec3>().copied();
             drop(knob);
-            
+
             let is_active = dragged_entity == Some(line_knob_id) || dragged_entity == Some(knob_id);
-            
+
             let material = if is_active {
                 &materials_active[axis_idx]
             } else {
@@ -1657,7 +1710,12 @@ fn vpeol_3d_populate_transform(
         |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
             let mut transform = Transform::from_translation(position.0);
             if let Some(Vpeol3dRotation(euler_angles)) = rotation {
-                let quat = Quat::from_euler(EulerRot::XYZ, euler_angles.x, euler_angles.y, euler_angles.z);
+                let quat = Quat::from_euler(
+                    EulerRot::XYZ,
+                    euler_angles.x,
+                    euler_angles.y,
+                    euler_angles.z,
+                );
                 transform = transform.with_rotation(quat);
             }
             if let Some(Vpeol3dScale(scale)) = scale {
