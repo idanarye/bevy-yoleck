@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added automatic UI generation for components using reflection and attributes.
 - Supported numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields.
 - Added EntityRef type with automatic UI, filtering, and runtime UUID resolution.
-- Enabled entity linking with dropdown, viewport click, and drag-and-drop selection.
+- Enabled entity linking with drag-and-drop selection.
 - Make camera controls fps style 
 - Update bevy_egui version to 0.38.
 

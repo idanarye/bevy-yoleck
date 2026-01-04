@@ -8,7 +8,7 @@
 |---------|-------------|
 | **Redesigned Editor UI** | Complete UI/UX overhaul with split-screen layout: top panel for level management and playmode controls, right panel for entity properties editor, bottom panel for entity list, left panel for entity creation tools |
 | **Automatic UI Generation** | Automatic UI generation for components with support for numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields |
-| **EntityRef System** | Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports dropdown selection, viewport click, and drag-and-drop |
+| **EntityRef System** | Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports drag-and-drop |
 | **Scene Gizmo** | Visual scene gizmo for camera orientation and control |
 | **Colored Axis Knobs** | Color-coded axis knobs (red for X, green for Y, blue for Z) automatically displayed for all three world axes |
 | **Camera Schemas** | Add camera controls with FPS-style movement for better 3D navigation, and ui switcher for camera modes |
