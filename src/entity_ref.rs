@@ -7,8 +7,6 @@ use crate::auto_edit::YoleckAutoEdit;
 use crate::entity_uuid::YoleckUuidRegistry;
 
 #[cfg(feature = "vpeol")]
-use bevy::ecs::component::Mutable;
-#[cfg(feature = "vpeol")]
 use crate::editing::{YoleckEdit, YoleckUi};
 #[cfg(feature = "vpeol")]
 use crate::entity_uuid::YoleckEntityUuid;
@@ -16,6 +14,8 @@ use crate::entity_uuid::YoleckEntityUuid;
 use crate::exclusive_systems::{YoleckExclusiveSystemDirective, YoleckExclusiveSystemsQueue};
 #[cfg(feature = "vpeol")]
 use crate::{yoleck_exclusive_system_cancellable, YoleckManaged};
+#[cfg(feature = "vpeol")]
+use bevy::ecs::component::Mutable;
 
 /// A reference to another Yoleck entity, stored by UUID for persistence.
 ///
@@ -135,70 +135,6 @@ impl YoleckAutoEdit for YoleckEntityRef {
     }
 }
 
-#[cfg(feature = "vpeol")]
-fn entity_ref_dropdown_ui(
-    ui: &mut egui::Ui,
-    current_uuid: Option<Uuid>,
-    entities: &[(Entity, Uuid, String, String)],
-    filter: Option<&str>,
-) -> Option<Option<Uuid>> {
-    let filtered: Vec<_> = entities
-        .iter()
-        .filter(|(_, _, type_name, _)| filter.map_or(true, |f| type_name == f))
-        .collect();
-
-    let current_label = current_uuid
-        .and_then(|uuid| {
-            filtered
-                .iter()
-                .find(|(_, u, _, _)| *u == uuid)
-                .map(|(_, _, type_name, name)| {
-                    if name.is_empty() {
-                        format!(
-                            "{} ({})",
-                            type_name,
-                            uuid.to_string().chars().take(8).collect::<String>()
-                        )
-                    } else {
-                        format!("{} - {}", type_name, name)
-                    }
-                })
-        })
-        .unwrap_or_else(|| "None".to_string());
-
-    let mut result = None;
-
-    egui::ComboBox::from_id_salt("entity_ref_dropdown")
-        .selected_text(current_label)
-        .show_ui(ui, |ui| {
-            if ui
-                .selectable_label(current_uuid.is_none(), "None")
-                .clicked()
-            {
-                result = Some(None);
-            }
-            for (_, uuid, type_name, name) in filtered.iter() {
-                let label = if name.is_empty() {
-                    format!(
-                        "{} ({})",
-                        type_name,
-                        uuid.to_string().chars().take(8).collect::<String>()
-                    )
-                } else {
-                    format!("{} - {}", type_name, name)
-                };
-                if ui
-                    .selectable_label(current_uuid == Some(*uuid), label)
-                    .clicked()
-                {
-                    result = Some(Some(*uuid));
-                }
-            }
-        });
-
-    result
-}
-
 pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
     fn entity_ref_fields() -> &'static [(&'static str, Option<&'static str>)];
     fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut YoleckEntityRef;
@@ -216,7 +152,9 @@ pub(crate) fn validate_entity_ref_requirements(
     construction_specs: Res<crate::YoleckEntityConstructionSpecs>,
 ) {
     for (component_type, field_name, required_entity_type) in &requirements.requirements {
-        if let Some(entity_type_info) = construction_specs.get_entity_type_info(required_entity_type) {
+        if let Some(entity_type_info) =
+            construction_specs.get_entity_type_info(required_entity_type)
+        {
             if !entity_type_info.has_uuid {
                 error!(
                     "Entity reference field '{}' in component '{}' requires entity type '{}' to have UUID, \
@@ -243,62 +181,103 @@ pub fn edit_entity_refs_system<T: Component<Mutability = Mutable> + YoleckEntity
         return;
     };
 
-    let entities: Vec<_> = entities_query
-        .iter()
-        .map(|(entity, uuid, managed)| {
-            (
-                entity,
-                uuid.get(),
-                managed.type_name.clone(),
-                managed.name.clone(),
-            )
-        })
-        .collect();
-
     for (field_name, filter) in T::entity_ref_fields() {
         let entity_ref = component.get_entity_ref_mut(field_name);
-        let current_uuid = entity_ref.uuid;
 
-        let response = ui.horizontal(|ui| {
-            ui.label(*field_name);
+        let response = ui
+            .horizontal(|ui| {
+                ui.label(*field_name);
 
-            if let Some(new_value) =
-                entity_ref_dropdown_ui(ui, current_uuid, &entities, filter.as_deref())
-            {
-                let entity_ref = component.get_entity_ref_mut(field_name);
-                if let Some(uuid) = new_value {
-                    entity_ref.set(uuid);
+                let current_label = if let Some(entity) = entity_ref.resolved {
+                    if let Ok(managed) = entities_query.get(entity) {
+                        let name = &managed.2.name;
+                        let type_name = &managed.2.type_name;
+                        let uuid_short = entity_ref
+                            .get_uuid()
+                            .map(|u| u.to_string().chars().take(8).collect::<String>())
+                            .unwrap_or_else(|| "None".to_string());
+
+                        if name.is_empty() {
+                            format!("{} ({})", type_name, uuid_short)
+                        } else {
+                            format!("{} - {}", type_name, name)
+                        }
+                    } else {
+                        "Unknown".to_string()
+                    }
                 } else {
+                    entity_ref
+                        .uuid
+                        .map_or("None".to_string(), |uuid| uuid.to_string())
+                };
+
+                let mut selection_changed = None;
+
+                egui::ComboBox::from_id_salt(format!("entity_ref_dropdown_{}", field_name))
+                    .selected_text(current_label)
+                    .show_ui(ui, |ui| {
+                        let entities: Vec<_> = entities_query
+                            .iter()
+                            .filter(|(_, _, managed)| {
+                                filter.map_or(true, |f| f == managed.type_name)
+                            })
+                            .collect();
+
+                        if ui.selectable_label(entity_ref.is_none(), "None").clicked() {
+                            selection_changed = Some(None);
+                        }
+
+                        for (_, uuid, managed) in entities {
+                            let label = if managed.name.is_empty() {
+                                format!("{} ({})", managed.type_name, uuid.get())
+                            } else {
+                                format!("{} - {}", managed.type_name, managed.name)
+                            };
+                            if ui
+                                .selectable_label(entity_ref.get_uuid() == Some(uuid.get()), label)
+                                .clicked()
+                            {
+                                selection_changed = Some(Some(uuid));
+                            }
+                        }
+                    });
+
+                if let Some(new_uuid) = selection_changed {
+                    match new_uuid {
+                        Some(uuid) => entity_ref.set(uuid.get()),
+                        None => entity_ref.clear(),
+                    }
+                }
+
+                if ui
+                    .button("🎯")
+                    .on_hover_text("Click to select in viewport")
+                    .clicked()
+                {
+                    let field_name_owned = field_name.to_string();
+                    exclusive_queue.push_back(
+                        crate::vpeol::vpeol_read_click_on_entity::<With<YoleckEntityUuid>>
+                            .pipe(crate::yoleck_map_entity_to_uuid)
+                            .pipe(yoleck_entity_ref_select_handler::<T>(field_name_owned))
+                            .pipe(yoleck_exclusive_system_cancellable),
+                    );
+                }
+
+                if entity_ref.is_some() && ui.small_button("✕").clicked() {
                     entity_ref.clear();
                 }
-            }
-
-            if ui
-                .button("🎯")
-                .on_hover_text("Click to select in viewport")
-                .clicked()
-            {
-                let field_name_owned = field_name.to_string();
-                exclusive_queue.push_back(
-                    crate::vpeol::vpeol_read_click_on_entity::<With<YoleckEntityUuid>>
-                        .pipe(crate::yoleck_map_entity_to_uuid)
-                        .pipe(yoleck_entity_ref_select_handler::<T>(field_name_owned))
-                        .pipe(yoleck_exclusive_system_cancellable),
-                );
-            }
-
-            let entity_ref = component.get_entity_ref_mut(field_name);
-            if entity_ref.is_some() && ui.small_button("✕").clicked() {
-                entity_ref.clear();
-            }
-        }).response;
+            })
+            .response;
 
         if let Some(dropped_uuid) = response.dnd_release_payload::<Uuid>() {
             let dropped_uuid = *dropped_uuid;
             let entity_ref = component.get_entity_ref_mut(field_name);
             if filter.is_some() {
-                if let Some((_, _, type_name, _)) = entities.iter().find(|(_, uuid, _, _)| *uuid == dropped_uuid) {
-                    if filter.as_deref() == Some(type_name) {
+                if let Some((_, _, managed)) = entities_query
+                    .iter()
+                    .find(|(_, uuid, _)| uuid.get() == dropped_uuid)
+                {
+                    if filter.map_or(true, |f| f == managed.type_name) {
                         entity_ref.set(dropped_uuid);
                     }
                 }
@@ -310,7 +289,9 @@ pub fn edit_entity_refs_system<T: Component<Mutability = Mutable> + YoleckEntity
 }
 
 #[cfg(feature = "vpeol")]
-fn yoleck_entity_ref_select_handler<T: Component<Mutability = Mutable> + YoleckEntityRefAccessor>(
+fn yoleck_entity_ref_select_handler<
+    T: Component<Mutability = Mutable> + YoleckEntityRefAccessor,
+>(
     field_name: String,
 ) -> impl Fn(In<Option<Uuid>>, YoleckEdit<&mut T>) -> YoleckExclusiveSystemDirective {
     move |In(target): In<Option<Uuid>>, mut edit: YoleckEdit<&mut T>| {
