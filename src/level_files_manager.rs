@@ -562,17 +562,15 @@ pub fn playtest_buttons_section(
                     .id();
                 playtest_level.0 = None;
             }
-        } else {
-            if ui.button("Playtest").clicked() {
-                let level = gen_raw_level_file();
-                clear_level(&mut commands);
-                next_editor_state.set(YoleckEditorState::GameActive);
-                let level_asset_handle = level_assets.add(level.clone());
-                yoleck.level_being_edited = commands
-                    .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
-                    .id();
-                playtest_level.0 = Some(level);
-            }
+        } else if ui.button("Playtest").clicked() {
+            let level = gen_raw_level_file();
+            clear_level(&mut commands);
+            next_editor_state.set(YoleckEditorState::GameActive);
+            let level_asset_handle = level_assets.add(level.clone());
+            yoleck.level_being_edited = commands
+                .spawn((YoleckLevelInPlaytest, YoleckLoadLevel(level_asset_handle)))
+                .id();
+            playtest_level.0 = Some(level);
         }
 
         ui.separator();

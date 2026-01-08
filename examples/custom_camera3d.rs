@@ -242,7 +242,7 @@ fn orbital_camera_movement(
             let direction = (camera_transform.translation - look_at).normalize();
             camera_transform.translation += direction * zoom * 10.0 * time.delta_secs();
         }
-        
+
         camera_transform.look_at(look_at, Vec3::Y);
     }
 }
@@ -261,7 +261,9 @@ fn populate_cube(
         cmd.insert(VpeolWillContainClickableChildren);
         if ctx.is_first_time() {
             let mesh = mesh
-                .get_or_insert_with(|| mesh_assets.add(Mesh::from(Cuboid::from_size(Vec3::splat(2.0)))))
+                .get_or_insert_with(|| {
+                    mesh_assets.add(Mesh::from(Cuboid::from_size(Vec3::splat(2.0))))
+                })
                 .clone();
             let material = material
                 .get_or_insert_with(|| material_assets.add(Color::from(css::BLUE)))
@@ -294,4 +296,3 @@ fn populate_sphere(
         }
     });
 }
-

@@ -357,7 +357,12 @@ pub fn entity_selection_section(
 
     let mut system_state = SystemState::<(
         Res<YoleckEntityConstructionSpecs>,
-        Query<(Entity, &YoleckManaged, Option<&YoleckEditMarker>, Option<&YoleckEntityUuid>)>,
+        Query<(
+            Entity,
+            &YoleckManaged,
+            Option<&YoleckEditMarker>,
+            Option<&YoleckEntityUuid>,
+        )>,
         Res<State<YoleckEditorState>>,
         MessageWriter<YoleckDirective>,
         Option<Res<YoleckActiveExclusiveSystem>>,
@@ -404,34 +409,34 @@ pub fn entity_selection_section(
                 continue;
             }
             let is_selected = edit_marker.is_some();
-            
+
             if let Some(entity_uuid) = entity_uuid {
                 let uuid = entity_uuid.get();
                 let sense = egui::Sense::click_and_drag();
                 let caption = format_caption(entity, yoleck_managed);
-                let response = ui.selectable_label(is_selected, caption.clone())
+                let response = ui
+                    .selectable_label(is_selected, caption.clone())
                     .interact(sense);
-                
+
                 if response.drag_started() {
                     egui::DragAndDrop::set_payload(ui.ctx(), uuid);
                 }
-                
+
                 if response.dragged() {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-                    
+
                     if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
                         egui::Area::new(egui::Id::new("dragged_entity_preview"))
                             .fixed_pos(pointer_pos + egui::vec2(10.0, 10.0))
                             .order(egui::Order::Tooltip)
                             .show(ui.ctx(), |ui| {
-                                egui::Frame::popup(ui.style())
-                                    .show(ui, |ui| {
-                                        ui.label(&caption);
-                                    });
+                                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                                    ui.label(&caption);
+                                });
                             });
                     }
                 }
-                
+
                 if response.clicked() && !response.drag_started() {
                     if ui.input(|input| input.modifiers.shift) {
                         writer.write(YoleckDirective::toggle_selected(entity));
@@ -441,18 +446,16 @@ pub fn entity_selection_section(
                         writer.write(YoleckDirective::set_selected(Some(entity)));
                     }
                 }
-            } else {
-                if ui
-                    .selectable_label(is_selected, format_caption(entity, yoleck_managed))
-                    .clicked()
-                {
-                    if ui.input(|input| input.modifiers.shift) {
-                        writer.write(YoleckDirective::toggle_selected(entity));
-                    } else if is_selected {
-                        writer.write(YoleckDirective::set_selected(None));
-                    } else {
-                        writer.write(YoleckDirective::set_selected(Some(entity)));
-                    }
+            } else if ui
+                .selectable_label(is_selected, format_caption(entity, yoleck_managed))
+                .clicked()
+            {
+                if ui.input(|input| input.modifiers.shift) {
+                    writer.write(YoleckDirective::toggle_selected(entity));
+                } else if is_selected {
+                    writer.write(YoleckDirective::set_selected(None));
+                } else {
+                    writer.write(YoleckDirective::set_selected(Some(entity)));
                 }
             }
         }

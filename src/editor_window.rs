@@ -3,10 +3,10 @@ use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext, PrimaryEguiContext};
 
 use crate::util::EditSpecificResources;
-use crate::YoleckEditorRightPanelSections;
-use crate::YoleckEditorLeftPanelSections;
-use crate::YoleckEditorTopPanelSections;
 use crate::YoleckEditorBottomPanelSections;
+use crate::YoleckEditorLeftPanelSections;
+use crate::YoleckEditorRightPanelSections;
+use crate::YoleckEditorTopPanelSections;
 
 #[derive(Resource, Default)]
 pub struct YoleckEditorViewportRect {
@@ -116,30 +116,30 @@ pub(crate) fn yoleck_editor_window(
                 |world, mut yoleck_editor_bottom_sections: Mut<YoleckEditorBottomPanelSections>| {
                     world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
                         edit_specific.inject_to_world(world);
-                        
+
                         let inner_margin = 3.;
                         ui.add_space(inner_margin);
-                        
+
                         let mut new_active_tab = yoleck_editor_bottom_sections.active_tab;
                         ui.horizontal(|ui| {
                             for (i, tab) in yoleck_editor_bottom_sections.tabs.iter().enumerate() {
-                                if ui.selectable_label(
-                                    new_active_tab == i,
-                                    &tab.name
-                                ).clicked() {
+                                if ui
+                                    .selectable_label(new_active_tab == i, &tab.name)
+                                    .clicked()
+                                {
                                     new_active_tab = i;
                                 }
                             }
                         });
                         yoleck_editor_bottom_sections.active_tab = new_active_tab;
-                        
+
                         ui.separator();
-                        
+
                         let active_tab = yoleck_editor_bottom_sections.active_tab;
                         if let Some(tab) = yoleck_editor_bottom_sections.tabs.get_mut(active_tab) {
                             tab.section.0.invoke(world, ui).unwrap();
                         }
-                        
+
                         edit_specific.take_from_world(world);
                     });
                 },

@@ -81,17 +81,9 @@ impl Default for YoleckConsoleLogHistory {
 }
 
 /// Resource containing the current state of the console UI.
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct YoleckConsoleState {
     pub log_filters: LogFilters,
-}
-
-impl Default for YoleckConsoleState {
-    fn default() -> Self {
-        Self {
-            log_filters: LogFilters::default(),
-        }
-    }
 }
 
 /// Filters for controlling which log levels are displayed in the console.
@@ -138,22 +130,10 @@ pub fn console_panel_section(
         ui.horizontal(|ui| {
             ui.label("Filters:");
 
-            if ui
-                .checkbox(&mut console_state.log_filters.show_debug, "DEBUG")
-                .changed()
-            {}
-            if ui
-                .checkbox(&mut console_state.log_filters.show_info, "INFO")
-                .changed()
-            {}
-            if ui
-                .checkbox(&mut console_state.log_filters.show_warn, "WARN")
-                .changed()
-            {}
-            if ui
-                .checkbox(&mut console_state.log_filters.show_error, "ERROR")
-                .changed()
-            {}
+            ui.checkbox(&mut console_state.log_filters.show_debug, "DEBUG");
+            ui.checkbox(&mut console_state.log_filters.show_info, "INFO");
+            ui.checkbox(&mut console_state.log_filters.show_warn, "WARN");
+            ui.checkbox(&mut console_state.log_filters.show_error, "ERROR");
 
             ui.separator();
 
@@ -263,8 +243,8 @@ fn store_log_messages(
 /// # Example
 ///
 /// ```no_run
-/// use bevy::prelude::*;
-/// use bevy_yoleck::console_layer_factory;
+/// # use bevy::{prelude::*, log::LogPlugin};
+/// # use bevy_yoleck::console_layer_factory;
 ///
 /// fn main() {
 ///     App::new()

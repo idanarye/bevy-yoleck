@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use bevy::{asset::RenderAssetUsages, log::LogPlugin};
 use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
 use bevy::mesh::Indices;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
+use bevy::{asset::RenderAssetUsages, log::LogPlugin};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 use bevy_yoleck::prelude::*;
@@ -15,13 +15,11 @@ use serde::{Deserialize, Serialize};
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins.set(LogPlugin {
-            custom_layer: bevy_yoleck::console_layer_factory,
-            ..default()
-        })
-    );
-    
+    app.add_plugins(DefaultPlugins.set(LogPlugin {
+        custom_layer: bevy_yoleck::console_layer_factory,
+        ..default()
+    }));
+
     let level = std::env::args().nth(1);
     if let Some(level) = level {
         app.add_plugins(EguiPlugin::default());
@@ -323,17 +321,13 @@ fn duplicate_fruit(
     };
     if ui.button("Duplicate").clicked() {
         writer.write(
-            YoleckDirective::spawn_entity(
-                belongs_to_level.level,
-                "Fruit",
-                true,
-            )
-            .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
-            .with(FruitType {
-                index: fruit_type.index,
-            })
-            .modify_exclusive_systems(|queue| queue.clear())
-            .into(),
+            YoleckDirective::spawn_entity(belongs_to_level.level, "Fruit", true)
+                .with(Vpeol2dPosition(*position - 100.0 * Vec2::Y))
+                .with(FruitType {
+                    index: fruit_type.index,
+                })
+                .modify_exclusive_systems(|queue| queue.clear())
+                .into(),
         );
     }
 }

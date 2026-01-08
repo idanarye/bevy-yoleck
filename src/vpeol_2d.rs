@@ -104,10 +104,10 @@ use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::*, YoleckSchedule, YoleckEditMarker, YoleckState, YoleckBelongsToLevel};
 use crate::editor::YoleckEditorEvent;
 use crate::entity_management::YoleckRawEntry;
-use crate::{YoleckManaged, YoleckEntityConstructionSpecs};
+use crate::{prelude::*, YoleckBelongsToLevel, YoleckEditMarker, YoleckSchedule, YoleckState};
+use crate::{YoleckEntityConstructionSpecs, YoleckManaged};
 
 /// Add the systems required for loading levels that use vpeol_2d components
 pub struct Vpeol2dPluginForGame;
@@ -160,7 +160,11 @@ impl Plugin for Vpeol2dPluginForEditor {
         );
         app.add_systems(
             Update,
-            (handle_delete_entity_key, handle_copy_entity_key, handle_paste_entity_key)
+            (
+                handle_delete_entity_key,
+                handle_copy_entity_key,
+                handle_paste_entity_key,
+            )
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
@@ -502,8 +506,9 @@ fn handle_copy_entity_key(
         let entities: Vec<YoleckRawEntry> = query
             .iter()
             .filter_map(|yoleck_managed| {
-                let entity_type = construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
-                
+                let entity_type =
+                    construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
+
                 let data: serde_json::Map<String, serde_json::Value> = entity_type
                     .components
                     .iter()
@@ -551,7 +556,7 @@ fn handle_paste_entity_key(
         return Ok(());
     }
 
-    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft) 
+    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft)
         || keyboard_input.pressed(KeyCode::ControlRight);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
@@ -563,21 +568,23 @@ fn handle_paste_entity_key(
                         commands.entity(prev_selected).remove::<YoleckEditMarker>();
                         writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
                     }
-                    
+
                     let level_being_edited = yoleck_state.level_being_edited;
-                    
+
                     for entry in entities {
-                        let entity_id = commands.spawn((
-                            entry,
-                            YoleckBelongsToLevel {
-                                level: level_being_edited,
-                            },
-                            YoleckEditMarker,
-                        )).id();
-                        
+                        let entity_id = commands
+                            .spawn((
+                                entry,
+                                YoleckBelongsToLevel {
+                                    level: level_being_edited,
+                                },
+                                YoleckEditMarker,
+                            ))
+                            .id();
+
                         writer.write(YoleckEditorEvent::EntitySelected(entity_id));
                     }
-                    
+
                     yoleck_state.level_needs_saving = true;
                 }
             }
@@ -630,7 +637,7 @@ fn vpeol_2d_edit_transform_group(
     ui.group(|ui| {
         ui.label(egui::RichText::new("Transform").strong());
         ui.separator();
-        
+
         vpeol_2d_edit_position_impl(ui, position_edit, &passed_data);
         vpeol_2d_edit_rotation_impl(ui, rotation_edit);
         vpeol_2d_edit_scale_impl(ui, scale_edit);

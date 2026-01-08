@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use crate::entity_uuid::YoleckUuidRegistry;
 
-
 /// A reference to another Yoleck entity, stored by UUID for persistence.
 ///
 /// This allows one entity to reference another entity in a way that survives saving and loading.
