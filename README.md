@@ -1,20 +1,7 @@
-> **Fork Notice:** This project is a fork of [bevy-yoleck](https://github.com/idanarye/bevy-yoleck) by IdanArye.
-
-<img width="1919" height="1034" alt="image" src="https://github.com/user-attachments/assets/9c6b353e-59fa-4967-a484-b20dc873a722" />
-
-## Fork Improvements
-
-| Feature | Description |
-|---------|-------------|
-| **Redesigned Editor UI** | Complete UI/UX overhaul with split-screen layout: top panel for level management and playmode controls, right panel for entity properties editor, bottom panel for entity list, left panel for entity creation tools |
-| **Automatic UI Generation** | Automatic UI generation for components with support for numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields |
-| **EntityRef System** | Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports drag-and-drop |
-| **Scene Gizmo** | Visual scene gizmo for camera orientation and control |
-| **Colored Axis Knobs** | Color-coded axis knobs (red for X, green for Y, blue for Z) automatically displayed for all three world axes |
-| **Camera Schemas** | Add camera controls with FPS-style movement for better 3D navigation, and ui switcher for camera modes |
-| **Simplified Macro API** | Streamlined derive macros with automatic trait implementations - `YoleckAutoEdit` now handles both auto edit and entity ref systems |
-| **Keyboard Shortcuts** | Delete entities with `Delete` key, copy/paste entities with `Ctrl+C`/`Ctrl+V` |
-| **Console System** | Optional console system for displaying logs in the UI |
+[![Build Status](https://github.com/idanarye/bevy-yoleck/workflows/CI/badge.svg)](https://github.com/idanarye/bevy-yoleck/actions)
+[![Latest Version](https://img.shields.io/crates/v/bevy-yoleck.svg)](https://crates.io/crates/bevy-yoleck)
+[![Rust Documentation](https://img.shields.io/badge/nightly-rustdoc-blue.svg)](https://idanarye.github.io/bevy-yoleck/)
+[![Rust Documentation](https://img.shields.io/badge/stable-rustdoc-purple.svg)](https://docs.rs/bevy-yoleck/)
 
 # Bevy YOLECK - Your Own Level Editor Creation Kit
 
@@ -28,6 +15,9 @@ own level editor.
 * Write systems that create entities based on serializable structs - use same
   systems for both loading the levels and visualizing them in the editor.
 * Entity editing is done with egui widgets that edit these structs.
+| * Automatic UI generation for components with support for numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields.
+| * Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports drag-and-drop.
+  * Visual scene gizmo for camera orientation and control.
 * Support for external plugins that offer more visual editing.
   * One simple such plugin - Vpeol is included in the crate. It provides basic
     entity selection, positioning with mouse dragging, and basic camera
@@ -36,10 +26,9 @@ own level editor.
 * A knobs mechanism for more visual editing.
 * Playtest the levels inside the editor.
 * Multiple entity selection in the editor with the Shift key.
+* Optional console system for displaying logs in the UI |
 
 ## Examples:
-
-**Note:** This fork is not published on crates.io yet. To run the examples, you need to clone this repository first:
 
 ```bash
 git clone https://github.com/dexsper/bevy-yoleck-fork
