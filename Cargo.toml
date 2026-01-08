@@ -4,18 +4,16 @@ members = ["macros"]
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.29.0"
+version = "0.30.0"
 edition = "2021"
-authors = ["IdanArye <idanarye@gmail.com>"]
+authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/idanarye/bevy-yoleck"
 documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
 categories = ["game-development"]
 keywords = ["bevy", "gamedev", "level-editor"]
-exclude = [
-    "assets",
-]
+exclude = ["assets"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,25 +25,35 @@ bevy = { version = "^0.17", default-features = false, features = [
     "bevy_asset",
     "bevy_log",
 ] }
-bevy_egui = { version = "^0.37", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.38", default-features = false, features = [
+    "default_fonts",
+    "render",
+] }
 serde = "^1"
 serde_json = "^1"
 thiserror = "^2"
 uuid = "1.9.1"
+arboard = "3.4"
 
 [features]
 bevy_reflect = []
 vpeol = []
-vpeol_2d = [
-    "vpeol",
-    "bevy/bevy_text",
-    "bevy/bevy_sprite",
-    "bevy/png",
+vpeol_2d = ["vpeol", "bevy/bevy_text", "bevy/bevy_sprite", "bevy/png"]
+vpeol_3d = ["vpeol", "bevy/bevy_pbr"]
+_example2d_full = ["vpeol_2d", "bevy/bevy_gizmos", "bevy/bevy_sprite_render"]
+_example3d_full = [
+    "vpeol_3d",
+    "bevy/bevy_scene",
+    "bevy/bevy_gltf",
+    "bevy/animation",
+    "bevy/ktx2",
+    "bevy/zstd_rust",
+    "bevy/tonemapping_luts",
+    "bevy/bevy_gizmos",
+    "bevy/reflect_auto_register",
+    "bevy/bevy_sprite_render",
 ]
-vpeol_3d = [
-    "vpeol",
-    "bevy/bevy_pbr",
-]
+_doors_to_other_levels_full = ["vpeol_2d", "bevy/bevy_sprite_render"]
 
 [dev-dependencies]
 bevy = { version = "^0.17", default-features = false, features = [
@@ -58,41 +66,24 @@ bevy = { version = "^0.17", default-features = false, features = [
 
 [[example]]
 name = "example2d"
-required-features = [
-    "vpeol_2d",
-    "bevy/png",
-    "bevy/bevy_gizmos",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["_example2d_full"]
 
 [[example]]
 name = "example3d"
-required-features = [
-    "vpeol_3d",
-    "bevy/bevy_scene",
-    "bevy/bevy_gltf",
-    "bevy/animation",
-    "bevy/ktx2",
-    "bevy/zstd_rust",
-    "bevy/tonemapping_luts",
-    "bevy/bevy_gizmos",
-    "bevy/reflect_auto_register",
-    "bevy/bevy_pbr",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["_example3d_full"]
+
+[[example]]
+name = "custom_camera3d"
+required-features = ["_example3d_full"]
 
 [[example]]
 name = "doors_to_other_levels"
-required-features = [
-    "vpeol_2d",
-    "bevy/png",
-    "bevy/bevy_sprite_render",
-]
+required-features = ["_doors_to_other_levels_full"]
 
 [package.metadata.docs.rs]
 
 all-features = true
 features = [
-    "bevy/x11", # required for bevy_egui
-    "bevy/bevy_gltf",  # required for SceneRoot in vpeol_3d's doctests
+    "bevy/x11",       # required for bevy_egui
+    "bevy/bevy_gltf", # required for SceneRoot in vpeol_3d's doctests
 ]

@@ -5,6 +5,59 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## 0.30.0 - 2025-12-04
+### Added
+- `console_layer_factory` for routing Bevy logs into the Yoleck console
+- `YoleckConsoleLogHistory` for storing up to 1000 recent log entries
+- `YoleckConsoleState` for managing console UI state
+- `YoleckEditorBottomPanelSections` for extensible bottom-panel tabs
+- `Vpeol3dCameraMode` enum with variants: `Fps`, `Sidescroller`, `Topdown`, `Custom(u32)`
+- `YoleckCameraChoices` resource for customizing available camera modes in 3D editor
+- Camera mode selector dropdown in editor top panel for switching between camera modes
+- `Vpeol3dCameraControl::fps()` preset for FPS-style camera with full rotation freedom
+- Support for custom camera modes with user-defined movement logic
+- `custom_camera3d.rs` example demonstrating custom camera modes (Isometric and Orbital)
+- Custom camera modes documentation in vpeol_3d module
+- World/Local mode toggle for axis knobs in 3D editor top panel
+- Keyboard shortcut to delete selected entities: Press `Delete` key to remove selected entity from the level
+- Copy/paste support for entities: Use `Ctrl+C` to copy and `Ctrl+V` to paste entities with all their components and values
+- Cross-level entity copying: Entities can be copied between different level editors through system clipboard
+- Auto-selection of pasted entities: Newly pasted entities are automatically selected for immediate editing
+- UI editing support for `Vpeol3dRotation` using Euler angles (X, Y, Z in degrees)
+- UI editing support for `Vpeol3dScale` with separate X, Y, Z drag values
+- UI editing support for `Vpeol2dRotatation` using degrees
+- UI editing support for `Vpeol2dScale` with separate X, Y drag values
+- Drag and drop support for entity references: entities with UUID can now be dragged from the entity list and dropped onto `YoleckEntityRef` fields in the properties panel
+- Entity type filtering is automatically applied when dropping entities onto entity reference fields with type constraints
+
+### Changed
+- Removed unused `plane_origin` field from `Vpeol3dCameraControl`
+- **BREAKING:** `Vpeol3dRotation` now stores Euler angles (`Vec3`) instead of quaternion
+- Entity deletion now works via keyboard in addition to the existing UI button
+- Updated documentation for vpeol_3d and vpeol_2d to reflect that rotation and scale components now have UI editing support
+- Updated code examples in documentation to show optional rotation and scale components
+- Improved documentation for `YoleckEntityRef`, `with_uuid()`, and entity reference requirements
+- `YoleckEntityRef` now includes comprehensive documentation about requirements and editor features
+- Improved editor ergonomics with better organized workspace instead of single cluttered panel
+- Axis knobs are now always displayed for all 3 world axes (X, Y, Z) by default
+- Scene gizmo now displays axis labels (X, Y, Z) at the end of positive axes
+- `YoleckAutoEdit` derive macro now also implements `YoleckEntityRefAccessor`, eliminating the need for separate `YoleckEntityRefs` derive
+- `add_yoleck_auto_edit` now registers both auto edit and entity ref edit systems automatically
+- `YoleckEntityRef` fields are now automatically hidden from auto edit UI (rendered only by entity ref system)
+- Added scene gizmo for camera orientation
+- Added automatic UI generation for components using reflection and attributes.
+- Supported numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields.
+- Added EntityRef type with automatic UI, filtering, and runtime UUID resolution.
+- Enabled entity linking with drag-and-drop selection.
+- Make camera controls fps style 
+- Update bevy_egui version to 0.38.
+
+### Removed
+- [**BREAKING**] Removed `Vpeol3dThirdAxisWithKnob` component (no longer needed as all axes have knobs by default)
+- Removed `YoleckEntityRefPlugin` (was empty/no-op)
+- Removed `add_yoleck_entity_ref_edit` method (merged into `add_yoleck_auto_edit`)
+- Removed `add_yoleck_full_edit` method (no longer needed)
+- Removed `YoleckEntityRefs` derive macro (merged into `YoleckAutoEdit`)
 
 ## 0.29.0 - 2025-10-03
 ### Changed

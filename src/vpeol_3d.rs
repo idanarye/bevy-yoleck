@@ -35,13 +35,50 @@
 //!     .insert(Vpeol3dCameraControl::topdown());
 //! ```
 //!
+//! ## Custom Camera Modes
+//!
+//! You can customize available camera modes using [`YoleckCameraChoices`]:
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_yoleck::vpeol::prelude::*;
+//! # let mut app = App::new();
+//! app.insert_resource(
+//!     YoleckCameraChoices::default()
+//!         .choice_with_transform(
+//!             "Custom Camera",
+//!             {
+//!                 let mut control = Vpeol3dCameraControl::fps();
+//!                 control.mode = Vpeol3dCameraMode::Custom(0);
+//!                 control
+//!             },
+//!             Vec3::new(10.0, 10.0, 10.0),
+//!             Vec3::ZERO,
+//!             Vec3::Y,
+//!         )
+//! );
+//!
+//! // Implement custom camera movement
+//! app.add_systems(PostUpdate, custom_camera_movement);
+//!
+//! fn custom_camera_movement(
+//!     mut cameras: Query<(&mut Transform, &Vpeol3dCameraControl)>,
+//! ) {
+//!     for (mut transform, control) in cameras.iter_mut() {
+//!         if control.mode == Vpeol3dCameraMode::Custom(0) {
+//!             // Your custom camera logic here
+//!         }
+//!     }
+//! }
+//! ```
+//!
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add  the [`Vpeol3dPosition`] Yoleck component and use it as the source of position (there
-//!    are also [`Vpeol3dRotation`] and [`Vpeol3dScale`], but they don't currently get editing
-//!    support from vpeol_3d). To enable dragging across the third axis, add
-//!    [`Vpeol3dThirdAxisWithKnob`] as well.
+//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position. Axis knobs
+//!    (X, Y, Z) are automatically added to all entities with `Vpeol3dPosition`. Configure them using
+//!    the [`Vpeol3dKnobsConfig`] resource. Optionally add [`Vpeol3dRotation`] (edited with Euler
+//!    angles) and [`Vpeol3dScale`] (edited with X, Y, Z values) for rotation and scale support.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -52,13 +89,10 @@
 //!     # let mut app = App::new();
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
-//!             .with::<Vpeol3dPosition>() // vpeol_3d dragging
+//!             .with::<Vpeol3dPosition>() // vpeol_3d dragging with axis knobs
+//!             .with::<Vpeol3dRotation>() // optional: rotation with egui (Euler angles)
+//!             .with::<Vpeol3dScale>() // optional: scale with egui
 //!             .with::<Example>() // entity's specific data and systems
-//!             // Optional:
-//!             .insert_on_init_during_editor(|| Vpeol3dThirdAxisWithKnob {
-//!                 knob_distance: 2.0,
-//!                 knob_scale: 0.5,
-//!             })
 //!     });
 //!     ```
 //! 2. Use data passing. vpeol_3d will pass a `Vec3` to the entity being dragged:
@@ -88,26 +122,32 @@
 //!         });
 //!     }
 //!     ```
-//!     When using this option, [`Vpeol3dThirdAxisWithKnob`] can still be used to add the third
-//!     axis knob.
 
 use std::any::TypeId;
 
 use crate::bevy_egui::egui;
+use crate::editor::YoleckEditorEvent;
+use crate::entity_management::YoleckRawEntry;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
 };
 use crate::vpeol::{
     handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
+    VpeolCameraState, VpeolClicksOnObjectsState, VpeolDragPlane, VpeolRepositionLevel,
+    VpeolRootResolver, VpeolSystems,
 };
-use crate::{prelude::*, YoleckDirective, YoleckSchedule};
+use crate::{
+    prelude::*, YoleckBelongsToLevel, YoleckDirective, YoleckEditMarker,
+    YoleckEditorTopPanelSections, YoleckSchedule, YoleckState,
+};
+use crate::{YoleckEntityConstructionSpecs, YoleckManaged};
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
-use bevy::input::mouse::MouseWheel;
+use bevy::ecs::system::SystemState;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::DVec3;
-use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_egui::EguiContexts;
 use serde::{Deserialize, Serialize};
 
@@ -181,19 +221,43 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
+        app.init_resource::<Vpeol3dKnobsConfig>();
+        app.init_resource::<YoleckCameraChoices>();
+
+        app.world_mut()
+            .resource_mut::<YoleckEditorTopPanelSections>()
+            .0
+            .push(vpeol_3d_camera_mode_selector.into());
+        app.world_mut()
+            .resource_mut::<YoleckEditorTopPanelSections>()
+            .0
+            .push(vpeol_3d_knobs_mode_selector.into());
 
         app.add_systems(
             Update,
             (update_camera_status_for_models,).in_set(VpeolSystems::UpdateCameraState),
         );
         app.add_systems(
-            PostUpdate, // to prevent camera shaking
+            PostUpdate,
             (
-                camera_3d_pan,
+                camera_3d_wasd_movement,
                 camera_3d_move_along_plane_normal,
                 camera_3d_rotate,
             )
                 .run_if(in_state(YoleckEditorState::EditorActive)),
+        );
+        app.add_systems(
+            Update,
+            (
+                handle_delete_entity_key,
+                handle_copy_entity_key,
+                handle_paste_entity_key,
+            )
+                .run_if(in_state(YoleckEditorState::EditorActive)),
+        );
+        app.add_systems(
+            Update,
+            draw_scene_gizmo.run_if(in_state(YoleckEditorState::EditorActive)),
         );
         app.add_systems(
             Update,
@@ -205,11 +269,11 @@ impl Plugin for Vpeol3dPluginForEditor {
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
-        app.add_yoleck_edit_system(vpeol_3d_edit_position);
+        app.add_yoleck_edit_system(vpeol_3d_edit_transform_group);
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_3d_init_position));
-        app.add_yoleck_edit_system(vpeol_3d_edit_third_axis_with_knob);
+        app.add_yoleck_edit_system(vpeol_3d_edit_axis_knobs);
     }
 }
 
@@ -260,15 +324,146 @@ fn update_camera_status_for_models(
     }
 }
 
-/// Move and rotate a camera entity with the mouse while inisde the editor.
-#[derive(Component)]
+/// A single camera mode choice with its control settings and optional initial transform.
+///
+/// The `control` field contains the camera settings that will be applied when this mode is selected.
+/// The `initial_transform` field, if present, will reposition the camera when switching to this mode.
+pub struct YoleckCameraChoice {
+    /// Display name shown in the camera mode selector UI.
+    pub name: String,
+    /// Camera control settings for this mode.
+    pub control: Vpeol3dCameraControl,
+    /// Optional initial transform (position, look_at, up) to apply when switching to this mode.
+    pub initial_transform: Option<(Vec3, Vec3, Vec3)>,
+}
+
+/// Resource that defines available camera modes in the editor.
+///
+/// This allows users to customize which camera modes are available and add custom modes.
+///
+/// # Example
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_yoleck::vpeol::prelude::*;
+/// # let mut app = App::new();
+/// app.insert_resource(
+///     YoleckCameraChoices::default()
+///         .choice_with_transform(
+///             "Isometric",
+///             {
+///                 let mut control = Vpeol3dCameraControl::fps();
+///                 control.mode = Vpeol3dCameraMode::Custom(2);
+///                 control.allow_rotation_while_maintaining_up = None;
+///                 control
+///             },
+///             Vec3::new(10.0, 10.0, 10.0),
+///             Vec3::ZERO,
+///             Vec3::Y,
+///         )
+/// );
+/// ```
+#[derive(Resource)]
+pub struct YoleckCameraChoices {
+    pub choices: Vec<YoleckCameraChoice>,
+}
+
+impl YoleckCameraChoices {
+    pub fn new() -> Self {
+        Self {
+            choices: Vec::new(),
+        }
+    }
+
+    /// Add a camera mode choice without initial transform.
+    ///
+    /// The camera will keep its current position when switching to this mode.
+    pub fn choice(mut self, name: impl Into<String>, control: Vpeol3dCameraControl) -> Self {
+        self.choices.push(YoleckCameraChoice {
+            name: name.into(),
+            control,
+            initial_transform: None,
+        });
+        self
+    }
+
+    /// Add a camera mode choice with initial transform.
+    ///
+    /// When switching to this mode, the camera will be repositioned according to
+    /// the provided `position`, `look_at`, and `up` parameters.
+    pub fn choice_with_transform(
+        mut self,
+        name: impl Into<String>,
+        control: Vpeol3dCameraControl,
+        position: Vec3,
+        look_at: Vec3,
+        up: Vec3,
+    ) -> Self {
+        self.choices.push(YoleckCameraChoice {
+            name: name.into(),
+            control,
+            initial_transform: Some((position, look_at, up)),
+        });
+        self
+    }
+}
+
+impl Default for YoleckCameraChoices {
+    fn default() -> Self {
+        Self::new()
+            .choice_with_transform(
+                "FPS",
+                Vpeol3dCameraControl::fps(),
+                Vec3::ZERO,
+                Vec3::NEG_Z,
+                Vec3::Y,
+            )
+            .choice_with_transform(
+                "Sidescroller",
+                Vpeol3dCameraControl::sidescroller(),
+                Vec3::new(0.0, 0.0, 10.0),
+                Vec3::ZERO,
+                Vec3::Y,
+            )
+            .choice_with_transform(
+                "Topdown",
+                Vpeol3dCameraControl::topdown(),
+                Vec3::new(0.0, 10.0, 0.0),
+                Vec3::ZERO,
+                Vec3::NEG_Z,
+            )
+    }
+}
+
+/// Camera mode identifier for type-safe camera mode comparisons.
+///
+/// Use this enum to identify which camera mode is currently active, instead of string comparisons.
+/// The built-in modes (`Fps`, `Sidescroller`, `Topdown`) are provided by default.
+/// Use `Custom(u32)` for user-defined camera modes with unique identifiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
+pub enum Vpeol3dCameraMode {
+    /// FPS-style camera with full rotation freedom.
+    Fps,
+    /// Fixed camera for sidescroller games (XY plane).
+    Sidescroller,
+    /// Top-down camera for games using XZ plane.
+    Topdown,
+    /// Custom camera mode with a unique identifier.
+    Custom(u32),
+}
+
+/// Move and rotate a camera entity with the mouse while inside the editor.
+#[derive(Component, Clone)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
-    /// Panning is done by dragging a plane with this as its origin.
-    pub plane_origin: Vec3,
-    /// Panning is done by dragging along this plane.
+    /// Camera mode identifier for type-safe mode comparisons.
+    ///
+    /// Use this to identify which camera mode is active in custom camera systems.
+    pub mode: Vpeol3dCameraMode,
+    /// Defines the plane normal for mouse wheel zoom movement.
     pub plane: InfinitePlane3d,
-    /// Is `Some`, enable mouse rotation. The up direction of the camera will be the specific
+    /// If `Some`, enable mouse rotation. The up direction of the camera will be the specific
     /// direction.
     ///
     /// It is a good idea to match this to [`Vpeol3dPluginForEditor::drag_plane`].
@@ -279,23 +474,44 @@ pub struct Vpeol3dCameraControl {
     /// How much to change the proximity to the plane when receiving scroll event in
     /// `MouseScrollUnit::Pixel` units.
     pub proximity_per_scroll_pixel: f32,
+    /// Movement speed for WASD controls (units per second).
+    pub wasd_movement_speed: f32,
+    /// Mouse sensitivity for camera rotation.
+    pub mouse_sensitivity: f32,
 }
 
 impl Vpeol3dCameraControl {
+    /// Preset for FPS-style camera control with full rotation freedom.
+    ///
+    /// This mode allows complete free-look rotation with mouse and WASD movement.
+    pub fn fps() -> Self {
+        Self {
+            mode: Vpeol3dCameraMode::Fps,
+            plane: InfinitePlane3d { normal: Dir3::Y },
+            allow_rotation_while_maintaining_up: Some(Dir3::Y),
+            proximity_per_scroll_line: 2.0,
+            proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
+        }
+    }
+
     /// Preset for sidescroller games, where the the game world is on the XY plane.
     ///
-    /// With this preset, the camera rotation is disabled.
+    /// With this preset, the camera stays fixed looking at the scene from the side.
     ///
     /// This combines well with [`Vpeol3dPluginForEditor::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
-            plane_origin: Vec3::ZERO,
+            mode: Vpeol3dCameraMode::Sidescroller,
             plane: InfinitePlane3d {
                 normal: Dir3::NEG_Z,
             },
             allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
         }
     }
 
@@ -305,71 +521,112 @@ impl Vpeol3dCameraControl {
     /// This combines well with [`Vpeol3dPluginForEditor::topdown`].
     pub fn topdown() -> Self {
         Self {
-            plane_origin: Vec3::ZERO,
-            plane: InfinitePlane3d { normal: Dir3::Y },
-            allow_rotation_while_maintaining_up: Some(Dir3::Y),
+            mode: Vpeol3dCameraMode::Topdown,
+            plane: InfinitePlane3d {
+                normal: Dir3::NEG_Y,
+            },
+            allow_rotation_while_maintaining_up: None,
             proximity_per_scroll_line: 2.0,
             proximity_per_scroll_pixel: 0.01,
+            wasd_movement_speed: 10.0,
+            mouse_sensitivity: 0.003,
         }
-    }
-
-    fn ray_intersection(&self, ray: Ray3d) -> Option<Vec3> {
-        let distance = ray.intersect_plane(self.plane_origin, self.plane)?;
-        Some(ray.get_point(distance))
     }
 }
 
-fn camera_3d_pan(
+fn camera_3d_wasd_movement(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut cameras_query: Query<(
-        Entity,
-        &mut Transform,
-        &VpeolCameraState,
-        &Vpeol3dCameraControl,
-    )>,
-    mut last_cursor_world_pos_by_camera: Local<HashMap<Entity, Vec3>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
 ) -> Result {
-    enum MouseButtonOp {
-        JustPressed,
-        BeingPressed,
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
     }
 
-    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
-            return Ok(());
-        }
-        MouseButtonOp::JustPressed
-    } else if mouse_buttons.pressed(MouseButton::Right) {
-        MouseButtonOp::BeingPressed
-    } else {
-        last_cursor_world_pos_by_camera.clear();
+    let mut direction = Vec3::ZERO;
+
+    if keyboard_input.pressed(KeyCode::KeyW) {
+        direction += Vec3::NEG_Z;
+    }
+    if keyboard_input.pressed(KeyCode::KeyS) {
+        direction += Vec3::Z;
+    }
+    if keyboard_input.pressed(KeyCode::KeyA) {
+        direction += Vec3::NEG_X;
+    }
+    if keyboard_input.pressed(KeyCode::KeyD) {
+        direction += Vec3::X;
+    }
+    if keyboard_input.pressed(KeyCode::KeyE) {
+        direction += Vec3::Y;
+    }
+    if keyboard_input.pressed(KeyCode::KeyQ) {
+        direction += Vec3::NEG_Y;
+    }
+
+    if direction == Vec3::ZERO {
         return Ok(());
+    }
+
+    direction = direction.normalize_or_zero();
+
+    let speed_multiplier = if keyboard_input.pressed(KeyCode::ShiftLeft) {
+        2.0
+    } else {
+        1.0
     };
 
-    for (camera_entity, mut camera_transform, camera_state, camera_control) in
-        cameras_query.iter_mut()
-    {
-        let Some(cursor_ray) = camera_state.cursor_ray else {
-            continue;
-        };
-        match mouse_button_op {
-            MouseButtonOp::JustPressed => {
-                let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
-                    continue;
-                };
-                last_cursor_world_pos_by_camera.insert(camera_entity, world_pos);
-            }
-            MouseButtonOp::BeingPressed => {
-                if let Some(prev_pos) = last_cursor_world_pos_by_camera.get_mut(&camera_entity) {
-                    let Some(world_pos) = camera_control.ray_intersection(cursor_ray) else {
-                        continue;
-                    };
-                    let movement = *prev_pos - world_pos;
-                    camera_transform.translation += movement;
+    for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
+        let movement = match camera_control.mode {
+            Vpeol3dCameraMode::Sidescroller => {
+                let mut world_direction = Vec3::ZERO;
+                if keyboard_input.pressed(KeyCode::KeyW) {
+                    world_direction.y += 1.0;
                 }
+                if keyboard_input.pressed(KeyCode::KeyS) {
+                    world_direction.y -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyA) {
+                    world_direction.x -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyD) {
+                    world_direction.x += 1.0;
+                }
+                world_direction.normalize_or_zero()
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
             }
-        }
+            Vpeol3dCameraMode::Topdown => {
+                let mut world_direction = Vec3::ZERO;
+                if keyboard_input.pressed(KeyCode::KeyW) {
+                    world_direction.z -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyS) {
+                    world_direction.z += 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyA) {
+                    world_direction.x -= 1.0;
+                }
+                if keyboard_input.pressed(KeyCode::KeyD) {
+                    world_direction.x += 1.0;
+                }
+                world_direction.normalize_or_zero()
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
+            }
+            _ => {
+                camera_transform.rotation
+                    * direction
+                    * camera_control.wasd_movement_speed
+                    * speed_multiplier
+                    * time.delta_secs()
+            }
+        };
+
+        camera_transform.translation += movement;
     }
     Ok(())
 }
@@ -405,59 +662,510 @@ fn camera_3d_move_along_plane_normal(
     Ok(())
 }
 
-fn camera_3d_rotate(
+fn handle_delete_entity_key(
     mut egui_context: EguiContexts,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut cameras_query: Query<(
-        Entity,
-        &mut Transform,
-        &VpeolCameraState,
-        &Vpeol3dCameraControl,
-    )>,
-    mut last_cursor_ray_by_camera: Local<HashMap<Entity, Ray3d>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut yoleck_state: ResMut<YoleckState>,
+    query: Query<Entity, With<YoleckEditMarker>>,
+    mut commands: Commands,
+    mut writer: MessageWriter<YoleckEditorEvent>,
 ) -> Result {
-    enum MouseButtonOp {
-        JustPressed,
-        BeingPressed,
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
     }
 
-    let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Middle) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
-            return Ok(());
+    if keyboard_input.just_pressed(KeyCode::Delete) {
+        for entity in query.iter() {
+            commands.entity(entity).despawn();
+            writer.write(YoleckEditorEvent::EntityDeselected(entity));
         }
-        MouseButtonOp::JustPressed
-    } else if mouse_buttons.pressed(MouseButton::Middle) {
-        MouseButtonOp::BeingPressed
-    } else {
-        last_cursor_ray_by_camera.clear();
-        return Ok(());
-    };
+        if !query.is_empty() {
+            yoleck_state.level_needs_saving = true;
+        }
+    }
 
-    for (camera_entity, mut camera_transform, camera_state, camera_control) in
-        cameras_query.iter_mut()
-    {
-        let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else {
-            continue;
-        };
-        let Some(cursor_ray) = camera_state.cursor_ray else {
-            continue;
-        };
-        match mouse_button_op {
-            MouseButtonOp::JustPressed => {
-                last_cursor_ray_by_camera.insert(camera_entity, cursor_ray);
+    Ok(())
+}
+
+fn handle_copy_entity_key(
+    mut egui_context: EguiContexts,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    query: Query<&YoleckManaged, With<YoleckEditMarker>>,
+    construction_specs: Res<YoleckEntityConstructionSpecs>,
+) -> Result {
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
+    }
+
+    let ctrl_pressed = keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
+
+    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyC) {
+        let entities: Vec<YoleckRawEntry> = query
+            .iter()
+            .filter_map(|yoleck_managed| {
+                let entity_type =
+                    construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
+
+                let data: serde_json::Map<String, serde_json::Value> = entity_type
+                    .components
+                    .iter()
+                    .filter_map(|component| {
+                        let component_data = yoleck_managed.components_data.get(component)?;
+                        let handler = &construction_specs.component_handlers[component];
+                        Some((
+                            handler.key().to_string(),
+                            handler.serialize(component_data.as_ref()),
+                        ))
+                    })
+                    .collect();
+
+                Some(YoleckRawEntry {
+                    header: crate::entity_management::YoleckEntryHeader {
+                        type_name: yoleck_managed.type_name.clone(),
+                        name: yoleck_managed.name.clone(),
+                        uuid: None,
+                    },
+                    data: serde_json::Value::Object(data),
+                })
+            })
+            .collect();
+
+        if !entities.is_empty() {
+            if let Ok(json) = serde_json::to_string(&entities) {
+                let mut clipboard = arboard::Clipboard::new()?;
+                clipboard.set_text(json)?;
             }
-            MouseButtonOp::BeingPressed => {
-                if let Some(prev_ray) = last_cursor_ray_by_camera.get_mut(&camera_entity) {
-                    let rotation =
-                        Quat::from_rotation_arc(*cursor_ray.direction, *prev_ray.direction);
-                    camera_transform.rotate(rotation);
-                    let new_forward = camera_transform.forward();
-                    camera_transform.look_to(*new_forward, *maintaining_up);
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_paste_entity_key(
+    mut egui_context: EguiContexts,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut yoleck_state: ResMut<YoleckState>,
+    mut commands: Commands,
+    mut writer: MessageWriter<YoleckEditorEvent>,
+    query: Query<Entity, With<YoleckEditMarker>>,
+) -> Result {
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
+    }
+
+    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft)
+        || keyboard_input.pressed(KeyCode::ControlRight);
+
+    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
+        let mut clipboard = arboard::Clipboard::new()?;
+        if let Ok(text) = clipboard.get_text() {
+            if let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text) {
+                if !entities.is_empty() {
+                    for prev_selected in query.iter() {
+                        commands.entity(prev_selected).remove::<YoleckEditMarker>();
+                        writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
+                    }
+
+                    let level_being_edited = yoleck_state.level_being_edited;
+
+                    for entry in entities {
+                        let entity_id = commands
+                            .spawn((
+                                entry,
+                                YoleckBelongsToLevel {
+                                    level: level_being_edited,
+                                },
+                                YoleckEditMarker,
+                            ))
+                            .id();
+
+                        writer.write(YoleckEditorEvent::EntitySelected(entity_id));
+                    }
+
+                    yoleck_state.level_needs_saving = true;
                 }
             }
         }
     }
+
     Ok(())
+}
+
+fn draw_scene_gizmo(
+    mut egui_context: EguiContexts,
+    mut cameras_query: Query<&mut Transform, With<VpeolCameraState>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut first_frame_skipped: Local<bool>,
+    editor_viewport: Res<crate::editor_window::YoleckEditorViewportRect>,
+) -> Result {
+    if !*first_frame_skipped {
+        *first_frame_skipped = true;
+        return Ok(());
+    }
+
+    let ctx = egui_context.ctx_mut()?;
+
+    if !ctx.is_using_pointer() && ctx.input(|i| i.viewport_rect().width() == 0.0) {
+        return Ok(());
+    }
+
+    let Ok(mut camera_transform) = cameras_query.single_mut() else {
+        return Ok(());
+    };
+
+    let screen_rect = editor_viewport
+        .rect
+        .unwrap_or_else(|| ctx.input(|i| i.viewport_rect()));
+
+    if screen_rect.width() == 0.0 || screen_rect.height() == 0.0 {
+        return Ok(());
+    }
+
+    let gizmo_size = 60.0;
+    let axis_length = 25.0;
+    let margin = 20.0;
+    let click_radius = 10.0;
+
+    let center = egui::Pos2::new(
+        screen_rect.max.x - margin - gizmo_size / 2.0,
+        screen_rect.min.y + margin + gizmo_size / 2.0,
+    );
+
+    let camera_rotation = camera_transform.rotation;
+    let inv_rotation = camera_rotation.inverse();
+
+    let world_x = inv_rotation * Vec3::X;
+    let world_y = inv_rotation * Vec3::Y;
+    let world_z = inv_rotation * Vec3::Z;
+
+    let to_screen = |v: Vec3| -> egui::Pos2 {
+        let perspective_scale = 1.0 / (1.0 - v.z * 0.3);
+        let screen_x = v.x * axis_length * perspective_scale;
+        let screen_y = v.y * axis_length * perspective_scale;
+
+        let len = (screen_x * screen_x + screen_y * screen_y).sqrt();
+        let min_len = 8.0;
+        let (screen_x, screen_y) = if len < min_len && len > 0.001 {
+            let scale = min_len / len;
+            (screen_x * scale, screen_y * scale)
+        } else {
+            (screen_x, screen_y)
+        };
+
+        egui::Pos2::new(center.x + screen_x, center.y - screen_y)
+    };
+
+    let x_pos = to_screen(world_x);
+    let x_neg = to_screen(-world_x);
+    let y_pos = to_screen(world_y);
+    let y_neg = to_screen(-world_y);
+    let z_pos = to_screen(world_z);
+    let z_neg = to_screen(-world_z);
+
+    let cursor_pos = ctx.input(|i| i.pointer.hover_pos());
+    let gizmo_rect = egui::Rect::from_center_size(center, egui::Vec2::splat(gizmo_size));
+
+    if let Some(cursor) = cursor_pos {
+        if mouse_buttons.just_pressed(MouseButton::Left) {
+            if gizmo_rect.contains(cursor) {
+                let distances = [
+                    (cursor.distance(x_pos), Vec3::NEG_X, Vec3::Y),
+                    (cursor.distance(x_neg), Vec3::X, Vec3::Y),
+                    (cursor.distance(y_pos), Vec3::NEG_Y, Vec3::Z),
+                    (cursor.distance(y_neg), Vec3::Y, Vec3::Z),
+                    (cursor.distance(z_pos), Vec3::NEG_Z, Vec3::Y),
+                    (cursor.distance(z_neg), Vec3::Z, Vec3::Y),
+                ];
+
+                if let Some((_, forward, up)) = distances
+                    .iter()
+                    .filter(|(d, _, _)| *d < click_radius)
+                    .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                {
+                    camera_transform.look_to(*forward, *up);
+                }
+            }
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    struct AxisData {
+        depth: f32,
+        color_bright: egui::Color32,
+        color_dim: egui::Color32,
+        pos_end: egui::Pos2,
+        neg_end: egui::Pos2,
+        world_dir: Vec3,
+    }
+
+    let mut axes = vec![
+        AxisData {
+            depth: world_x.z.abs(),
+            color_bright: egui::Color32::from_rgb(230, 60, 60),
+            color_dim: egui::Color32::from_rgb(120, 50, 50),
+            pos_end: x_pos,
+            neg_end: x_neg,
+            world_dir: world_x,
+        },
+        AxisData {
+            depth: world_y.z.abs(),
+            color_bright: egui::Color32::from_rgb(60, 230, 60),
+            color_dim: egui::Color32::from_rgb(50, 120, 50),
+            pos_end: y_pos,
+            neg_end: y_neg,
+            world_dir: world_y,
+        },
+        AxisData {
+            depth: world_z.z.abs(),
+            color_bright: egui::Color32::from_rgb(60, 120, 230),
+            color_dim: egui::Color32::from_rgb(50, 70, 120),
+            pos_end: z_pos,
+            neg_end: z_neg,
+            world_dir: world_z,
+        },
+    ];
+    axes.sort_by(|a, b| b.depth.partial_cmp(&a.depth).unwrap());
+
+    let painter = ctx.layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        egui::Id::new("scene_gizmo"),
+    ));
+
+    painter.circle_filled(
+        center,
+        gizmo_size / 2.0,
+        egui::Color32::from_rgba_unmultiplied(40, 40, 40, 200),
+    );
+
+    let stroke_bright = 3.0;
+    let stroke_dim = 2.0;
+    let cone_radius_bright = 5.0;
+    let cone_radius_dim = 3.5;
+    let cone_length = 8.0;
+
+    for axis in &axes {
+        let (front_end, front_color, back_end, back_color) = if axis.world_dir.z >= 0.0 {
+            (
+                axis.pos_end,
+                axis.color_bright,
+                axis.neg_end,
+                axis.color_dim,
+            )
+        } else {
+            (
+                axis.neg_end,
+                axis.color_dim,
+                axis.pos_end,
+                axis.color_bright,
+            )
+        };
+
+        let back_dir = (back_end - center).normalized();
+        let back_line_end = back_end - back_dir * cone_length;
+        painter.line_segment(
+            [center, back_line_end],
+            egui::Stroke::new(stroke_dim, back_color),
+        );
+
+        let back_perp = egui::Vec2::new(-back_dir.y, back_dir.x);
+        let back_cone_base = back_end - back_dir * cone_length;
+        let back_cone = vec![
+            back_end,
+            back_cone_base + back_perp * cone_radius_dim,
+            back_cone_base - back_perp * cone_radius_dim,
+        ];
+        painter.add(egui::Shape::convex_polygon(
+            back_cone,
+            back_color,
+            egui::Stroke::NONE,
+        ));
+
+        let front_dir = (front_end - center).normalized();
+        let front_line_end = front_end - front_dir * cone_length;
+        painter.line_segment(
+            [center, front_line_end],
+            egui::Stroke::new(stroke_bright, front_color),
+        );
+
+        let front_perp = egui::Vec2::new(-front_dir.y, front_dir.x);
+        let front_cone_base = front_end - front_dir * cone_length;
+        let front_cone = vec![
+            front_end,
+            front_cone_base + front_perp * cone_radius_bright,
+            front_cone_base - front_perp * cone_radius_bright,
+        ];
+        painter.add(egui::Shape::convex_polygon(
+            front_cone,
+            front_color,
+            egui::Stroke::NONE,
+        ));
+    }
+
+    let label_offset = 12.0;
+    let font_id = egui::FontId::proportional(12.0);
+
+    let axis_labels = [
+        ("X", x_pos, egui::Color32::from_rgb(230, 60, 60), world_x.z),
+        ("Y", y_pos, egui::Color32::from_rgb(60, 230, 60), world_y.z),
+        ("Z", z_pos, egui::Color32::from_rgb(60, 120, 230), world_z.z),
+    ];
+
+    for (label, pos, color, depth) in axis_labels {
+        let dir = (pos - center).normalized();
+        let label_pos = pos + dir * label_offset;
+        let alpha = if depth >= 0.0 { 255 } else { 120 };
+        let label_color =
+            egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
+        painter.text(
+            label_pos,
+            egui::Align2::CENTER_CENTER,
+            label,
+            font_id.clone(),
+            label_color,
+        );
+    }
+
+    Ok(())
+}
+
+fn camera_3d_rotate(
+    mut egui_context: EguiContexts,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
+    mut mouse_motion_reader: MessageReader<MouseMotion>,
+    mut cursor_options: Query<&mut CursorOptions, With<PrimaryWindow>>,
+    mut is_rotating: Local<bool>,
+) -> Result {
+    let Ok(mut cursor) = cursor_options.single_mut() else {
+        return Ok(());
+    };
+
+    if mouse_buttons.just_pressed(MouseButton::Right) {
+        if egui_context.ctx_mut()?.is_pointer_over_area() {
+            return Ok(());
+        }
+
+        let has_rotatable_camera = cameras_query
+            .iter()
+            .any(|(_, control)| control.allow_rotation_while_maintaining_up.is_some());
+
+        if has_rotatable_camera {
+            cursor.grab_mode = CursorGrabMode::Locked;
+            cursor.visible = false;
+            *is_rotating = true;
+        }
+    }
+
+    if mouse_buttons.just_released(MouseButton::Right) {
+        cursor.grab_mode = CursorGrabMode::None;
+        cursor.visible = true;
+        *is_rotating = false;
+    }
+
+    if !*is_rotating {
+        return Ok(());
+    }
+
+    let mut delta = Vec2::ZERO;
+    for motion in mouse_motion_reader.read() {
+        delta += motion.delta;
+    }
+
+    if delta == Vec2::ZERO {
+        return Ok(());
+    }
+
+    for (mut camera_transform, camera_control) in cameras_query.iter_mut() {
+        let Some(maintaining_up) = camera_control.allow_rotation_while_maintaining_up else {
+            continue;
+        };
+
+        let yaw = -delta.x * camera_control.mouse_sensitivity;
+        let pitch = -delta.y * camera_control.mouse_sensitivity;
+
+        let yaw_rotation = Quat::from_axis_angle(*maintaining_up, yaw);
+        camera_transform.rotation = yaw_rotation * camera_transform.rotation;
+
+        let right = camera_transform.right();
+        let pitch_rotation = Quat::from_axis_angle(*right, pitch);
+        camera_transform.rotation = pitch_rotation * camera_transform.rotation;
+
+        let new_forward = camera_transform.forward();
+        camera_transform.look_to(*new_forward, *maintaining_up);
+    }
+    Ok(())
+}
+
+pub fn vpeol_3d_knobs_mode_selector(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
+    let mut system_state = SystemState::<ResMut<Vpeol3dKnobsConfig>>::new(world);
+
+    move |world, ui: &mut egui::Ui| {
+        let mut config = system_state.get_mut(world);
+
+        ui.add_space(ui.available_width());
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::Local, "Local");
+            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::World, "World");
+            ui.label("Knobs:");
+        });
+
+        Ok(())
+    }
+}
+
+pub fn vpeol_3d_camera_mode_selector(
+    world: &mut World,
+) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
+    let mut system_state = SystemState::<(
+        Query<(&mut Vpeol3dCameraControl, &mut Transform)>,
+        Res<YoleckCameraChoices>,
+    )>::new(world);
+
+    move |world, ui: &mut egui::Ui| {
+        let (mut query, choices) = system_state.get_mut(world);
+
+        if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
+            let old_mode = camera_control.mode;
+
+            let current_choice = choices
+                .choices
+                .iter()
+                .find(|c| c.control.mode == camera_control.mode);
+            let selected_text = current_choice.map(|c| c.name.as_str()).unwrap_or("Unknown");
+
+            egui::ComboBox::from_id_salt("camera_mode_selector")
+                .selected_text(selected_text)
+                .show_ui(ui, |ui| {
+                    for choice in choices.choices.iter() {
+                        ui.selectable_value(
+                            &mut camera_control.mode,
+                            choice.control.mode,
+                            &choice.name,
+                        );
+                    }
+                });
+
+            if old_mode != camera_control.mode {
+                if let Some(choice) = choices
+                    .choices
+                    .iter()
+                    .find(|c| c.control.mode == camera_control.mode)
+                {
+                    *camera_control = choice.control.clone();
+
+                    if let Some((position, look_at, up)) = choice.initial_transform {
+                        camera_transform.translation = position;
+                        camera_transform.look_at(look_at, up);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// A position component that's edited and populated by vpeol_3d.
@@ -470,27 +1178,46 @@ fn camera_3d_rotate(
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
-/// Add a knob for dragging the entity perpendicular to the [`VpeolDragPlane`].
-///
-/// Dragging the knob will not actually change any component - it will only pass to the entity a
-/// `Vec3` that describes the drag. Since regular entity dragging is also implemented by passing a
-/// `Vec3`, just adding this component should be enough if there is already an edit system in place
-/// that reads that `Vec3` (such as the edit system for [`Vpeol3dPosition`])
-#[derive(Component)]
-pub struct Vpeol3dThirdAxisWithKnob {
-    /// The distance of the knob from the entity's origin.
-    pub knob_distance: f32,
-    /// A scale for the knob's model.
-    pub knob_scale: f32,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Vpeol3dKnobsMode {
+    World,
+    Local,
 }
 
-/// A rotation component that's populated (but not edited) by vpeol_3d.
-#[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
+#[derive(Resource)]
+pub struct Vpeol3dKnobsConfig {
+    pub knob_distance: f32,
+    pub knob_scale: f32,
+    pub mode: Vpeol3dKnobsMode,
+}
+
+impl Default for Vpeol3dKnobsConfig {
+    fn default() -> Self {
+        Self {
+            knob_distance: 2.0,
+            knob_scale: 0.5,
+            mode: Vpeol3dKnobsMode::World,
+        }
+    }
+}
+
+/// A rotation component that's edited and populated by vpeol_3d.
+///
+/// Editing is done with egui using Euler angles (X, Y, Z in degrees).
+#[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct Vpeol3dRotation(pub Quat);
+pub struct Vpeol3dRotation(pub Vec3);
 
-/// A scale component that's populated (but not edited) by vpeol_3d.
+impl Default for Vpeol3dRotation {
+    fn default() -> Self {
+        Self(Vec3::ZERO)
+    }
+}
+
+/// A scale component that's edited and populated by vpeol_3d.
+///
+/// Editing is done with egui using separate drag values for X, Y, Z axes.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
@@ -532,16 +1259,38 @@ impl CommonDragPlane {
     }
 }
 
-fn vpeol_3d_edit_position(
+fn vpeol_3d_edit_transform_group(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    position_edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    rotation_edit: YoleckEdit<&mut Vpeol3dRotation>,
+    scale_edit: YoleckEdit<&mut Vpeol3dScale>,
     global_drag_plane: Res<VpeolDragPlane>,
     passed_data: Res<YoleckPassedData>,
+) {
+    let has_any = !position_edit.is_empty() || !rotation_edit.is_empty() || !scale_edit.is_empty();
+    if !has_any {
+        return;
+    }
+
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("Transform").strong());
+        ui.separator();
+
+        vpeol_3d_edit_position_impl(ui, position_edit, &global_drag_plane, &passed_data);
+        vpeol_3d_edit_rotation_impl(ui, rotation_edit);
+        vpeol_3d_edit_scale_impl(ui, scale_edit);
+    });
+}
+
+fn vpeol_3d_edit_position_impl(
+    ui: &mut egui::Ui,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    global_drag_plane: &VpeolDragPlane,
+    passed_data: &YoleckPassedData,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    // Use double precision to prevent rounding errors when there are many entities.
     let mut average = DVec3::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec3::ZERO;
@@ -549,7 +1298,7 @@ fn vpeol_3d_edit_position(
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
     for (entity, position, drag_plane) in edit.iter_matching() {
-        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane);
         common_drag_plane.consider(*drag_plane.normal);
 
         if let Some(pos) = passed_data.get::<Vec3>(entity) {
@@ -569,9 +1318,12 @@ fn vpeol_3d_edit_position(
     }
     ui.horizontal(|ui| {
         let mut new_average = average;
+
+        ui.add(egui::Label::new("Position"));
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
         ui.add(egui::DragValue::new(&mut new_average.z).prefix("Z:"));
+
         transition += (new_average - average).as_vec3();
     });
 
@@ -580,6 +1332,103 @@ fn vpeol_3d_edit_position(
             position.0 += transition;
         }
     }
+}
+
+fn vpeol_3d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3dRotation>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+
+    let mut average_euler = Vec3::ZERO;
+    let mut num_entities = 0;
+
+    for rotation in edit.iter_matching() {
+        average_euler += rotation.0;
+        num_entities += 1;
+    }
+    average_euler /= num_entities as f32;
+
+    ui.horizontal(|ui| {
+        let mut new_euler = average_euler;
+        let mut x_deg = new_euler.x.to_degrees();
+        let mut y_deg = new_euler.y.to_degrees();
+        let mut z_deg = new_euler.z.to_degrees();
+
+        ui.add(egui::Label::new("Rotation"));
+        ui.add(
+            egui::DragValue::new(&mut x_deg)
+                .prefix("X:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+        ui.add(
+            egui::DragValue::new(&mut y_deg)
+                .prefix("Y:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+        ui.add(
+            egui::DragValue::new(&mut z_deg)
+                .prefix("Z:")
+                .speed(1.0)
+                .suffix("°"),
+        );
+
+        new_euler.x = x_deg.to_radians();
+        new_euler.y = y_deg.to_radians();
+        new_euler.z = z_deg.to_radians();
+
+        let transition = new_euler - average_euler;
+
+        if transition.is_finite() && transition != Vec3::ZERO {
+            for mut rotation in edit.iter_matching_mut() {
+                rotation.0 += transition;
+            }
+        }
+    });
+}
+
+fn vpeol_3d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3dScale>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    let mut average = DVec3::ZERO;
+    let mut num_entities = 0;
+
+    for scale in edit.iter_matching() {
+        average += scale.0.as_dvec3();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
+    ui.horizontal(|ui| {
+        let mut new_average = average;
+
+        ui.add(egui::Label::new("Scale"));
+        ui.add(
+            egui::DragValue::new(&mut new_average.x)
+                .prefix("X:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.y)
+                .prefix("Y:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.z)
+                .prefix("Z:")
+                .speed(0.01),
+        );
+
+        let transition = (new_average - average).as_vec3();
+
+        if transition.is_finite() && transition != Vec3::ZERO {
+            for mut scale in edit.iter_matching_mut() {
+                scale.0 += transition;
+            }
+        }
+    });
 }
 
 fn vpeol_3d_init_position(
@@ -619,77 +1468,230 @@ fn vpeol_3d_init_position(
     YoleckExclusiveSystemDirective::Listening
 }
 
-fn vpeol_3d_edit_third_axis_with_knob(
+#[derive(Clone, Copy)]
+struct AxisKnobData {
+    axis: Vec3,
+    drag_plane_normal: Dir3,
+}
+
+fn vpeol_3d_edit_axis_knobs(
     mut edit: YoleckEdit<(
         Entity,
         &GlobalTransform,
-        &Vpeol3dThirdAxisWithKnob,
-        Option<&VpeolDragPlane>,
+        &Vpeol3dPosition,
+        Option<&Vpeol3dRotation>,
     )>,
-    global_drag_plane: Res<VpeolDragPlane>,
+    knobs_config: Res<Vpeol3dKnobsConfig>,
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
-    mut mesh_and_material: Local<Option<(Handle<Mesh>, Handle<StandardMaterial>)>>,
+    #[allow(clippy::type_complexity)] mut cached_assets: Local<
+        Option<(
+            Handle<Mesh>,
+            Handle<Mesh>,
+            [Handle<StandardMaterial>; 3],
+            [Handle<StandardMaterial>; 3],
+        )>,
+    >,
     mut directives_writer: MessageWriter<YoleckDirective>,
+    cameras_query: Query<(&GlobalTransform, &VpeolCameraState)>,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
 
-    let (mesh, material) = mesh_and_material.get_or_insert_with(|| {
-        (
-            mesh_assets.add(Mesh::from(Cylinder {
-                radius: 0.5,
-                half_height: 0.5,
-            })),
-            material_assets.add(Color::from(css::ORANGE_RED)),
-        )
-    });
-
-    let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
-    for (_, _, _, drag_plane) in edit.iter_matching() {
-        let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
-        common_drag_plane.consider(*drag_plane.normal);
-    }
-    let Some(drag_plane_normal) = common_drag_plane.shared_normal() else {
-        return;
-    };
-
-    for (entity, global_transform, third_axis_with_knob, _) in edit.iter_matching() {
-        let entity_position = global_transform.translation();
-
-        for (knob_name, drag_plane_normal) in [
-            ("vpeol-3d-third-axis-knob-positive", drag_plane_normal),
-            ("vpeol-3d-third-axis-knob-negative", -drag_plane_normal),
-        ] {
-            let mut knob = knobs.knob((entity, knob_name));
-            let knob_offset = third_axis_with_knob.knob_distance * drag_plane_normal;
-            let knob_transform = Transform {
-                translation: entity_position + knob_offset,
-                rotation: Quat::from_rotation_arc(Vec3::Y, drag_plane_normal),
-                scale: third_axis_with_knob.knob_scale * Vec3::ONE,
+    let (camera_position, dragged_entity) = cameras_query
+        .iter()
+        .next()
+        .map(|(t, state)| {
+            let dragged = match &state.clicks_on_objects_state {
+                VpeolClicksOnObjectsState::BeingDragged { entity, .. } => Some(*entity),
+                _ => None,
             };
+            (t.translation(), dragged)
+        })
+        .unwrap_or((Vec3::ZERO, None));
+
+    let (cone_mesh, line_mesh, materials, materials_active) =
+        cached_assets.get_or_insert_with(|| {
+            (
+                mesh_assets.add(Mesh::from(Cone {
+                    radius: 0.5,
+                    height: 1.0,
+                })),
+                mesh_assets.add(Mesh::from(Cylinder {
+                    radius: 0.15,
+                    half_height: 0.5,
+                })),
+                [
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::RED),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::GREEN),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::from(css::BLUE),
+                        unlit: true,
+                        ..default()
+                    }),
+                ],
+                [
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(1.0, 0.5, 0.5),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(0.5, 1.0, 0.5),
+                        unlit: true,
+                        ..default()
+                    }),
+                    material_assets.add(StandardMaterial {
+                        base_color: Color::linear_rgb(0.5, 0.5, 1.0),
+                        unlit: true,
+                        ..default()
+                    }),
+                ],
+            )
+        });
+
+    let world_axes = [
+        AxisKnobData {
+            axis: Vec3::X,
+            drag_plane_normal: Dir3::Z,
+        },
+        AxisKnobData {
+            axis: Vec3::Y,
+            drag_plane_normal: Dir3::X,
+        },
+        AxisKnobData {
+            axis: Vec3::Z,
+            drag_plane_normal: Dir3::Y,
+        },
+    ];
+
+    for (entity, global_transform, _, rotation) in edit.iter_matching() {
+        let entity_position = global_transform.translation();
+        let entity_scale = global_transform.to_scale_rotation_translation().0;
+        let entity_radius = entity_scale.max_element();
+
+        let distance_to_camera = (camera_position - entity_position).length();
+        let distance_scale = (distance_to_camera / 40.0).max(1.0);
+
+        let axes = match knobs_config.mode {
+            Vpeol3dKnobsMode::World => world_axes,
+            Vpeol3dKnobsMode::Local => {
+                let rot = if let Some(Vpeol3dRotation(euler_angles)) = rotation {
+                    Quat::from_euler(
+                        EulerRot::XYZ,
+                        euler_angles.x,
+                        euler_angles.y,
+                        euler_angles.z,
+                    )
+                } else {
+                    Quat::IDENTITY
+                };
+
+                let local_x = (rot * Vec3::X).normalize();
+                let local_y = (rot * Vec3::Y).normalize();
+                let local_z = (rot * Vec3::Z).normalize();
+
+                [
+                    AxisKnobData {
+                        axis: local_x,
+                        drag_plane_normal: Dir3::new_unchecked(local_z),
+                    },
+                    AxisKnobData {
+                        axis: local_y,
+                        drag_plane_normal: Dir3::new_unchecked(local_x),
+                    },
+                    AxisKnobData {
+                        axis: local_z,
+                        drag_plane_normal: Dir3::new_unchecked(local_y),
+                    },
+                ]
+            }
+        };
+
+        for (axis_idx, axis_data) in axes.iter().enumerate() {
+            let knob_name = match axis_idx {
+                0 => "vpeol-3d-axis-knob-x",
+                1 => "vpeol-3d-axis-knob-y",
+                _ => "vpeol-3d-axis-knob-z",
+            };
+
+            let line_name = match axis_idx {
+                0 => "vpeol-3d-axis-line-x",
+                1 => "vpeol-3d-axis-line-y",
+                _ => "vpeol-3d-axis-line-z",
+            };
+
+            let scaled_knob_scale = knobs_config.knob_scale * distance_scale;
+            let base_distance = knobs_config.knob_distance + entity_radius;
+            let scaled_distance = base_distance * (1.0 + (distance_scale - 1.0) * 0.3);
+
+            let knob_offset = scaled_distance * axis_data.axis;
+            let knob_position = entity_position + knob_offset;
+            let knob_transform = Transform {
+                translation: knob_position,
+                rotation: Quat::from_rotation_arc(Vec3::Y, axis_data.axis),
+                scale: scaled_knob_scale * Vec3::ONE,
+            };
+
+            let line_length = scaled_distance - scaled_knob_scale * 0.5;
+            let line_center = entity_position + axis_data.axis * line_length * 0.5;
+            let line_transform = Transform {
+                translation: line_center,
+                rotation: Quat::from_rotation_arc(Vec3::Y, axis_data.axis),
+                scale: Vec3::new(scaled_knob_scale, line_length, scaled_knob_scale),
+            };
+
+            let line_knob = knobs.knob((entity, line_name));
+            let line_knob_id = line_knob.cmd.id();
+            drop(line_knob);
+
+            let knob = knobs.knob((entity, knob_name));
+            let knob_id = knob.cmd.id();
+            let passed_pos = knob.get_passed_data::<Vec3>().copied();
+            drop(knob);
+
+            let is_active = dragged_entity == Some(line_knob_id) || dragged_entity == Some(knob_id);
+
+            let material = if is_active {
+                &materials_active[axis_idx]
+            } else {
+                &materials[axis_idx]
+            };
+
+            let mut line_knob = knobs.knob((entity, line_name));
+            line_knob.cmd.insert((
+                Mesh3d(line_mesh.clone()),
+                MeshMaterial3d(material.clone()),
+                line_transform,
+                GlobalTransform::from(line_transform),
+            ));
+
+            let mut knob = knobs.knob((entity, knob_name));
             knob.cmd.insert(VpeolDragPlane(InfinitePlane3d {
-                normal: Dir3::new(drag_plane_normal.cross(Vec3::X)).unwrap_or(Dir3::Y),
+                normal: axis_data.drag_plane_normal,
             }));
             knob.cmd.insert((
-                Mesh3d(mesh.clone()),
+                Mesh3d(cone_mesh.clone()),
                 MeshMaterial3d(material.clone()),
                 knob_transform,
                 GlobalTransform::from(knob_transform),
             ));
-            if let Some(pos) = knob.get_passed_data::<Vec3>() {
-                let vector_from_entity = *pos - knob_offset - entity_position;
-                let along_drag_normal = vector_from_entity.dot(drag_plane_normal);
-                let vector_along_drag_normal = along_drag_normal * drag_plane_normal;
-                let position_along_drag_normal = entity_position + vector_along_drag_normal;
-                // NOTE: we don't need to send this to all the selected entities. This will be
-                // handled in the system that receives the passed data.
-                directives_writer.write(YoleckDirective::pass_to_entity(
-                    entity,
-                    position_along_drag_normal,
-                ));
+
+            if let Some(pos) = passed_pos {
+                let vector_from_entity = pos - knob_offset - entity_position;
+                let along_axis = vector_from_entity.dot(axis_data.axis);
+                let new_position = entity_position + along_axis * axis_data.axis;
+                directives_writer.write(YoleckDirective::pass_to_entity(entity, new_position));
             }
         }
     }
@@ -707,8 +1709,14 @@ fn vpeol_3d_populate_transform(
     populate.populate(
         |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
             let mut transform = Transform::from_translation(position.0);
-            if let Some(Vpeol3dRotation(rotation)) = rotation {
-                transform = transform.with_rotation(*rotation);
+            if let Some(Vpeol3dRotation(euler_angles)) = rotation {
+                let quat = Quat::from_euler(
+                    EulerRot::XYZ,
+                    euler_angles.x,
+                    euler_angles.y,
+                    euler_angles.z,
+                );
+                transform = transform.with_rotation(quat);
             }
             if let Some(Vpeol3dScale(scale)) = scale {
                 transform = transform.with_scale(*scale);

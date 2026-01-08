@@ -36,9 +36,9 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add  the [`Vpeol2dPosition`] Yoleck component and use it as the source of position (there
-//!    are also [`Vpeol2dRotatation`] and [`Vpeol2dScale`], but they don't currently get editing
-//!    support from vpeol_2d)
+//! 1. Add  the [`Vpeol2dPosition`] Yoleck component and use it as the source of position. Optionally
+//!    add [`Vpeol2dRotatation`] (edited in degrees) and [`Vpeol2dScale`] (edited with X, Y values)
+//!    for rotation and scale support.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -50,6 +50,8 @@
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Example")
 //!             .with::<Vpeol2dPosition>() // vpeol_2d dragging
+//!             .with::<Vpeol2dRotatation>() // optional: rotation with egui (degrees)
+//!             .with::<Vpeol2dScale>() // optional: scale with egui
 //!             .with::<Example>() // entity's specific data and systems
 //!     });
 //!     ```
@@ -102,7 +104,10 @@ use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::*, YoleckSchedule};
+use crate::{prelude::*, YoleckSchedule, YoleckEditMarker, YoleckState, YoleckBelongsToLevel};
+use crate::editor::YoleckEditorEvent;
+use crate::entity_management::YoleckRawEntry;
+use crate::{YoleckManaged, YoleckEntityConstructionSpecs};
 
 /// Add the systems required for loading levels that use vpeol_2d components
 pub struct Vpeol2dPluginForGame;
@@ -155,6 +160,11 @@ impl Plugin for Vpeol2dPluginForEditor {
         );
         app.add_systems(
             Update,
+            (handle_delete_entity_key, handle_copy_entity_key, handle_paste_entity_key)
+                .run_if(in_state(YoleckEditorState::EditorActive)),
+        );
+        app.add_systems(
+            Update,
             (
                 ApplyDeferred,
                 handle_clickable_children_system::<
@@ -166,7 +176,7 @@ impl Plugin for Vpeol2dPluginForEditor {
                 .chain()
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
-        app.add_yoleck_edit_system(vpeol_2d_edit_position);
+        app.add_yoleck_edit_system(vpeol_2d_edit_transform_group);
         app.world_mut()
             .resource_mut::<YoleckEntityCreationExclusiveSystems>()
             .on_entity_creation(|queue| queue.push_back(vpeol_2d_init_position));
@@ -451,21 +461,149 @@ fn camera_2d_zoom(
     Ok(())
 }
 
+fn handle_delete_entity_key(
+    mut egui_context: EguiContexts,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut yoleck_state: ResMut<YoleckState>,
+    query: Query<Entity, With<YoleckEditMarker>>,
+    mut commands: Commands,
+    mut writer: MessageWriter<YoleckEditorEvent>,
+) -> Result {
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
+    }
+
+    if keyboard_input.just_pressed(KeyCode::Delete) {
+        for entity in query.iter() {
+            commands.entity(entity).despawn();
+            writer.write(YoleckEditorEvent::EntityDeselected(entity));
+        }
+        if !query.is_empty() {
+            yoleck_state.level_needs_saving = true;
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_copy_entity_key(
+    mut egui_context: EguiContexts,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    query: Query<&YoleckManaged, With<YoleckEditMarker>>,
+    construction_specs: Res<YoleckEntityConstructionSpecs>,
+) -> Result {
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
+    }
+
+    let ctrl_pressed = keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
+
+    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyC) {
+        let entities: Vec<YoleckRawEntry> = query
+            .iter()
+            .filter_map(|yoleck_managed| {
+                let entity_type = construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
+                
+                let data: serde_json::Map<String, serde_json::Value> = entity_type
+                    .components
+                    .iter()
+                    .filter_map(|component| {
+                        let component_data = yoleck_managed.components_data.get(component)?;
+                        let handler = &construction_specs.component_handlers[component];
+                        Some((
+                            handler.key().to_string(),
+                            handler.serialize(component_data.as_ref()),
+                        ))
+                    })
+                    .collect();
+
+                Some(YoleckRawEntry {
+                    header: crate::entity_management::YoleckEntryHeader {
+                        type_name: yoleck_managed.type_name.clone(),
+                        name: yoleck_managed.name.clone(),
+                        uuid: None,
+                    },
+                    data: serde_json::Value::Object(data),
+                })
+            })
+            .collect();
+
+        if !entities.is_empty() {
+            if let Ok(json) = serde_json::to_string(&entities) {
+                let mut clipboard = arboard::Clipboard::new()?;
+                clipboard.set_text(json)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_paste_entity_key(
+    mut egui_context: EguiContexts,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut yoleck_state: ResMut<YoleckState>,
+    mut commands: Commands,
+    mut writer: MessageWriter<YoleckEditorEvent>,
+    query: Query<Entity, With<YoleckEditMarker>>,
+) -> Result {
+    if egui_context.ctx_mut()?.wants_keyboard_input() {
+        return Ok(());
+    }
+
+    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft) 
+        || keyboard_input.pressed(KeyCode::ControlRight);
+
+    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
+        let mut clipboard = arboard::Clipboard::new()?;
+        if let Ok(text) = clipboard.get_text() {
+            if let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text) {
+                if !entities.is_empty() {
+                    for prev_selected in query.iter() {
+                        commands.entity(prev_selected).remove::<YoleckEditMarker>();
+                        writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
+                    }
+                    
+                    let level_being_edited = yoleck_state.level_being_edited;
+                    
+                    for entry in entities {
+                        let entity_id = commands.spawn((
+                            entry,
+                            YoleckBelongsToLevel {
+                                level: level_being_edited,
+                            },
+                            YoleckEditMarker,
+                        )).id();
+                        
+                        writer.write(YoleckEditorEvent::EntitySelected(entity_id));
+                    }
+                    
+                    yoleck_state.level_needs_saving = true;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// A position component that's edited and populated by vpeol_2d.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dPosition(pub Vec2);
 
-/// A rotation component that's populated (but not edited) by vpeol_2d.
+/// A rotation component that's edited and populated by vpeol_2d.
 ///
-/// The rotation is in radians around the Z axis.
+/// The rotation is in radians around the Z axis. Editing is done with egui using degrees.
 #[derive(Default, Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dRotatation(pub f32);
 
-/// A scale component that's populated (but not edited) by vpeol_2d.
+/// A scale component that's edited and populated by vpeol_2d.
+///
+/// Editing is done with egui using separate drag values for X and Y axes.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
@@ -477,15 +615,36 @@ impl Default for Vpeol2dScale {
     }
 }
 
-fn vpeol_2d_edit_position(
+fn vpeol_2d_edit_transform_group(
     mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    position_edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    rotation_edit: YoleckEdit<&mut Vpeol2dRotatation>,
+    scale_edit: YoleckEdit<&mut Vpeol2dScale>,
     passed_data: Res<YoleckPassedData>,
+) {
+    let has_any = !position_edit.is_empty() || !rotation_edit.is_empty() || !scale_edit.is_empty();
+    if !has_any {
+        return;
+    }
+
+    ui.group(|ui| {
+        ui.label(egui::RichText::new("Transform").strong());
+        ui.separator();
+        
+        vpeol_2d_edit_position_impl(ui, position_edit, &passed_data);
+        vpeol_2d_edit_rotation_impl(ui, rotation_edit);
+        vpeol_2d_edit_scale_impl(ui, scale_edit);
+    });
+}
+
+fn vpeol_2d_edit_position_impl(
+    ui: &mut egui::Ui,
+    mut edit: YoleckEdit<(Entity, &mut Vpeol2dPosition)>,
+    passed_data: &YoleckPassedData,
 ) {
     if edit.is_empty() || edit.has_nonmatching() {
         return;
     }
-    // Use double precision to prevent rounding errors when there are many entities.
     let mut average = DVec2::ZERO;
     let mut num_entities = 0;
     let mut transition = Vec2::ZERO;
@@ -500,8 +659,11 @@ fn vpeol_2d_edit_position(
 
     ui.horizontal(|ui| {
         let mut new_average = average;
+
+        ui.add(egui::Label::new("Position"));
         ui.add(egui::DragValue::new(&mut new_average.x).prefix("X:"));
         ui.add(egui::DragValue::new(&mut new_average.y).prefix("Y:"));
+
         transition += (new_average - average).as_vec2();
     });
 
@@ -510,6 +672,78 @@ fn vpeol_2d_edit_position(
             position.0 += transition;
         }
     }
+}
+
+fn vpeol_2d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol2dRotatation>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+
+    let mut average_rotation = 0.0_f32;
+    let mut num_entities = 0;
+
+    for rotation in edit.iter_matching() {
+        average_rotation += rotation.0;
+        num_entities += 1;
+    }
+    average_rotation /= num_entities as f32;
+
+    ui.horizontal(|ui| {
+        let mut rotation_deg = average_rotation.to_degrees();
+
+        ui.add(egui::Label::new("Rotation"));
+        ui.add(
+            egui::DragValue::new(&mut rotation_deg)
+                .speed(1.0)
+                .suffix("°"),
+        );
+
+        let new_rotation = rotation_deg.to_radians();
+        let transition = new_rotation - average_rotation;
+
+        if transition.is_finite() && transition != 0.0 {
+            for mut rotation in edit.iter_matching_mut() {
+                rotation.0 += transition;
+            }
+        }
+    });
+}
+
+fn vpeol_2d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol2dScale>) {
+    if edit.is_empty() || edit.has_nonmatching() {
+        return;
+    }
+    let mut average = DVec2::ZERO;
+    let mut num_entities = 0;
+
+    for scale in edit.iter_matching() {
+        average += scale.0.as_dvec2();
+        num_entities += 1;
+    }
+    average /= num_entities as f64;
+
+    ui.horizontal(|ui| {
+        let mut new_average = average;
+
+        ui.add(egui::Label::new("Scale"));
+        ui.add(
+            egui::DragValue::new(&mut new_average.x)
+                .prefix("X:")
+                .speed(0.01),
+        );
+        ui.add(
+            egui::DragValue::new(&mut new_average.y)
+                .prefix("Y:")
+                .speed(0.01),
+        );
+        let transition = (new_average - average).as_vec2();
+
+        if transition.is_finite() && transition != Vec2::ZERO {
+            for mut scale in edit.iter_matching_mut() {
+                scale.0 += transition;
+            }
+        }
+    });
 }
 
 fn vpeol_2d_init_position(

@@ -173,10 +173,13 @@
 //! }
 //! ```
 
+pub mod auto_edit;
+mod console;
 mod editing;
 mod editor;
 mod editor_window;
 mod entity_management;
+pub mod entity_ref;
 mod entity_upgrading;
 mod entity_uuid;
 mod errors;
@@ -207,9 +210,11 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
 pub mod prelude {
+    pub use crate::auto_edit::{YoleckAutoEdit, YoleckAutoEditExt};
     pub use crate::editing::{YoleckEdit, YoleckUi};
     pub use crate::editor::{YoleckEditorState, YoleckPassedData, YoleckSyncWithEditorState};
     pub use crate::entity_management::{YoleckKeepLevel, YoleckLoadLevel, YoleckRawLevel};
+    pub use crate::entity_ref::{YoleckEntityRef, YoleckEntityRefAccessor};
     pub use crate::entity_upgrading::YoleckEntityUpgradingPlugin;
     pub use crate::entity_uuid::{YoleckEntityUuid, YoleckUuidRegistry};
     pub use crate::knobs::YoleckKnobs;
@@ -220,14 +225,15 @@ pub mod prelude {
         YoleckBelongsToLevel, YoleckExtForApp, YoleckLevelInEditor, YoleckLevelInPlaytest,
         YoleckLevelJustLoaded, YoleckPluginForEditor, YoleckPluginForGame, YoleckSchedule,
     };
-    pub use bevy_yoleck_macros::YoleckComponent;
+    pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent};
 }
 
+pub use self::console::{console_layer_factory, YoleckConsoleLogHistory, YoleckConsoleState};
 pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
 use self::editor::YoleckEditorState;
-pub use self::editor_window::YoleckEditorSection;
+pub use self::editor_window::{YoleckEditorSection, YoleckEditorViewportRect};
 pub use self::picking_helpers::*;
 
 use self::entity_management::{EntitiesToPopulate, YoleckRawLevel};
@@ -358,7 +364,14 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels"),
         ));
-        app.insert_resource(YoleckEditorSections::default());
+        app.insert_resource(YoleckEditorLeftPanelSections::default());
+        app.insert_resource(YoleckEditorRightPanelSections::default());
+        app.insert_resource(YoleckEditorTopPanelSections::default());
+        app.insert_resource(YoleckEditorBottomPanelSections::default());
+        app.init_resource::<YoleckEditorViewportRect>();
+        app.init_resource::<YoleckConsoleState>();
+        app.init_resource::<YoleckConsoleLogHistory>();
+        app.init_resource::<YoleckPlaytestLevel>();
         app.insert_resource(EditSpecificResources::new().with(YoleckEditableLevels {
             levels: Default::default(),
         }));
@@ -611,7 +624,7 @@ pub(crate) struct YoleckState {
     level_needs_saving: bool,
 }
 
-/// Sections for the Yoleck editor window.
+/// Sections for the left panel of the Yoleck editor window.
 ///
 /// Already contains sections by default, but can be used to customize the editor by adding more
 /// sections. Each section is a function/closure that accepts a world and returns a closure that
@@ -621,9 +634,9 @@ pub(crate) struct YoleckState {
 /// ```no_run
 /// # use bevy::prelude::*;
 /// use bevy::ecs::system::SystemState;
-/// # use bevy_yoleck::{YoleckEditorSections, egui};
+/// # use bevy_yoleck::{YoleckEditorLeftPanelSections, egui};
 /// # let mut app = App::new();
-/// app.world_mut().resource_mut::<YoleckEditorSections>().0.push((|world: &mut World| {
+/// app.world_mut().resource_mut::<YoleckEditorLeftPanelSections>().0.push((|world: &mut World| {
 ///     let mut system_state = SystemState::<(
 ///         Res<Time>,
 ///     )>::new(world);
@@ -637,15 +650,74 @@ pub(crate) struct YoleckState {
 /// }).into());
 /// ```
 #[derive(Resource)]
-pub struct YoleckEditorSections(pub Vec<YoleckEditorSection>);
+pub struct YoleckEditorLeftPanelSections(pub Vec<YoleckEditorSection>);
 
-impl Default for YoleckEditorSections {
+/// Sections for the right panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorRightPanelSections(pub Vec<YoleckEditorSection>);
+
+/// Sections for the top panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorTopPanelSections(pub Vec<YoleckEditorSection>);
+
+/// A tab in the bottom panel of the Yoleck editor window.
+pub struct YoleckEditorBottomPanelTab {
+    pub name: String,
+    pub section: YoleckEditorSection,
+}
+
+impl YoleckEditorBottomPanelTab {
+    pub fn new(name: impl Into<String>, section: YoleckEditorSection) -> Self {
+        Self {
+            name: name.into(),
+            section,
+        }
+    }
+}
+
+/// Tabs for the bottom panel of the Yoleck editor window.
+#[derive(Resource)]
+pub struct YoleckEditorBottomPanelSections {
+    pub tabs: Vec<YoleckEditorBottomPanelTab>,
+    pub active_tab: usize,
+}
+
+/// The level currently being playtested, if any.
+#[derive(Default, Resource)]
+pub struct YoleckPlaytestLevel(pub Option<YoleckRawLevel>);
+
+impl Default for YoleckEditorRightPanelSections {
     fn default() -> Self {
-        YoleckEditorSections(vec![
-            level_files_manager::level_files_manager_section.into(),
+        YoleckEditorRightPanelSections(vec![editor::entity_editing_section.into()])
+    }
+}
+
+impl Default for YoleckEditorTopPanelSections {
+    fn default() -> Self {
+        YoleckEditorTopPanelSections(vec![
+            level_files_manager::level_files_manager_top_section.into(),
+            level_files_manager::playtest_buttons_section.into(),
+        ])
+    }
+}
+
+impl Default for YoleckEditorBottomPanelSections {
+    fn default() -> Self {
+        YoleckEditorBottomPanelSections {
+            tabs: vec![YoleckEditorBottomPanelTab::new(
+                "Console",
+                console::console_panel_section.into(),
+            )],
+            active_tab: 0,
+        }
+    }
+}
+
+impl Default for YoleckEditorLeftPanelSections {
+    fn default() -> Self {
+        YoleckEditorLeftPanelSections(vec![
             editor::new_entity_section.into(),
             editor::entity_selection_section.into(),
-            editor::entity_editing_section.into(),
         ])
     }
 }

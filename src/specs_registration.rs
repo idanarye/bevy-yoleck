@@ -101,6 +101,28 @@ impl YoleckEntityType {
     /// [`YoleckEntityUuid`](crate::prelude::YoleckEntityUuid) component that stores the same UUID
     /// when loaded. The [`YoleckUuidRegistry`](crate::prelude::YoleckUuidRegistry) resource can be
     /// used to resolve the entity from the UUID.
+    ///
+    /// # Required for Entity References
+    ///
+    /// **This method must be called for entity types that need to be referenced by other entities.**
+    /// Only entities with UUID can be:
+    /// - Referenced using [`YoleckEntityRef`](crate::prelude::YoleckEntityRef)
+    /// - Dragged and dropped onto entity reference fields in the editor
+    /// - Selected via the viewport click tool for entity references
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_yoleck::prelude::*;
+    /// # let mut app = App::new();
+    /// // Planet can be referenced by other entities
+    /// app.add_yoleck_entity_type({
+    ///     YoleckEntityType::new("Planet")
+    ///         .with_uuid()  // Required for references!
+    /// #       ;YoleckEntityType::new("Planet")
+    /// });
+    /// ```
     pub fn with_uuid(mut self) -> Self {
         self.has_uuid = true;
         self

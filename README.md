@@ -1,7 +1,20 @@
-[![Build Status](https://github.com/idanarye/bevy-yoleck/workflows/CI/badge.svg)](https://github.com/idanarye/bevy-yoleck/actions)
-[![Latest Version](https://img.shields.io/crates/v/bevy-yoleck.svg)](https://crates.io/crates/bevy-yoleck)
-[![Rust Documentation](https://img.shields.io/badge/nightly-rustdoc-blue.svg)](https://idanarye.github.io/bevy-yoleck/)
-[![Rust Documentation](https://img.shields.io/badge/stable-rustdoc-purple.svg)](https://docs.rs/bevy-yoleck/)
+> **Fork Notice:** This project is a fork of [bevy-yoleck](https://github.com/idanarye/bevy-yoleck) by IdanArye.
+
+<img width="1919" height="1034" alt="image" src="https://github.com/user-attachments/assets/9c6b353e-59fa-4967-a484-b20dc873a722" />
+
+## Fork Improvements
+
+| Feature | Description |
+|---------|-------------|
+| **Redesigned Editor UI** | Complete UI/UX overhaul with split-screen layout: top panel for level management and playmode controls, right panel for entity properties editor, bottom panel for entity list, left panel for entity creation tools |
+| **Automatic UI Generation** | Automatic UI generation for components with support for numeric, boolean, string, vector, color, enum, option, list, asset, and entity fields |
+| **EntityRef System** | Entity linking system with automatic UI, filtering, and runtime UUID resolution. Supports drag-and-drop |
+| **Scene Gizmo** | Visual scene gizmo for camera orientation and control |
+| **Colored Axis Knobs** | Color-coded axis knobs (red for X, green for Y, blue for Z) automatically displayed for all three world axes |
+| **Camera Schemas** | Add camera controls with FPS-style movement for better 3D navigation, and ui switcher for camera modes |
+| **Simplified Macro API** | Streamlined derive macros with automatic trait implementations - `YoleckAutoEdit` now handles both auto edit and entity ref systems |
+| **Keyboard Shortcuts** | Delete entities with `Delete` key, copy/paste entities with `Ctrl+C`/`Ctrl+V` |
+| **Console System** | Optional console system for displaying logs in the UI |
 
 # Bevy YOLECK - Your Own Level Editor Creation Kit
 
@@ -26,26 +39,24 @@ own level editor.
 
 ## Examples:
 
-* WASM examples - you can't save the levels because it's WASM, but you can edit the levels run playtests:
-  * 2D editor: https://idanarye.github.io/bevy-yoleck/demos/example2d
+**Note:** This fork is not published on crates.io yet. To run the examples, you need to clone this repository first:
 
-    https://user-images.githubusercontent.com/1149255/228007948-31a37b3f-7bd3-4a36-a3bc-4617d359c7c2.mp4
-  * 3D editor: https://idanarye.github.io/bevy-yoleck/demos/example3d
+```bash
+git clone https://github.com/dexsper/bevy-yoleck-fork
+cd bevy-yoleck
+```
 
-    https://user-images.githubusercontent.com/1149255/228008014-825ef02e-2edc-49f5-a15c-1fa6044f84de.mp4
+Then you can run the examples:
 
-  * Loading multiple levels and unloading them on the fly: https://idanarye.github.io/bevy-yoleck/demos/doors_to_other_levels
+* 2D example:
+  ```bash
+  cargo example2d
+  ```
 
-    https://github.com/idanarye/bevy-yoleck/assets/1149255/590beba4-2ca5-4218-af52-143321bb5946
-
-    The WASM version of this example is gameplay only. To see how the editor for it looks like, clone/download the repository and run:
-    ```rust
-    cargo run --example doors_to_other_levels --features vpeol_2d,bevy/png
-    ```
-* Example game:
-  * Download binaries from https://aeon-felis.itch.io/danger-doofus
-  * See the code at https://github.com/idanarye/sidekick-jam-entry-danger-doofus
-  * Run the exeutable with `--editor` to edit the game levels with Yoleck.
+* 3D example:
+  ```bash
+  cargo example3d
+  ```
 
 ## File Format
 
@@ -78,6 +89,7 @@ at a directory's contents). The index file contains a tuple of two values:
 
 | bevy | bevy-yoleck | bevy_egui |
 |------|-------------|-----------|
+| 0.17 | 0.30        | 0.38      |
 | 0.17 | 0.29        | 0.37      |
 | 0.16 | 0.28        | 0.36      |
 | 0.16 | 0.27        | 0.35      |
