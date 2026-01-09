@@ -534,7 +534,7 @@ struct EntityRefDisplayInfo {
 impl YoleckAutoEdit for YoleckEntityRef {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if let Some(uuid) = value.get_uuid() {
+            if let Some(uuid) = value.uuid() {
                 ui.label(uuid.to_string());
                 if ui.small_button("✕").clicked() {
                     value.clear();
@@ -557,7 +557,7 @@ impl YoleckAutoEdit for YoleckEntityRef {
             .horizontal(|ui| {
                 ui.label(label);
 
-                let display_text = if let Some(uuid) = value.get_uuid() {
+                let display_text = if let Some(uuid) = value.uuid() {
                     if let Some(ref info_map) = entity_info_map {
                         if let Some(info) = info_map.get(&uuid) {
                             if info.name.is_empty() {

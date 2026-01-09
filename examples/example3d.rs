@@ -293,7 +293,7 @@ fn draw_laser_pointers(
     mut gizmos: Gizmos,
 ) {
     for (laser_pointer, source_transform) in query.iter() {
-        if let Some(target_entity) = laser_pointer.target.get_entity() {
+        if let Some(target_entity) = laser_pointer.target.entity() {
             if let Ok(target_transform) = targets_query.get(target_entity) {
                 gizmos.line(
                     source_transform.translation(),

@@ -80,11 +80,11 @@ impl YoleckEntityRef {
         self.uuid.is_none()
     }
 
-    pub fn get_entity(&self) -> Option<Entity> {
+    pub fn entity(&self) -> Option<Entity> {
         self.resolved
     }
 
-    pub fn get_uuid(&self) -> Option<Uuid> {
+    pub fn uuid(&self) -> Option<Uuid> {
         self.uuid
     }
 
