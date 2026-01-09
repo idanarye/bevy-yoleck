@@ -217,7 +217,7 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.add_plugins(VpeolBasePlugin);
         app.add_plugins(Vpeol3dPluginForGame);
         app.insert_resource(VpeolDragPlane(self.drag_plane));
-        app.init_resource::<Vpeol3dKnobsConfig>();
+        app.init_resource::<Vpeol3dTranslationGizmoConfig>();
         app.init_resource::<YoleckCameraChoices>();
 
         app.world_mut()
@@ -957,7 +957,7 @@ fn camera_3d_rotate(
 pub fn vpeol_3d_knobs_mode_selector(
     world: &mut World,
 ) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut system_state = SystemState::<ResMut<Vpeol3dKnobsConfig>>::new(world);
+    let mut system_state = SystemState::<ResMut<Vpeol3dTranslationGizmoConfig>>::new(world);
 
     move |world, ui: &mut egui::Ui| {
         let mut config = system_state.get_mut(world);
@@ -965,9 +965,17 @@ pub fn vpeol_3d_knobs_mode_selector(
         ui.add_space(ui.available_width());
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::Local, "Local");
-            ui.radio_value(&mut config.mode, Vpeol3dKnobsMode::World, "World");
-            ui.label("Knobs:");
+            ui.radio_value(
+                &mut config.mode,
+                Vpeol3dTranslationGizmoMode::Local,
+                "Local",
+            );
+            ui.radio_value(
+                &mut config.mode,
+                Vpeol3dTranslationGizmoMode::World,
+                "World",
+            );
+            ui.label("Gizmo:");
         });
 
         Ok(())
@@ -1037,24 +1045,24 @@ pub fn vpeol_3d_camera_mode_selector(
 pub struct Vpeol3dPosition(pub Vec3);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Vpeol3dKnobsMode {
+pub enum Vpeol3dTranslationGizmoMode {
     World,
     Local,
 }
 
 #[derive(Resource)]
-pub struct Vpeol3dKnobsConfig {
+pub struct Vpeol3dTranslationGizmoConfig {
     pub knob_distance: f32,
     pub knob_scale: f32,
-    pub mode: Vpeol3dKnobsMode,
+    pub mode: Vpeol3dTranslationGizmoMode,
 }
 
-impl Default for Vpeol3dKnobsConfig {
+impl Default for Vpeol3dTranslationGizmoConfig {
     fn default() -> Self {
         Self {
             knob_distance: 2.0,
             knob_scale: 0.5,
-            mode: Vpeol3dKnobsMode::World,
+            mode: Vpeol3dTranslationGizmoMode::World,
         }
     }
 }
@@ -1339,7 +1347,7 @@ fn vpeol_3d_edit_axis_knobs(
         &Vpeol3dPosition,
         Option<&Vpeol3dRotation>,
     )>,
-    knobs_config: Res<Vpeol3dKnobsConfig>,
+    translation_gizmo_config: Res<Vpeol3dTranslationGizmoConfig>,
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
@@ -1441,9 +1449,9 @@ fn vpeol_3d_edit_axis_knobs(
         let distance_to_camera = (camera_position - entity_position).length();
         let distance_scale = (distance_to_camera / 40.0).max(1.0);
 
-        let axes = match knobs_config.mode {
-            Vpeol3dKnobsMode::World => world_axes,
-            Vpeol3dKnobsMode::Local => {
+        let axes = match translation_gizmo_config.mode {
+            Vpeol3dTranslationGizmoMode::World => world_axes,
+            Vpeol3dTranslationGizmoMode::Local => {
                 let rot = if let Some(Vpeol3dRotation(euler_angles)) = rotation {
                     Quat::from_euler(
                         EulerRot::XYZ,
@@ -1489,8 +1497,8 @@ fn vpeol_3d_edit_axis_knobs(
                 _ => "vpeol-3d-axis-line-z",
             };
 
-            let scaled_knob_scale = knobs_config.knob_scale * distance_scale;
-            let base_distance = knobs_config.knob_distance + entity_radius;
+            let scaled_knob_scale = translation_gizmo_config.knob_scale * distance_scale;
+            let base_distance = translation_gizmo_config.knob_distance + entity_radius;
             let scaled_distance = base_distance * (1.0 + (distance_scale - 1.0) * 0.3);
 
             let knob_offset = scaled_distance * axis_data.axis;

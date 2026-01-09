@@ -36,9 +36,9 @@ pub mod prelude {
     };
     #[cfg(feature = "vpeol_3d")]
     pub use crate::vpeol_3d::{
-        Vpeol3dCameraControl, Vpeol3dCameraMode, Vpeol3dKnobsConfig, Vpeol3dKnobsMode,
-        Vpeol3dPluginForEditor, Vpeol3dPluginForGame, Vpeol3dPosition, Vpeol3dRotation,
-        Vpeol3dScale, YoleckCameraChoices,
+        Vpeol3dCameraControl, Vpeol3dCameraMode, Vpeol3dPluginForEditor, Vpeol3dPluginForGame,
+        Vpeol3dPosition, Vpeol3dRotation, Vpeol3dScale, Vpeol3dTranslationGizmoConfig,
+        Vpeol3dTranslationGizmoMode, YoleckCameraChoices,
     };
 }
 
