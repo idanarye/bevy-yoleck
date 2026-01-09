@@ -1,14 +1,20 @@
 [workspace]
 members = ["macros"]
 
+[workspace.package]
+edition = "2021"
+authors = ["IdanArye <idanarye@gmail.com>", "dexsper <dexsperpro@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/idanarye/bevy-yoleck"
+
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.30.0"
-edition = "2021"
-authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/idanarye/bevy-yoleck"
+version = "0.29.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/bevy-yoleck"
 readme = "README.md"
 categories = ["game-development"]

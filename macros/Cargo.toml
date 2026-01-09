@@ -2,11 +2,10 @@
 name = "bevy-yoleck-macros"
 description = "Macros for bevy-yoleck"
 version = "0.9.1"
-edition = "2021"
-authors = ["dexsper <dexsperpro@gmail.com>", "IdanArye <idanarye@gmail.com>"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/dexsper/bevy-yoleck-fork"
-documentation = "https://docs.rs/bevy-yoleck"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true
