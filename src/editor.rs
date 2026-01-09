@@ -420,6 +420,14 @@ pub fn entity_selection_section(
 
                 if response.drag_started() {
                     egui::DragAndDrop::set_payload(ui.ctx(), uuid);
+                } else if response.clicked() {
+                    if ui.input(|input| input.modifiers.shift) {
+                        writer.write(YoleckDirective::toggle_selected(entity));
+                    } else if is_selected {
+                        writer.write(YoleckDirective::set_selected(None));
+                    } else {
+                        writer.write(YoleckDirective::set_selected(Some(entity)));
+                    }
                 }
 
                 if response.dragged() {
@@ -434,16 +442,6 @@ pub fn entity_selection_section(
                                     ui.label(&caption);
                                 });
                             });
-                    }
-                }
-
-                if response.clicked() && !response.drag_started() {
-                    if ui.input(|input| input.modifiers.shift) {
-                        writer.write(YoleckDirective::toggle_selected(entity));
-                    } else if is_selected {
-                        writer.write(YoleckDirective::set_selected(None));
-                    } else {
-                        writer.write(YoleckDirective::set_selected(Some(entity)));
                     }
                 }
             } else if ui
