@@ -534,9 +534,13 @@ fn handle_copy_entity_key(
             .collect();
 
         if !entities.is_empty() {
+            #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
             if let Ok(json) = serde_json::to_string(&entities) {
-                let mut clipboard = arboard::Clipboard::new()?;
-                clipboard.set_text(json)?;
+                #[cfg(feature = "arboard")]
+                {
+                    let mut clipboard = arboard::Clipboard::new()?;
+                    clipboard.set_text(json)?;
+                }
             }
         }
     }
@@ -560,8 +564,18 @@ fn handle_paste_entity_key(
         || keyboard_input.pressed(KeyCode::ControlRight);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
-        let mut clipboard = arboard::Clipboard::new()?;
-        if let Ok(text) = clipboard.get_text() {
+        #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
+        let text_to_paste: Option<String> = None;
+
+        #[cfg(feature = "arboard")]
+        let text_to_paste = {
+            let mut clipboard = arboard::Clipboard::new()?;
+            clipboard.get_text().ok()
+        };
+
+        // TODO: add fallback when arboard is not enabled or doesn't work
+
+        if let Some(text) = text_to_paste {
             if let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text) {
                 if !entities.is_empty() {
                     for prev_selected in query.iter() {

@@ -33,13 +33,15 @@ serde = "^1"
 serde_json = "^1"
 thiserror = "^2"
 uuid = "1.9.1"
-arboard = "3.4"
+arboard = {version = "3.4", optional = true}
 
 [features]
 bevy_reflect = []
 vpeol = []
 vpeol_2d = ["vpeol", "bevy/bevy_text", "bevy/bevy_sprite", "bevy/png"]
 vpeol_3d = ["vpeol", "bevy/bevy_pbr"]
+# Support clipboard with the arboard crate.
+arboard = ["dep:arboard"]
 _example2d_full = ["vpeol_2d", "bevy/bevy_gizmos", "bevy/bevy_sprite_render"]
 _example3d_full = [
     "vpeol_3d",
