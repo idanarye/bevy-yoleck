@@ -40,8 +40,10 @@ bevy_reflect = []
 vpeol = []
 vpeol_2d = ["vpeol", "bevy/bevy_text", "bevy/bevy_sprite", "bevy/png"]
 vpeol_3d = ["vpeol", "bevy/bevy_pbr"]
-# Support clipboard with the arboard crate.
+# Support clipboard with the Arboard crate.
 arboard = ["dep:arboard"]
+# Enable Wayland support in Arboard.
+arboard_wayland = ["arboard", "arboard/wayland-data-control"]
 _example2d_full = ["vpeol_2d", "bevy/bevy_gizmos", "bevy/bevy_sprite_render"]
 _example3d_full = [
     "vpeol_3d",

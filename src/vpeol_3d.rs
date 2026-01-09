@@ -126,8 +126,6 @@
 use std::any::TypeId;
 
 use crate::bevy_egui::egui;
-use crate::editor::YoleckEditorEvent;
-use crate::entity_management::YoleckRawEntry;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
 };
@@ -137,10 +135,8 @@ use crate::vpeol::{
     VpeolRootResolver, VpeolSystems,
 };
 use crate::{
-    prelude::*, YoleckBelongsToLevel, YoleckDirective, YoleckEditMarker,
-    YoleckEditorTopPanelSections, YoleckSchedule, YoleckState,
+    prelude::*, YoleckBelongsToLevel, YoleckDirective, YoleckEditorTopPanelSections, YoleckSchedule,
 };
-use crate::{YoleckEntityConstructionSpecs, YoleckManaged};
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
@@ -243,15 +239,6 @@ impl Plugin for Vpeol3dPluginForEditor {
                 camera_3d_wasd_movement,
                 camera_3d_move_along_plane_normal,
                 camera_3d_rotate,
-            )
-                .run_if(in_state(YoleckEditorState::EditorActive)),
-        );
-        app.add_systems(
-            Update,
-            (
-                handle_delete_entity_key,
-                handle_copy_entity_key,
-                handle_paste_entity_key,
             )
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
@@ -659,149 +646,6 @@ fn camera_3d_move_along_plane_normal(
 
         camera_transform.translation += zoom_amount * *camera_control.plane.normal;
     }
-    Ok(())
-}
-
-fn handle_delete_entity_key(
-    mut egui_context: EguiContexts,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut yoleck_state: ResMut<YoleckState>,
-    query: Query<Entity, With<YoleckEditMarker>>,
-    mut commands: Commands,
-    mut writer: MessageWriter<YoleckEditorEvent>,
-) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
-        return Ok(());
-    }
-
-    if keyboard_input.just_pressed(KeyCode::Delete) {
-        for entity in query.iter() {
-            commands.entity(entity).despawn();
-            writer.write(YoleckEditorEvent::EntityDeselected(entity));
-        }
-        if !query.is_empty() {
-            yoleck_state.level_needs_saving = true;
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_copy_entity_key(
-    mut egui_context: EguiContexts,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    query: Query<&YoleckManaged, With<YoleckEditMarker>>,
-    construction_specs: Res<YoleckEntityConstructionSpecs>,
-) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
-        return Ok(());
-    }
-
-    let ctrl_pressed = keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
-
-    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyC) {
-        let entities: Vec<YoleckRawEntry> = query
-            .iter()
-            .filter_map(|yoleck_managed| {
-                let entity_type =
-                    construction_specs.get_entity_type_info(&yoleck_managed.type_name)?;
-
-                let data: serde_json::Map<String, serde_json::Value> = entity_type
-                    .components
-                    .iter()
-                    .filter_map(|component| {
-                        let component_data = yoleck_managed.components_data.get(component)?;
-                        let handler = &construction_specs.component_handlers[component];
-                        Some((
-                            handler.key().to_string(),
-                            handler.serialize(component_data.as_ref()),
-                        ))
-                    })
-                    .collect();
-
-                Some(YoleckRawEntry {
-                    header: crate::entity_management::YoleckEntryHeader {
-                        type_name: yoleck_managed.type_name.clone(),
-                        name: yoleck_managed.name.clone(),
-                        uuid: None,
-                    },
-                    data: serde_json::Value::Object(data),
-                })
-            })
-            .collect();
-
-        if !entities.is_empty() {
-            #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
-            if let Ok(json) = serde_json::to_string(&entities) {
-                #[cfg(feature = "arboard")]
-                {
-                    let mut clipboard = arboard::Clipboard::new()?;
-                    clipboard.set_text(json)?;
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_paste_entity_key(
-    mut egui_context: EguiContexts,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut yoleck_state: ResMut<YoleckState>,
-    mut commands: Commands,
-    mut writer: MessageWriter<YoleckEditorEvent>,
-    query: Query<Entity, With<YoleckEditMarker>>,
-) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
-        return Ok(());
-    }
-
-    let ctrl_pressed = keyboard_input.pressed(KeyCode::ControlLeft)
-        || keyboard_input.pressed(KeyCode::ControlRight);
-
-    if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
-        #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
-        let text_to_paste: Option<String> = None;
-
-        #[cfg(feature = "arboard")]
-        let text_to_paste = {
-            let mut clipboard = arboard::Clipboard::new()?;
-            clipboard.get_text().ok()
-        };
-
-        // TODO: add fallback when arboard is not enabled or doesn't work
-
-        if let Some(text) = text_to_paste {
-            if let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text) {
-                if !entities.is_empty() {
-                    for prev_selected in query.iter() {
-                        commands.entity(prev_selected).remove::<YoleckEditMarker>();
-                        writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
-                    }
-
-                    let level_being_edited = yoleck_state.level_being_edited;
-
-                    for entry in entities {
-                        let entity_id = commands
-                            .spawn((
-                                entry,
-                                YoleckBelongsToLevel {
-                                    level: level_being_edited,
-                                },
-                                YoleckEditMarker,
-                            ))
-                            .id();
-
-                        writer.write(YoleckEditorEvent::EntitySelected(entity_id));
-                    }
-
-                    yoleck_state.level_needs_saving = true;
-                }
-            }
-        }
-    }
-
     Ok(())
 }
 
