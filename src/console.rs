@@ -228,8 +228,11 @@ fn transfer_log_messages(
 
 fn store_log_messages(
     mut log_reader: MessageReader<LogEntry>,
-    mut log_history: ResMut<YoleckConsoleLogHistory>,
+    log_history: Option<ResMut<YoleckConsoleLogHistory>>,
 ) {
+    let Some(mut log_history) = log_history else {
+        return;
+    };
     for log in log_reader.read() {
         log_history.add_log(log.clone());
     }
