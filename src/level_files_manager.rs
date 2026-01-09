@@ -79,7 +79,7 @@ pub fn level_files_manager_top_section(
             construction_specs,
             yoleck_managed_query,
             keep_levels_query,
-            _editor_state,
+            editor_state,
             mut knobs_cache,
             mut level_assets,
             entity_upgrading,
@@ -144,7 +144,7 @@ pub fn level_files_manager_top_section(
             }
         };
 
-        if matches!(_editor_state.get(), YoleckEditorState::EditorActive) {
+        if matches!(editor_state.get(), YoleckEditorState::EditorActive) {
             let file_button_response = ui.button("File");
             if file_button_response.clicked() {
                 file_popup_open = !file_popup_open;
@@ -468,7 +468,6 @@ pub fn playtest_buttons_section(
         Res<YoleckEntityConstructionSpecs>,
         Query<(&YoleckManaged, Option<&YoleckEntityUuid>)>,
         Query<Entity, With<YoleckKeepLevel>>,
-        Res<State<YoleckEditorState>>,
         ResMut<NextState<YoleckEditorState>>,
         ResMut<YoleckKnobsCache>,
         ResMut<Assets<YoleckRawLevel>>,
@@ -483,7 +482,6 @@ pub fn playtest_buttons_section(
             construction_specs,
             yoleck_managed_query,
             keep_levels_query,
-            _editor_state,
             mut next_editor_state,
             mut knobs_cache,
             mut level_assets,
