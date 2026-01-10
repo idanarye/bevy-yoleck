@@ -201,20 +201,11 @@ impl EditorPanel for YoleckEditorTopPanelSections {
 
 /// A tab in the bottom panel of the Yoleck editor window.
 ///
-/// The [`section`](Self::section) parameter is a [`SystemId`] obtained similarly to the ones in
-/// [`YoleckEditorLeftPanelSections`].
+/// The [`sections`](Self::sections) parameter is a list of [`SystemId`] obtained similarly to the
+/// ones in [`YoleckEditorLeftPanelSections`].
 pub struct YoleckEditorBottomPanelTab {
     pub name: String,
-    pub section: SystemId<(), Result>,
-}
-
-impl YoleckEditorBottomPanelTab {
-    pub fn new(name: impl Into<String>, section: SystemId<(), Result>) -> Self {
-        Self {
-            name: name.into(),
-            section,
-        }
-    }
+    pub sections: Vec<SystemId<(), Result>>,
 }
 
 /// Tabs for the bottom panel of the Yoleck editor window.
@@ -224,16 +215,16 @@ impl YoleckEditorBottomPanelTab {
 #[derive(Resource)]
 pub struct YoleckEditorBottomPanelSections {
     pub tabs: Vec<YoleckEditorBottomPanelTab>,
-    pub active_tab: usize,
+    active_tab: usize,
 }
 
 impl FromWorld for YoleckEditorBottomPanelSections {
     fn from_world(world: &mut World) -> Self {
         Self {
-            tabs: vec![YoleckEditorBottomPanelTab::new(
-                "Console",
-                world.register_system(crate::console::console_panel_section),
-            )],
+            tabs: vec![YoleckEditorBottomPanelTab {
+                name: "Console".to_owned(),
+                sections: vec![world.register_system(crate::console::console_panel_section)],
+            }],
             active_tab: 0,
         }
     }
@@ -243,8 +234,8 @@ impl EditorPanel for YoleckEditorBottomPanelSections {
     fn iter_sections(&self) -> impl Iterator<Item = SystemId<(), Result>> {
         self.tabs
             .get(self.active_tab)
-            .map(|tab| tab.section)
             .into_iter()
+            .flat_map(|tab| tab.sections.iter().copied())
     }
 
     fn wrapper(
