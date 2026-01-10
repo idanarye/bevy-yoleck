@@ -583,7 +583,7 @@ fn resolve_laser_pointers(
     uuid_registry: Res<YoleckUuidRegistry>,
 ) {
     for mut laser_pointer in query.iter_mut() {
-        laser_pointer.target.resolve(&uuid_registry);
+        let _ = laser_pointer.target.resolve(&uuid_registry);
     }
 }
 
@@ -593,14 +593,14 @@ fn draw_laser_pointers(
     mut gizmos: Gizmos,
 ) {
     for (laser_pointer, source_transform) in query.iter() {
-        if let Some(target_entity) = laser_pointer.target.entity() {
-            if let Ok(target_transform) = targets_query.get(target_entity) {
-                gizmos.line(
-                    source_transform.translation(),
-                    target_transform.translation(),
-                    css::GREEN,
-                );
-            }
+        if let Some(target_entity) = laser_pointer.target.entity()
+            && let Ok(target_transform) = targets_query.get(target_entity)
+        {
+            gizmos.line(
+                source_transform.translation(),
+                target_transform.translation(),
+                css::GREEN,
+            );
         }
     }
 }

@@ -1,4 +1,5 @@
 use bevy::ecs::error::BevyError;
+use uuid::Uuid;
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum YoleckAssetLoaderError {
@@ -17,4 +18,10 @@ impl From<BevyError> for YoleckAssetLoaderError {
     fn from(value: BevyError) -> Self {
         Self::Bevy(value)
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("{uuid} does not resolve to any known entity in the registry")]
+pub struct YoleckEntityRefCannotBeResolved {
+    pub uuid: Uuid,
 }

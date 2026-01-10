@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::entity_uuid::YoleckUuidRegistry;
+use crate::errors::YoleckEntityRefCannotBeResolved;
 
 /// A reference to another Yoleck entity, stored by UUID for persistence.
 ///
@@ -98,12 +99,19 @@ impl YoleckEntityRef {
         self.resolved = None;
     }
 
-    pub fn resolve(&mut self, registry: &YoleckUuidRegistry) {
+    pub fn resolve(
+        &mut self,
+        registry: &YoleckUuidRegistry,
+    ) -> Result<(), YoleckEntityRefCannotBeResolved> {
         if let Some(uuid) = self.uuid {
             self.resolved = registry.get(uuid);
+            if self.resolved.is_none() {
+                return Err(YoleckEntityRefCannotBeResolved { uuid });
+            }
         } else {
             self.resolved = None;
         }
+        Ok(())
     }
 }
 
