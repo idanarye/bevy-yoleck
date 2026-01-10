@@ -18,7 +18,7 @@ use crate::knobs::YoleckKnobsCache;
 use crate::prelude::{YoleckComponent, YoleckUi};
 use crate::{
     BoxedArc, YoleckBelongsToLevel, YoleckEditMarker, YoleckEditSystems,
-    YoleckEntityConstructionSpecs, YoleckInternalSchedule, YoleckManaged, YoleckState,
+    YoleckEntityConstructionSpecs, YoleckInternalSchedule, YoleckManaged, YoleckState, vpeol,
 };
 
 /// Whether or not the Yoleck editor is active.
@@ -358,6 +358,7 @@ pub fn entity_selection_section(
     editor_state: Res<State<YoleckEditorState>>,
     mut writer: MessageWriter<YoleckDirective>,
     active_exclusive_system: Option<Res<YoleckActiveExclusiveSystem>>,
+    #[cfg(feature = "vpeol")] vpeol_camera_state_query: Query<&vpeol::VpeolCameraState>,
 ) -> Result {
     if active_exclusive_system.is_some() {
         return Ok(());
@@ -384,6 +385,14 @@ pub fn entity_selection_section(
         }
     });
 
+    #[cfg(not(feature = "vpeol"))]
+    let entities_under_cursor: HashSet<Entity> = Default::default();
+    #[cfg(feature = "vpeol")]
+    let entities_under_cursor: HashSet<Entity> = vpeol_camera_state_query
+        .iter()
+        .filter_map(|camera_state| Some(camera_state.entity_under_cursor.as_ref()?.0))
+        .collect();
+
     for (entity, yoleck_managed, edit_marker, entity_uuid) in yoleck_managed_query.iter() {
         if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
             continue;
@@ -393,12 +402,18 @@ pub fn entity_selection_section(
         }
         let is_selected = edit_marker.is_some();
 
+        let caption = format_caption(entity, yoleck_managed);
+        let mut potentially_highlighted_caption = egui::RichText::new(&caption);
+        if entities_under_cursor.contains(&entity) {
+            potentially_highlighted_caption =
+                potentially_highlighted_caption.background_color(egui::Color32::DARK_RED);
+        }
+
         if let Some(entity_uuid) = entity_uuid {
             let uuid = entity_uuid.get();
             let sense = egui::Sense::click_and_drag();
-            let caption = format_caption(entity, yoleck_managed);
             let response = ui
-                .selectable_label(is_selected, caption.clone())
+                .selectable_label(is_selected, potentially_highlighted_caption)
                 .interact(sense);
 
             if response.drag_started() {
@@ -422,13 +437,13 @@ pub fn entity_selection_section(
                         .order(egui::Order::Tooltip)
                         .show(ui.ctx(), |ui| {
                             egui::Frame::popup(ui.style()).show(ui, |ui| {
-                                ui.label(&caption);
+                                ui.label(caption);
                             });
                         });
                 }
             }
         } else if ui
-            .selectable_label(is_selected, format_caption(entity, yoleck_managed))
+            .selectable_label(is_selected, potentially_highlighted_caption)
             .clicked()
         {
             if ui.input(|input| input.modifiers.shift) {
