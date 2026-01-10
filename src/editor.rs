@@ -16,9 +16,11 @@ use crate::exclusive_systems::{
 };
 use crate::knobs::YoleckKnobsCache;
 use crate::prelude::{YoleckComponent, YoleckUi};
+#[cfg(feature = "vpeol")]
+use crate::vpeol;
 use crate::{
     BoxedArc, YoleckBelongsToLevel, YoleckEditMarker, YoleckEditSystems,
-    YoleckEntityConstructionSpecs, YoleckInternalSchedule, YoleckManaged, YoleckState, vpeol,
+    YoleckEntityConstructionSpecs, YoleckInternalSchedule, YoleckManaged, YoleckState,
 };
 
 /// Whether or not the Yoleck editor is active.
