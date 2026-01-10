@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContext, PrimaryEguiContext};
 
-use crate::util::EditSpecificResources;
+use crate::editor_panels::EditorPanel;
 use crate::YoleckEditorBottomPanelSections;
 use crate::YoleckEditorLeftPanelSections;
 use crate::YoleckEditorRightPanelSections;
@@ -26,126 +26,19 @@ pub(crate) fn yoleck_editor_window(
 
     let ctx = borrowed_egui.get_mut();
 
-    let left = egui::SidePanel::left("yoleck_left_panel")
-        .resizable(true)
-        .default_width(300.0)
-        .show(ctx, |ui| {
-            ui.heading("Level Hierarchy");
-            ui.separator();
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                world.resource_scope(
-                    |world, mut yoleck_editor_sections: Mut<YoleckEditorLeftPanelSections>| {
-                        world.resource_scope(
-                            |world, mut edit_specific: Mut<EditSpecificResources>| {
-                                edit_specific.inject_to_world(world);
-                                for section in yoleck_editor_sections.0.iter_mut() {
-                                    section.0.invoke(world, ui).unwrap();
-                                }
-                                edit_specific.take_from_world(world);
-                            },
-                        );
-                    },
-                );
-            });
-        })
-        .response
+    let left = YoleckEditorLeftPanelSections::show_panel(world, ctx)
         .rect
         .width();
 
-    let right = egui::SidePanel::right("yoleck_right_panel")
-        .resizable(true)
-        .default_width(300.0)
-        .show(ctx, |ui| {
-            ui.heading("Properties");
-            ui.separator();
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                world.resource_scope(
-                    |world, mut yoleck_editor_right_sections: Mut<YoleckEditorRightPanelSections>| {
-                        world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
-                            edit_specific.inject_to_world(world);
-                            for section in yoleck_editor_right_sections.0.iter_mut() {
-                                section.0.invoke(world, ui).unwrap();
-                            }
-                            edit_specific.take_from_world(world);
-                        });
-                    },
-                );
-            });
-        })
-        .response
+    let right = YoleckEditorRightPanelSections::show_panel(world, ctx)
         .rect
         .width();
 
-    let top = egui::TopBottomPanel::top("yoleck_top_panel")
-        .resizable(false)
-        .show(ctx, |ui| {
-            let inner_margin = 3.;
-
-            ui.add_space(inner_margin);
-            ui.horizontal(|ui| {
-                ui.add_space(inner_margin);
-                ui.label("Yoleck Editor");
-                ui.separator();
-
-                world.resource_scope(
-                    |world, mut yoleck_editor_top_sections: Mut<YoleckEditorTopPanelSections>| {
-                        world.resource_scope(
-                            |world, mut edit_specific: Mut<EditSpecificResources>| {
-                                edit_specific.inject_to_world(world);
-                                for section in yoleck_editor_top_sections.0.iter_mut() {
-                                    section.0.invoke(world, ui).unwrap();
-                                }
-                                edit_specific.take_from_world(world);
-                            },
-                        );
-                    },
-                );
-                ui.add_space(inner_margin);
-            });
-            ui.add_space(inner_margin);
-        })
-        .response
+    let top = YoleckEditorTopPanelSections::show_panel(world, ctx)
         .rect
         .height();
 
-    let bottom = egui::TopBottomPanel::bottom("yoleck_bottom_panel")
-        .resizable(true)
-        .default_height(200.0)
-        .show(ctx, |ui| {
-            world.resource_scope(
-                |world, mut yoleck_editor_bottom_sections: Mut<YoleckEditorBottomPanelSections>| {
-                    world.resource_scope(|world, mut edit_specific: Mut<EditSpecificResources>| {
-                        edit_specific.inject_to_world(world);
-
-                        let inner_margin = 3.;
-                        ui.add_space(inner_margin);
-
-                        let mut new_active_tab = yoleck_editor_bottom_sections.active_tab;
-                        ui.horizontal(|ui| {
-                            for (i, tab) in yoleck_editor_bottom_sections.tabs.iter().enumerate() {
-                                if ui
-                                    .selectable_label(new_active_tab == i, &tab.name)
-                                    .clicked()
-                                {
-                                    new_active_tab = i;
-                                }
-                            }
-                        });
-                        yoleck_editor_bottom_sections.active_tab = new_active_tab;
-
-                        ui.separator();
-
-                        let active_tab = yoleck_editor_bottom_sections.active_tab;
-                        if let Some(tab) = yoleck_editor_bottom_sections.tabs.get_mut(active_tab) {
-                            tab.section.0.invoke(world, ui).unwrap();
-                        }
-
-                        edit_specific.take_from_world(world);
-                    });
-                },
-            );
-        })
-        .response
+    let bottom = YoleckEditorBottomPanelSections::show_panel(world, ctx)
         .rect
         .height();
 
@@ -192,61 +85,5 @@ pub(crate) fn yoleck_editor_window(
 
     if let Ok(mut egui_context) = egui_query.single_mut(world) {
         *egui_context = borrowed_egui;
-    }
-}
-
-#[allow(clippy::type_complexity)]
-pub(crate) enum YoleckEditorSectionInner {
-    Uninitialized(
-        Box<
-            dyn 'static
-                + Send
-                + Sync
-                + FnOnce(
-                    &mut World,
-                ) -> Box<
-                    dyn 'static + Send + Sync + FnMut(&mut World, &mut egui::Ui) -> Result,
-                >,
-        >,
-    ),
-    Middle,
-    Initialized(Box<dyn 'static + Send + Sync + FnMut(&mut World, &mut egui::Ui) -> Result>),
-}
-
-impl YoleckEditorSectionInner {
-    pub(crate) fn invoke(&mut self, world: &mut World, ui: &mut egui::Ui) -> Result {
-        match self {
-            Self::Uninitialized(_) => {
-                if let Self::Uninitialized(system_constructor) =
-                    core::mem::replace(self, Self::Middle)
-                {
-                    let mut system = system_constructor(world);
-                    system(world, ui)?;
-                    *self = Self::Initialized(system);
-                } else {
-                    panic!("It was just Uninitialized...");
-                }
-            }
-            Self::Middle => panic!("Cannot start in the middle state when being invoked"),
-            Self::Initialized(system) => {
-                system(world, ui)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-/// A single section of the UI. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
-pub struct YoleckEditorSection(pub(crate) YoleckEditorSectionInner);
-
-impl<C, S> From<C> for YoleckEditorSection
-where
-    C: 'static + Send + Sync + FnOnce(&mut World) -> S,
-    S: 'static + Send + Sync + FnMut(&mut World, &mut egui::Ui) -> Result,
-{
-    fn from(system_constructor: C) -> Self {
-        Self(YoleckEditorSectionInner::Uninitialized(Box::new(
-            move |world| Box::new(system_constructor(world)),
-        )))
     }
 }

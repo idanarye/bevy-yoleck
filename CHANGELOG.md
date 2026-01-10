@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   cluttered panel.
 - Move camera with keyboard (WASD, with Q and E too for FPS camera) insted of
   mouse dragging.
+- Use registered systems instead of `YoleckEditorSection`.
 - Update bevy_egui version to 0.38.
 
 ### Removed
@@ -62,6 +63,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   as all axes have knobs by default)
 - Removed `plane_origin` field from `Vpeol3dCameraControl` (it was used for
   movement by mouse-drag, which was dropped)
+- Removed `YoleckEditorSection`.
 
 ## 0.29.0 - 2025-10-03
 ### Changed

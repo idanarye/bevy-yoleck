@@ -126,6 +126,7 @@
 use std::any::TypeId;
 
 use crate::bevy_egui::egui;
+use crate::editor_panels::YoleckPanelUi;
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
 };
@@ -139,7 +140,6 @@ use crate::{
 };
 use bevy::camera::visibility::VisibleEntities;
 use bevy::color::palettes::css;
-use bevy::ecs::system::SystemState;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -220,14 +220,17 @@ impl Plugin for Vpeol3dPluginForEditor {
         app.init_resource::<Vpeol3dTranslationGizmoConfig>();
         app.init_resource::<YoleckCameraChoices>();
 
+        let camera_mode_selector = app.register_system(vpeol_3d_camera_mode_selector);
         app.world_mut()
             .resource_mut::<YoleckEditorTopPanelSections>()
             .0
-            .push(vpeol_3d_camera_mode_selector.into());
+            .push(camera_mode_selector);
+        let translation_gizmo_mode_selector =
+            app.register_system(vpeol_3d_translation_gizmo_mode_selector);
         app.world_mut()
             .resource_mut::<YoleckEditorTopPanelSections>()
             .0
-            .push(vpeol_3d_knobs_mode_selector.into());
+            .push(translation_gizmo_mode_selector);
 
         app.add_systems(
             Update,
@@ -954,84 +957,73 @@ fn camera_3d_rotate(
     Ok(())
 }
 
-pub fn vpeol_3d_knobs_mode_selector(
-    world: &mut World,
-) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut system_state = SystemState::<ResMut<Vpeol3dTranslationGizmoConfig>>::new(world);
+pub fn vpeol_3d_translation_gizmo_mode_selector(
+    mut ui: ResMut<YoleckPanelUi>,
+    mut config: ResMut<Vpeol3dTranslationGizmoConfig>,
+) -> Result {
+    let ui = &mut **ui;
+    ui.add_space(ui.available_width());
 
-    move |world, ui: &mut egui::Ui| {
-        let mut config = system_state.get_mut(world);
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.radio_value(
+            &mut config.mode,
+            Vpeol3dTranslationGizmoMode::Local,
+            "Local",
+        );
+        ui.radio_value(
+            &mut config.mode,
+            Vpeol3dTranslationGizmoMode::World,
+            "World",
+        );
+        ui.label("Gizmo:");
+    });
 
-        ui.add_space(ui.available_width());
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.radio_value(
-                &mut config.mode,
-                Vpeol3dTranslationGizmoMode::Local,
-                "Local",
-            );
-            ui.radio_value(
-                &mut config.mode,
-                Vpeol3dTranslationGizmoMode::World,
-                "World",
-            );
-            ui.label("Gizmo:");
-        });
-
-        Ok(())
-    }
+    Ok(())
 }
 
 pub fn vpeol_3d_camera_mode_selector(
-    world: &mut World,
-) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut system_state = SystemState::<(
-        Query<(&mut Vpeol3dCameraControl, &mut Transform)>,
-        Res<YoleckCameraChoices>,
-    )>::new(world);
+    mut ui: ResMut<YoleckPanelUi>,
+    mut query: Query<(&mut Vpeol3dCameraControl, &mut Transform)>,
+    choices: Res<YoleckCameraChoices>,
+) -> Result {
+    if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
+        let old_mode = camera_control.mode;
 
-    move |world, ui: &mut egui::Ui| {
-        let (mut query, choices) = system_state.get_mut(world);
+        let current_choice = choices
+            .choices
+            .iter()
+            .find(|c| c.control.mode == camera_control.mode);
+        let selected_text = current_choice.map(|c| c.name.as_str()).unwrap_or("Unknown");
 
-        if let Ok((mut camera_control, mut camera_transform)) = query.single_mut() {
-            let old_mode = camera_control.mode;
+        egui::ComboBox::from_id_salt("camera_mode_selector")
+            .selected_text(selected_text)
+            .show_ui(&mut *ui, |ui| {
+                for choice in choices.choices.iter() {
+                    ui.selectable_value(
+                        &mut camera_control.mode,
+                        choice.control.mode,
+                        &choice.name,
+                    );
+                }
+            });
 
-            let current_choice = choices
+        if old_mode != camera_control.mode {
+            if let Some(choice) = choices
                 .choices
                 .iter()
-                .find(|c| c.control.mode == camera_control.mode);
-            let selected_text = current_choice.map(|c| c.name.as_str()).unwrap_or("Unknown");
+                .find(|c| c.control.mode == camera_control.mode)
+            {
+                *camera_control = choice.control.clone();
 
-            egui::ComboBox::from_id_salt("camera_mode_selector")
-                .selected_text(selected_text)
-                .show_ui(ui, |ui| {
-                    for choice in choices.choices.iter() {
-                        ui.selectable_value(
-                            &mut camera_control.mode,
-                            choice.control.mode,
-                            &choice.name,
-                        );
-                    }
-                });
-
-            if old_mode != camera_control.mode {
-                if let Some(choice) = choices
-                    .choices
-                    .iter()
-                    .find(|c| c.control.mode == camera_control.mode)
-                {
-                    *camera_control = choice.control.clone();
-
-                    if let Some((position, look_at, up)) = choice.initial_transform {
-                        camera_transform.translation = position;
-                        camera_transform.look_at(look_at, up);
-                    }
+                if let Some((position, look_at, up)) = choice.initial_transform {
+                    camera_transform.translation = position;
+                    camera_transform.look_at(look_at, up);
                 }
             }
         }
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 /// A position component that's edited and populated by vpeol_3d.

@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::state::state::FreelyMutableState;
 use bevy_egui::egui;
 
+use crate::editor_panels::YoleckPanelUi;
 use crate::entity_management::{YoleckEntryHeader, YoleckRawEntry};
 use crate::entity_uuid::YoleckEntityUuid;
 use crate::exclusive_systems::{
@@ -307,147 +308,102 @@ fn format_caption(entity: Entity, yoleck_managed: &YoleckManaged) -> String {
 }
 
 /// The UI part for creating new entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
-pub fn new_entity_section(world: &mut World) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut system_state = SystemState::<(
-        Res<YoleckEntityConstructionSpecs>,
-        Res<YoleckState>,
-        Res<State<YoleckEditorState>>,
-        MessageWriter<YoleckDirective>,
-        Option<Res<YoleckActiveExclusiveSystem>>,
-    )>::new(world);
-
-    move |world, ui| {
-        let (construction_specs, yoleck, editor_state, mut writer, active_exclusive_system) =
-            system_state.get_mut(world);
-        if active_exclusive_system.is_some() {
-            return Ok(());
-        }
-
-        if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
-            return Ok(());
-        }
-
-        let button_response = ui.button("Add New Entity");
-
-        egui::Popup::menu(&button_response).show(|ui| {
-            for entity_type in construction_specs.entity_types.iter() {
-                if ui.button(&entity_type.name).clicked() {
-                    writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
-                        level: yoleck.level_being_edited,
-                        type_name: entity_type.name.clone(),
-                        data: serde_json::Value::Object(Default::default()),
-                        select_created_entity: true,
-                        modify_exclusive_systems: None,
-                    }));
-                }
-            }
-        });
-
-        system_state.apply(world);
-        Ok(())
+pub fn new_entity_section(
+    mut ui: ResMut<YoleckPanelUi>,
+    construction_specs: Res<YoleckEntityConstructionSpecs>,
+    yoleck: Res<YoleckState>,
+    editor_state: Res<State<YoleckEditorState>>,
+    mut writer: MessageWriter<YoleckDirective>,
+    active_exclusive_system: Option<Res<YoleckActiveExclusiveSystem>>,
+) -> Result {
+    if active_exclusive_system.is_some() {
+        return Ok(());
     }
+
+    if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
+        return Ok(());
+    }
+
+    let button_response = ui.button("Add New Entity");
+
+    egui::Popup::menu(&button_response).show(|ui| {
+        for entity_type in construction_specs.entity_types.iter() {
+            if ui.button(&entity_type.name).clicked() {
+                writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
+                    level: yoleck.level_being_edited,
+                    type_name: entity_type.name.clone(),
+                    data: serde_json::Value::Object(Default::default()),
+                    select_created_entity: true,
+                    modify_exclusive_systems: None,
+                }));
+            }
+        }
+    });
+    Ok(())
 }
 
 /// The UI part for selecting entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
+#[allow(clippy::too_many_arguments)]
 pub fn entity_selection_section(
-    world: &mut World,
-) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut filter_custom_name = String::new();
-    let mut filter_types = HashSet::<String>::new();
+    mut ui: ResMut<YoleckPanelUi>,
+    mut filter_custom_name: Local<String>,
+    mut filter_types: Local<HashSet<String>>,
+    construction_specs: Res<YoleckEntityConstructionSpecs>,
+    yoleck_managed_query: Query<(
+        Entity,
+        &YoleckManaged,
+        Option<&YoleckEditMarker>,
+        Option<&YoleckEntityUuid>,
+    )>,
+    editor_state: Res<State<YoleckEditorState>>,
+    mut writer: MessageWriter<YoleckDirective>,
+    active_exclusive_system: Option<Res<YoleckActiveExclusiveSystem>>,
+) -> Result {
+    if active_exclusive_system.is_some() {
+        return Ok(());
+    }
 
-    let mut system_state = SystemState::<(
-        Res<YoleckEntityConstructionSpecs>,
-        Query<(
-            Entity,
-            &YoleckManaged,
-            Option<&YoleckEditMarker>,
-            Option<&YoleckEntityUuid>,
-        )>,
-        Res<State<YoleckEditorState>>,
-        MessageWriter<YoleckDirective>,
-        Option<Res<YoleckActiveExclusiveSystem>>,
-    )>::new(world);
+    if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
+        return Ok(());
+    }
 
-    move |world, ui| {
-        let (
-            construction_specs,
-            yoleck_managed_query,
-            editor_state,
-            mut writer,
-            active_exclusive_system,
-        ) = system_state.get_mut(world);
-        if active_exclusive_system.is_some() {
-            return Ok(());
-        }
-
-        if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
-            return Ok(());
-        }
-
-        egui::CollapsingHeader::new("Filter").show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("By Name:");
-                ui.text_edit_singleline(&mut filter_custom_name);
-            });
-            for entity_type in construction_specs.entity_types.iter() {
-                let mut should_show = filter_types.contains(&entity_type.name);
-                if ui.checkbox(&mut should_show, &entity_type.name).changed() {
-                    if should_show {
-                        filter_types.insert(entity_type.name.clone());
-                    } else {
-                        filter_types.remove(&entity_type.name);
-                    }
-                }
-            }
+    egui::CollapsingHeader::new("Filter").show(ui.as_mut(), |ui| {
+        ui.horizontal(|ui| {
+            ui.label("By Name:");
+            ui.text_edit_singleline(&mut *filter_custom_name);
         });
-
-        for (entity, yoleck_managed, edit_marker, entity_uuid) in yoleck_managed_query.iter() {
-            if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
-                continue;
-            }
-            if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
-                continue;
-            }
-            let is_selected = edit_marker.is_some();
-
-            if let Some(entity_uuid) = entity_uuid {
-                let uuid = entity_uuid.get();
-                let sense = egui::Sense::click_and_drag();
-                let caption = format_caption(entity, yoleck_managed);
-                let response = ui
-                    .selectable_label(is_selected, caption.clone())
-                    .interact(sense);
-
-                if response.drag_started() {
-                    egui::DragAndDrop::set_payload(ui.ctx(), uuid);
-                } else if response.clicked() {
-                    if ui.input(|input| input.modifiers.shift) {
-                        writer.write(YoleckDirective::toggle_selected(entity));
-                    } else if is_selected {
-                        writer.write(YoleckDirective::set_selected(None));
-                    } else {
-                        writer.write(YoleckDirective::set_selected(Some(entity)));
-                    }
+        for entity_type in construction_specs.entity_types.iter() {
+            let mut should_show = filter_types.contains(&entity_type.name);
+            if ui.checkbox(&mut should_show, &entity_type.name).changed() {
+                if should_show {
+                    filter_types.insert(entity_type.name.clone());
+                } else {
+                    filter_types.remove(&entity_type.name);
                 }
+            }
+        }
+    });
 
-                if response.dragged() {
-                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+    for (entity, yoleck_managed, edit_marker, entity_uuid) in yoleck_managed_query.iter() {
+        if !filter_types.is_empty() && !filter_types.contains(&yoleck_managed.type_name) {
+            continue;
+        }
+        if !yoleck_managed.name.contains(filter_custom_name.as_str()) {
+            continue;
+        }
+        let is_selected = edit_marker.is_some();
 
-                    if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
-                        egui::Area::new(egui::Id::new("dragged_entity_preview"))
-                            .fixed_pos(pointer_pos + egui::vec2(10.0, 10.0))
-                            .order(egui::Order::Tooltip)
-                            .show(ui.ctx(), |ui| {
-                                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                                    ui.label(&caption);
-                                });
-                            });
-                    }
-                }
-            } else if ui
-                .selectable_label(is_selected, format_caption(entity, yoleck_managed))
-                .clicked()
-            {
+        if let Some(entity_uuid) = entity_uuid {
+            let uuid = entity_uuid.get();
+            let sense = egui::Sense::click_and_drag();
+            let caption = format_caption(entity, yoleck_managed);
+            let response = ui
+                .selectable_label(is_selected, caption.clone())
+                .interact(sense);
+
+            if response.drag_started() {
+                egui::DragAndDrop::set_payload(ui.ctx(), uuid);
+            } else if response.clicked() {
                 if ui.input(|input| input.modifiers.shift) {
                     writer.write(YoleckDirective::toggle_selected(entity));
                 } else if is_selected {
@@ -456,34 +412,66 @@ pub fn entity_selection_section(
                     writer.write(YoleckDirective::set_selected(Some(entity)));
                 }
             }
-        }
 
-        Ok(())
+            if response.dragged() {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
+                if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+                    egui::Area::new(egui::Id::new("dragged_entity_preview"))
+                        .fixed_pos(pointer_pos + egui::vec2(10.0, 10.0))
+                        .order(egui::Order::Tooltip)
+                        .show(ui.ctx(), |ui| {
+                            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                                ui.label(&caption);
+                            });
+                        });
+                }
+            }
+        } else if ui
+            .selectable_label(is_selected, format_caption(entity, yoleck_managed))
+            .clicked()
+        {
+            if ui.input(|input| input.modifiers.shift) {
+                writer.write(YoleckDirective::toggle_selected(entity));
+            } else if is_selected {
+                writer.write(YoleckDirective::set_selected(None));
+            } else {
+                writer.write(YoleckDirective::set_selected(Some(entity)));
+            }
+        }
     }
+
+    Ok(())
 }
 
 /// The UI part for editing entities. See [`YoleckEditorLeftPanelSections`](crate::YoleckEditorLeftPanelSections).
+#[allow(clippy::type_complexity)]
 pub fn entity_editing_section(
     world: &mut World,
-) -> impl FnMut(&mut World, &mut egui::Ui) -> Result {
-    let mut system_state = SystemState::<(
-        ResMut<YoleckState>,
-        Query<(Entity, &mut YoleckManaged), With<YoleckEditMarker>>,
-        Query<Entity, With<YoleckEditMarker>>,
-        MessageReader<YoleckDirective>,
-        Commands,
-        Res<State<YoleckEditorState>>,
-        MessageWriter<YoleckEditorEvent>,
-        ResMut<YoleckKnobsCache>,
-        Option<Res<YoleckActiveExclusiveSystem>>,
-        ResMut<YoleckExclusiveSystemsQueue>,
-        Res<YoleckEntityCreationExclusiveSystems>,
-    )>::new(world);
+    mut previously_edited_entity: Local<Option<Entity>>,
+    mut new_entity_created_this_frame: Local<bool>,
+    mut system_state: Local<
+        Option<
+            SystemState<(
+                ResMut<YoleckState>,
+                Query<(Entity, &mut YoleckManaged), With<YoleckEditMarker>>,
+                Query<Entity, With<YoleckEditMarker>>,
+                MessageReader<YoleckDirective>,
+                Commands,
+                Res<State<YoleckEditorState>>,
+                MessageWriter<YoleckEditorEvent>,
+                ResMut<YoleckKnobsCache>,
+                Option<Res<YoleckActiveExclusiveSystem>>,
+                ResMut<YoleckExclusiveSystemsQueue>,
+                Res<YoleckEntityCreationExclusiveSystems>,
+            )>,
+        >,
+    >,
+) -> Result {
+    let system_state = system_state.get_or_insert_with(|| SystemState::new(world));
 
-    let mut previously_edited_entity: Option<Entity> = None;
-    let mut new_entity_created_this_frame = false;
-
-    move |world, ui| {
+    world.resource_scope(|world, mut ui: Mut<YoleckPanelUi>| {
+        let ui = &mut **ui;
         let mut passed_data = YoleckPassedData(Default::default());
         {
             let (
@@ -611,7 +599,7 @@ pub fn entity_editing_section(
                             if let Some(override_exclusive_systems) = override_exclusive_systems {
                                 override_exclusive_systems(exclusive_systems_queue.as_mut());
                             }
-                            new_entity_created_this_frame = true;
+                            *new_entity_created_this_frame = true;
                         }
                         yoleck.level_needs_saving = true;
                     }
@@ -637,8 +625,8 @@ pub fn entity_editing_section(
                 entity_being_edited = None;
             }
 
-            if previously_edited_entity != entity_being_edited {
-                previously_edited_entity = entity_being_edited;
+            if *previously_edited_entity != entity_being_edited {
+                *previously_edited_entity = entity_being_edited;
                 for knob_entity in knobs_cache.drain() {
                     commands.entity(knob_entity).despawn();
                 }
@@ -706,7 +694,7 @@ pub fn entity_editing_section(
                         bevy::ecs::system::RunSystemError::Skipped(e) => e.into(),
                         bevy::ecs::system::RunSystemError::Failed(e) => e,
                     })?;
-                if new_entity_created_this_frame
+                if *new_entity_created_this_frame
                     || matches!(first_run_result, YoleckExclusiveSystemDirective::Listening)
                 {
                     world.insert_resource(YoleckActiveExclusiveSystem(new_exclusive_system));
@@ -727,10 +715,10 @@ pub fn entity_editing_section(
             .expect("The YoleckUi resource was put in the world by this very function");
         world.remove_resource::<YoleckPassedData>();
         prepared.content_ui = content_ui;
-        prepared.end(ui);
+        prepared.end(&mut *ui);
 
         // Some systems may have edited the entries, so we need to update them
         world.run_schedule(YoleckInternalSchedule::UpdateManagedDataFromComponents);
         Ok(())
-    }
+    })
 }

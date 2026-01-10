@@ -238,7 +238,7 @@ pub use self::editor_panels::{
     YoleckEditorBottomPanelSections, YoleckEditorBottomPanelTab, YoleckEditorLeftPanelSections,
     YoleckEditorRightPanelSections, YoleckEditorTopPanelSections,
 };
-pub use self::editor_window::{YoleckEditorSection, YoleckEditorViewportRect};
+pub use self::editor_window::YoleckEditorViewportRect;
 pub use self::picking_helpers::*;
 
 use self::entity_management::{EntitiesToPopulate, YoleckRawLevel};
@@ -369,10 +369,10 @@ impl Plugin for YoleckPluginForEditor {
         app.insert_resource(YoleckEditorLevelsDirectoryPath(
             Path::new(".").join("assets").join("levels"),
         ));
-        app.insert_resource(YoleckEditorLeftPanelSections::default());
-        app.insert_resource(YoleckEditorRightPanelSections::default());
-        app.insert_resource(YoleckEditorTopPanelSections::default());
-        app.insert_resource(YoleckEditorBottomPanelSections::default());
+        app.init_resource::<YoleckEditorLeftPanelSections>();
+        app.init_resource::<YoleckEditorRightPanelSections>();
+        app.init_resource::<YoleckEditorTopPanelSections>();
+        app.init_resource::<YoleckEditorBottomPanelSections>();
         app.init_resource::<YoleckEditorViewportRect>();
         app.init_resource::<YoleckConsoleState>();
         app.init_resource::<YoleckConsoleLogHistory>();

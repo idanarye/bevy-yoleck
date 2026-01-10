@@ -1,4 +1,3 @@
-use bevy::ecs::system::SystemState;
 use bevy::log::tracing;
 use bevy::log::tracing_subscriber;
 use bevy::log::BoxedLayer;
@@ -6,6 +5,8 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use std::collections::VecDeque;
 use std::sync::mpsc;
+
+use crate::editor_panels::YoleckPanelUi;
 
 /// Log level for console messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,49 +120,44 @@ impl LogFilters {
 
 /// Creates a console panel section for displaying log messages in the editor UI.
 pub fn console_panel_section(
-    world: &mut World,
-) -> impl FnMut(&mut World, &mut egui::Ui) -> Result + 'static + Send + Sync {
-    let mut system_state =
-        SystemState::<(ResMut<YoleckConsoleState>, ResMut<YoleckConsoleLogHistory>)>::new(world);
+    mut ui: ResMut<YoleckPanelUi>,
+    mut console_state: ResMut<YoleckConsoleState>,
+    mut log_history: ResMut<YoleckConsoleLogHistory>,
+) -> Result {
+    ui.horizontal(|ui| {
+        ui.label("Filters:");
 
-    move |world: &mut World, ui: &mut egui::Ui| {
-        let (mut console_state, mut log_history) = system_state.get_mut(world);
-
-        ui.horizontal(|ui| {
-            ui.label("Filters:");
-
-            ui.checkbox(&mut console_state.log_filters.show_debug, "DEBUG");
-            ui.checkbox(&mut console_state.log_filters.show_info, "INFO");
-            ui.checkbox(&mut console_state.log_filters.show_warn, "WARN");
-            ui.checkbox(&mut console_state.log_filters.show_error, "ERROR");
-
-            ui.separator();
-
-            if ui.button("Clear").clicked() {
-                log_history.clear();
-            }
-        });
+        ui.checkbox(&mut console_state.log_filters.show_debug, "DEBUG");
+        ui.checkbox(&mut console_state.log_filters.show_info, "INFO");
+        ui.checkbox(&mut console_state.log_filters.show_warn, "WARN");
+        ui.checkbox(&mut console_state.log_filters.show_error, "ERROR");
 
         ui.separator();
 
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .stick_to_bottom(true)
-            .show(ui, |ui| {
-                for log in log_history
-                    .logs
-                    .iter()
-                    .filter(|log| console_state.log_filters.should_show(log.level))
-                {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.colored_label(log.level.color(), format!("[{}]", log.level.label()));
-                        ui.label(&log.message);
-                    });
-                }
-            });
+        if ui.button("Clear").clicked() {
+            log_history.clear();
+        }
+    });
 
-        Ok(())
-    }
+    ui.separator();
+
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, false])
+        .stick_to_bottom(true)
+        .show(&mut ui, |ui| {
+            for log in log_history
+                .logs
+                .iter()
+                .filter(|log| console_state.log_filters.should_show(log.level))
+            {
+                ui.horizontal_wrapped(|ui| {
+                    ui.colored_label(log.level.color(), format!("[{}]", log.level.label()));
+                    ui.label(&log.message);
+                });
+            }
+        });
+
+    Ok(())
 }
 
 /// Tracing layer that captures log messages and sends them to the console.
