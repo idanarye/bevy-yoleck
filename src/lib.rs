@@ -236,7 +236,7 @@ pub use self::editor::YoleckEditorEvent;
 use self::editor::YoleckEditorState;
 pub use self::editor_panels::{
     YoleckEditorBottomPanelSections, YoleckEditorBottomPanelTab, YoleckEditorLeftPanelSections,
-    YoleckEditorRightPanelSections, YoleckEditorTopPanelSections,
+    YoleckEditorRightPanelSections, YoleckEditorTopPanelSections, YoleckPanelUi,
 };
 pub use self::editor_window::YoleckEditorViewportRect;
 pub use self::picking_helpers::*;

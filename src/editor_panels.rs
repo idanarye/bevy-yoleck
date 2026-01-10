@@ -67,27 +67,21 @@ pub(crate) trait EditorPanel: Resource + Sized {
 /// Sections for the left panel of the Yoleck editor window.
 ///
 /// Already contains sections by default, but can be used to customize the editor by adding more
-/// sections. Each section is a function/closure that accepts a world and returns a closure that
-/// accepts as world and a UI. The outer closure is responsible for prepareing a `SystemState` for
-/// the inner closure to use.
+/// sections. Each section is a Bevy system in the form of a [`SystemId`] with no input and a Bevy
+/// [`Result<()>`] for an output. These can be obtained by registering a system function on the
+/// Bevy app using [`register_system`](App::register_system).
+///
+/// The section system can draw on the panel using [`YoleckPanelUi`], accessible as a [`ResMut`].
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// use bevy::ecs::system::SystemState;
-/// # use bevy_yoleck::{YoleckEditorLeftPanelSections, egui};
+/// # use bevy_yoleck::{YoleckEditorLeftPanelSections, egui, YoleckPanelUi};
 /// # let mut app = App::new();
-/// app.world_mut().resource_mut::<YoleckEditorLeftPanelSections>().0.push((|world: &mut World| {
-///     let mut system_state = SystemState::<(
-///         Res<Time>,
-///     )>::new(world);
-///     move |world: &mut World, ui: &mut egui::Ui| {
-///         let (
-///             time,
-///         ) = system_state.get_mut(world);
-///         ui.label(format!("Time since startup is {:?}", time.elapsed()));
-///         Ok(())
-///     }
-/// }).into());
+/// let time_since_startup_section = app.register_system(|mut ui: ResMut<YoleckPanelUi>, time: Res<Time>| {
+///     ui.label(format!("Time since startup is {:?}", time.elapsed()));
+///     Ok(())
+/// });
+/// app.world_mut().resource_mut::<YoleckEditorLeftPanelSections>().0.push(time_since_startup_section);
 /// ```
 #[derive(Resource)]
 pub struct YoleckEditorLeftPanelSections(pub Vec<SystemId<(), Result>>);
@@ -125,7 +119,8 @@ impl EditorPanel for YoleckEditorLeftPanelSections {
     }
 }
 
-/// Sections for the right panel of the Yoleck editor window.
+/// Sections for the right panel of the Yoleck editor window. Works the same as
+/// [`YoleckEditorLeftPanelSections`].
 #[derive(Resource)]
 pub struct YoleckEditorRightPanelSections(pub Vec<SystemId<(), Result>>);
 
@@ -161,7 +156,8 @@ impl EditorPanel for YoleckEditorRightPanelSections {
     }
 }
 
-/// Sections for the top panel of the Yoleck editor window.
+/// Sections for the top panel of the Yoleck editor window. Works the same as
+/// [`YoleckEditorLeftPanelSections`].
 #[derive(Resource)]
 pub struct YoleckEditorTopPanelSections(pub Vec<SystemId<(), Result>>);
 
@@ -204,6 +200,9 @@ impl EditorPanel for YoleckEditorTopPanelSections {
 }
 
 /// A tab in the bottom panel of the Yoleck editor window.
+///
+/// The [`section`](Self::section) parameter is a [`SystemId`] obtained similarly to the ones in
+/// [`YoleckEditorLeftPanelSections`].
 pub struct YoleckEditorBottomPanelTab {
     pub name: String,
     pub section: SystemId<(), Result>,
@@ -219,6 +218,9 @@ impl YoleckEditorBottomPanelTab {
 }
 
 /// Tabs for the bottom panel of the Yoleck editor window.
+///
+/// Works similar to [`YoleckEditorLeftPanelSections`], except instead of a single list of systems
+/// they reside within [`tabs`](Self::tabs).
 #[derive(Resource)]
 pub struct YoleckEditorBottomPanelSections {
     pub tabs: Vec<YoleckEditorBottomPanelTab>,
