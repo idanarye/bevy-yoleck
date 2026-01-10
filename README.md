@@ -41,11 +41,25 @@ Then you can run the examples:
   ```bash
   cargo example2d
   ```
+  Or check out the WASM version: https://idanarye.github.io/bevy-yoleck/demos/example2d
+
+  https://user-images.githubusercontent.com/1149255/228007948-31a37b3f-7bd3-4a36-a3bc-4617d359c7c2.mp4
 
 * 3D example:
   ```bash
   cargo example3d
   ```
+  Or check out the WASM version: https://idanarye.github.io/bevy-yoleck/demos/example3d
+
+  https://user-images.githubusercontent.com/1149255/228008014-825ef02e-2edc-49f5-a15c-1fa6044f84de.mp4
+
+* Multi-level example:
+  ```bash
+  cargo doors_to_other_levels
+  ```
+  Or check out the WASM version (gameplay only): https://idanarye.github.io/bevy-yoleck/demos/doors_to_other_levels
+
+  https://github.com/idanarye/bevy-yoleck/assets/1149255/590beba4-2ca5-4218-af52-143321bb5946
 
 ## File Format
 
