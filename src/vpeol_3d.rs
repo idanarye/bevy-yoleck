@@ -75,10 +75,11 @@
 //! Entity selection by clicking on it is supported by just adding the plugin. To implement
 //! dragging, there are two options:
 //!
-//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position. Axis knobs
-//!    (X, Y, Z) are automatically added to all entities with `Vpeol3dPosition`. Configure them using
-//!    the [`Vpeol3dKnobsConfig`] resource. Optionally add [`Vpeol3dRotation`] (edited with Euler
-//!    angles) and [`Vpeol3dScale`] (edited with X, Y, Z values) for rotation and scale support.
+//! 1. Add the [`Vpeol3dPosition`] Yoleck component and use it as the source of position. Gizmo
+//!    with axis knobs (X, Y, Z) are automatically added to all entities with `Vpeol3dPosition`.
+//!    Configure them using the [`Vpeol3dTranslationGizmoConfig`] resource. Optionally add
+//!    [`Vpeol3dRotation`] (edited with Euler angles) and [`Vpeol3dScale`] (edited with X, Y, Z
+//!    values) for rotation and scale support.
 //!     ```no_run
 //!     # use bevy::prelude::*;
 //!     # use bevy_yoleck::prelude::*;
@@ -189,8 +190,6 @@ impl Vpeol3dPluginForEditor {
     ///
     /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
     ///
-    /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Z axis manipulation.
-    ///
     /// This combines well with [`Vpeol3dCameraControl::sidescroller`].
     pub fn sidescroller() -> Self {
         Self {
@@ -201,8 +200,6 @@ impl Vpeol3dPluginForEditor {
     /// For games that are not sidescrollers - drag entities along the XZ plane.
     ///
     /// Indiviual entities can override this with a [`VpeolDragPlane`] component.
-    ///
-    /// Adding [`Vpeol3dThirdAxisWithKnob`] can be used to allow Y axis manipulation.
     ///
     /// This combines well with [`Vpeol3dCameraControl::topdown`].
     pub fn topdown() -> Self {
@@ -726,26 +723,25 @@ fn draw_scene_gizmo(
     let cursor_pos = ctx.input(|i| i.pointer.hover_pos());
     let gizmo_rect = egui::Rect::from_center_size(center, egui::Vec2::splat(gizmo_size));
 
-    if let Some(cursor) = cursor_pos {
-        if mouse_buttons.just_pressed(MouseButton::Left) {
-            if gizmo_rect.contains(cursor) {
-                let distances = [
-                    (cursor.distance(x_pos), Vec3::NEG_X, Vec3::Y),
-                    (cursor.distance(x_neg), Vec3::X, Vec3::Y),
-                    (cursor.distance(y_pos), Vec3::NEG_Y, Vec3::Z),
-                    (cursor.distance(y_neg), Vec3::Y, Vec3::Z),
-                    (cursor.distance(z_pos), Vec3::NEG_Z, Vec3::Y),
-                    (cursor.distance(z_neg), Vec3::Z, Vec3::Y),
-                ];
+    if let Some(cursor) = cursor_pos
+        && mouse_buttons.just_pressed(MouseButton::Left)
+        && gizmo_rect.contains(cursor)
+    {
+        let distances = [
+            (cursor.distance(x_pos), Vec3::NEG_X, Vec3::Y),
+            (cursor.distance(x_neg), Vec3::X, Vec3::Y),
+            (cursor.distance(y_pos), Vec3::NEG_Y, Vec3::Z),
+            (cursor.distance(y_neg), Vec3::Y, Vec3::Z),
+            (cursor.distance(z_pos), Vec3::NEG_Z, Vec3::Y),
+            (cursor.distance(z_neg), Vec3::Z, Vec3::Y),
+        ];
 
-                if let Some((_, forward, up)) = distances
-                    .iter()
-                    .filter(|(d, _, _)| *d < click_radius)
-                    .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
-                {
-                    camera_transform.look_to(*forward, *up);
-                }
-            }
+        if let Some((_, forward, up)) = distances
+            .iter()
+            .filter(|(d, _, _)| *d < click_radius)
+            .min_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+        {
+            camera_transform.look_to(*forward, *up);
         }
     }
 
@@ -997,7 +993,7 @@ pub fn vpeol_3d_camera_mode_selector(
 
         egui::ComboBox::from_id_salt("camera_mode_selector")
             .selected_text(selected_text)
-            .show_ui(&mut *ui, |ui| {
+            .show_ui(&mut ui, |ui| {
                 for choice in choices.choices.iter() {
                     ui.selectable_value(
                         &mut camera_control.mode,
@@ -1007,18 +1003,17 @@ pub fn vpeol_3d_camera_mode_selector(
                 }
             });
 
-        if old_mode != camera_control.mode {
-            if let Some(choice) = choices
+        if old_mode != camera_control.mode
+            && let Some(choice) = choices
                 .choices
                 .iter()
                 .find(|c| c.control.mode == camera_control.mode)
-            {
-                *camera_control = choice.control.clone();
+        {
+            *camera_control = choice.control.clone();
 
-                if let Some((position, look_at, up)) = choice.initial_transform {
-                    camera_transform.translation = position;
-                    camera_transform.look_at(look_at, up);
-                }
+            if let Some((position, look_at, up)) = choice.initial_transform {
+                camera_transform.translation = position;
+                camera_transform.look_at(look_at, up);
             }
         }
     }
@@ -1029,8 +1024,7 @@ pub fn vpeol_3d_camera_mode_selector(
 /// A position component that's edited and populated by vpeol_3d.
 ///
 /// Editing is done with egui, or by dragging the entity on a [`VpeolDragPlane`]  that passes
-/// through the entity. To support dragging perpendicular to that plane, use
-/// [`Vpeol3dThirdAxisWithKnob`].
+/// through the entity.
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, Default, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
@@ -1332,6 +1326,7 @@ struct AxisKnobData {
     drag_plane_normal: Dir3,
 }
 
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn vpeol_3d_edit_axis_knobs(
     mut edit: YoleckEdit<(
         Entity,
@@ -1343,7 +1338,7 @@ fn vpeol_3d_edit_axis_knobs(
     mut knobs: YoleckKnobs,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut material_assets: ResMut<Assets<StandardMaterial>>,
-    #[allow(clippy::type_complexity)] mut cached_assets: Local<
+    mut cached_assets: Local<
         Option<(
             Handle<Mesh>,
             Handle<Mesh>,

@@ -604,7 +604,7 @@ impl YoleckAutoEdit for YoleckEntityRef {
                 entity_info_map
                     .as_ref()
                     .and_then(|map| map.get(&dropped_uuid))
-                    .map_or(true, |info| &info.type_name == filter)
+                    .is_none_or(|info| &info.type_name == filter)
             } else {
                 true
             };

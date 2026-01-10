@@ -117,19 +117,17 @@ pub(crate) fn validate_entity_ref_requirements_for<T: YoleckEntityRefAccessor>(
     construction_specs: &crate::YoleckEntityConstructionSpecs,
 ) {
     for (field_name, filter) in T::entity_ref_fields() {
-        if let Some(required_entity_type) = filter {
-            if let Some(entity_type_info) =
+        if let Some(required_entity_type) = filter
+            && let Some(entity_type_info) =
                 construction_specs.get_entity_type_info(required_entity_type)
-            {
-                if !entity_type_info.has_uuid {
-                    error!(
-                        "Component '{}' field '{}' requires entity type '{}' to have UUID.",
-                        std::any::type_name::<T>(),
-                        field_name,
-                        required_entity_type
-                    );
-                }
-            }
+            && !entity_type_info.has_uuid
+        {
+            error!(
+                "Component '{}' field '{}' requires entity type '{}' to have UUID.",
+                std::any::type_name::<T>(),
+                field_name,
+                required_entity_type
+            );
         }
     }
 }

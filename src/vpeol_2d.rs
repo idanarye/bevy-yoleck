@@ -247,7 +247,7 @@ fn update_camera_status_for_sprites(
             } else {
                 continue;
             };
-            if cursor.check_square(entity_transform, &anchor, size) {
+            if cursor.check_square(entity_transform, anchor, size) {
                 let z_depth = entity_transform.translation().z;
                 let Some(root_entity) = root_resolver.resolve_root(entity) else {
                     continue;

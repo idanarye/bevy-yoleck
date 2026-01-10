@@ -191,10 +191,10 @@ impl VpeolCameraState {
     }
 
     pub fn pointing_at_entity(&self, entity: Entity) -> Option<&VpeolCursorPointing> {
-        if let Some((entity_under_cursor, pointing_at)) = &self.entity_under_cursor {
-            if *entity_under_cursor == entity {
-                return Some(pointing_at);
-            }
+        if let Some((entity_under_cursor, pointing_at)) = &self.entity_under_cursor
+            && *entity_under_cursor == entity
+        {
+            return Some(pointing_at);
         }
         self.entities_of_interest.get(&entity)?.as_ref()
     }
@@ -710,12 +710,11 @@ pub fn vpeol_read_click_on_entity<Filter: QueryFilter>(
 
     if buttons.just_pressed(MouseButton::Left) {
         *candidate = Some(target);
-    } else if buttons.just_released(MouseButton::Left) {
-        if let Some(candidate) = candidate.take() {
-            if candidate == target {
-                return Some(target);
-            }
-        }
+    } else if buttons.just_released(MouseButton::Left)
+        && let Some(candidate) = candidate.take()
+        && candidate == target
+    {
+        return Some(target);
     }
     None
 }
@@ -843,33 +842,32 @@ fn handle_paste_entity_key(
 
         // TODO: add fallback when arboard is not enabled or doesn't work
 
-        if let Some(text) = text_to_paste {
-            if let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text) {
-                if !entities.is_empty() {
-                    for prev_selected in query.iter() {
-                        commands.entity(prev_selected).remove::<YoleckEditMarker>();
-                        writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
-                    }
-
-                    let level_being_edited = yoleck_state.level_being_edited;
-
-                    for entry in entities {
-                        let entity_id = commands
-                            .spawn((
-                                entry,
-                                YoleckBelongsToLevel {
-                                    level: level_being_edited,
-                                },
-                                YoleckEditMarker,
-                            ))
-                            .id();
-
-                        writer.write(YoleckEditorEvent::EntitySelected(entity_id));
-                    }
-
-                    yoleck_state.level_needs_saving = true;
-                }
+        if let Some(text) = text_to_paste
+            && let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text)
+            && !entities.is_empty()
+        {
+            for prev_selected in query.iter() {
+                commands.entity(prev_selected).remove::<YoleckEditMarker>();
+                writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
             }
+
+            let level_being_edited = yoleck_state.level_being_edited;
+
+            for entry in entities {
+                let entity_id = commands
+                    .spawn((
+                        entry,
+                        YoleckBelongsToLevel {
+                            level: level_being_edited,
+                        },
+                        YoleckEditMarker,
+                    ))
+                    .id();
+
+                writer.write(YoleckEditorEvent::EntitySelected(entity_id));
+            }
+
+            yoleck_state.level_needs_saving = true;
         }
     }
 
