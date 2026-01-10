@@ -108,6 +108,7 @@ impl EditorPanel for YoleckEditorLeftPanelSections {
         egui::SidePanel::left("yoleck_left_panel")
             .resizable(true)
             .default_width(300.0)
+            .max_width(ctx.content_rect().width() / 4.0)
             .show(ctx, |ui| {
                 ui.heading("Level Hierarchy");
                 ui.separator();
@@ -145,6 +146,7 @@ impl EditorPanel for YoleckEditorRightPanelSections {
         egui::SidePanel::right("yoleck_right_panel")
             .resizable(true)
             .default_width(300.0)
+            .max_width(ctx.content_rect().width() / 4.0)
             .show(ctx, |ui| {
                 ui.heading("Properties");
                 ui.separator();
@@ -246,6 +248,7 @@ impl EditorPanel for YoleckEditorBottomPanelSections {
         egui::TopBottomPanel::bottom("yoleck_bottom_panel")
             .resizable(true)
             .default_height(200.0)
+            .max_height(ctx.content_rect().height() / 4.0)
             .show(ctx, |ui| {
                 let inner_margin = 3.;
                 ui.add_space(inner_margin);

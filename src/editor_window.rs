@@ -26,6 +26,16 @@ pub(crate) fn yoleck_editor_window(
 
     let ctx = borrowed_egui.get_mut();
 
+    // The order of panels is important, because panels that go first will take height/width from
+    // adjacent panels. The top panel must go first because it's height is very small (so it won't
+    // be impacting the side panels much) and it needs all the width it can get. The bottom panel
+    // can go last because giving the side panels more height for displaying their lists is more
+    // important than giving extra width to the console.
+
+    let top = YoleckEditorTopPanelSections::show_panel(world, ctx)
+        .rect
+        .height();
+
     let left = YoleckEditorLeftPanelSections::show_panel(world, ctx)
         .rect
         .width();
@@ -33,10 +43,6 @@ pub(crate) fn yoleck_editor_window(
     let right = YoleckEditorRightPanelSections::show_panel(world, ctx)
         .rect
         .width();
-
-    let top = YoleckEditorTopPanelSections::show_panel(world, ctx)
-        .rect
-        .height();
 
     let bottom = YoleckEditorBottomPanelSections::show_panel(world, ctx)
         .rect

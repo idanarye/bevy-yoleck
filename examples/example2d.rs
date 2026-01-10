@@ -387,7 +387,7 @@ fn edit_fruit_type(
                     egui::Button::image(
                         egui::Image::new(egui::load::SizedTexture {
                             id: *texture_id,
-                            size: egui::Vec2::new(100.0, 100.0),
+                            size: egui::Vec2::new(25.0, 25.0),
                         })
                         .uv(*rect),
                     )
