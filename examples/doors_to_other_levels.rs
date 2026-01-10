@@ -4,9 +4,9 @@ use bevy::color::palettes::css;
 use bevy::math::Affine3A;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiPlugin};
+use bevy_egui::{EguiPlugin, egui};
 use bevy_yoleck::vpeol::prelude::*;
-use bevy_yoleck::{prelude::*, YoleckEditableLevels};
+use bevy_yoleck::{YoleckEditableLevels, prelude::*};
 use serde::{Deserialize, Serialize};
 
 fn main() {

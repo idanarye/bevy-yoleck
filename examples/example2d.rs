@@ -6,11 +6,11 @@ use bevy::mesh::Indices;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::{asset::RenderAssetUsages, log::LogPlugin};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContexts, EguiPlugin, egui};
 
+use bevy_yoleck::YoleckDirective;
 use bevy_yoleck::prelude::*;
 use bevy_yoleck::vpeol::prelude::*;
-use bevy_yoleck::YoleckDirective;
 use serde::{Deserialize, Serialize};
 
 fn main() {

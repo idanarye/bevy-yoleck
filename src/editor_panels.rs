@@ -132,7 +132,7 @@ pub struct YoleckEditorRightPanelSections(pub Vec<SystemId<(), Result>>);
 impl FromWorld for YoleckEditorRightPanelSections {
     fn from_world(world: &mut World) -> Self {
         Self(vec![
-            world.register_system(crate::editor::entity_editing_section)
+            world.register_system(crate::editor::entity_editing_section),
         ])
     }
 }

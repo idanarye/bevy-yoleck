@@ -3,9 +3,9 @@ use std::path::Path;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
+use bevy_yoleck::YoleckEditMarker;
 use bevy_yoleck::prelude::*;
 use bevy_yoleck::vpeol::prelude::*;
-use bevy_yoleck::YoleckEditMarker;
 
 /// Custom camera mode for isometric view with diagonal movement.
 const CAMERA_MODE_ISOMETRIC: Vpeol3dCameraMode = Vpeol3dCameraMode::Custom(0);

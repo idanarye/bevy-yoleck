@@ -2,7 +2,7 @@
 members = ["macros"]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 authors = ["IdanArye <idanarye@gmail.com>", "dexsper <dexsperpro@gmail.com>"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/idanarye/bevy-yoleck"

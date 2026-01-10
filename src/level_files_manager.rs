@@ -426,12 +426,12 @@ pub fn level_files_manager_top_section(
                 *file_popup_open = false;
             }
 
-            if ui.input(|i| i.pointer.primary_clicked()) {
-                if let Some(pos) = ui.input(|i| i.pointer.interact_pos()) {
-                    if !area_response.response.rect.contains(pos) && !button_rect.contains(pos) {
-                        *file_popup_open = false;
-                    }
-                }
+            if ui.input(|i| i.pointer.primary_clicked())
+                && let Some(pos) = ui.input(|i| i.pointer.interact_pos())
+                && !area_response.response.rect.contains(pos)
+                && !button_rect.contains(pos)
+            {
+                *file_popup_open = false;
             }
         }
     }

@@ -235,14 +235,14 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
                 return Err(Error::new_spanned(
                     &input,
                     "YoleckAutoEdit only supports structs with named fields",
-                ))
+                ));
             }
         },
         _ => {
             return Err(Error::new_spanned(
                 &input,
                 "YoleckAutoEdit only supports structs",
-            ))
+            ));
         }
     };
 

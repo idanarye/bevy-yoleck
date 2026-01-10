@@ -85,17 +85,16 @@
 
 use std::any::TypeId;
 
-use crate::bevy_egui::{egui, EguiContexts};
+use crate::bevy_egui::{EguiContexts, egui};
 use crate::exclusive_systems::{
     YoleckEntityCreationExclusiveSystems, YoleckExclusiveSystemDirective,
 };
 use crate::vpeol::{
-    handle_clickable_children_system, ray_intersection_with_mesh, VpeolBasePlugin,
-    VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
-    WindowGetter,
+    VpeolBasePlugin, VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolRootResolver,
+    VpeolSystems, WindowGetter, handle_clickable_children_system, ray_intersection_with_mesh,
 };
-use bevy::camera::visibility::VisibleEntities;
 use bevy::camera::RenderTarget;
+use bevy::camera::visibility::VisibleEntities;
 use bevy::input::mouse::MouseWheel;
 use bevy::math::DVec2;
 use bevy::platform::collections::HashMap;
@@ -104,7 +103,7 @@ use bevy::sprite::Anchor;
 use bevy::text::TextLayoutInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::*, YoleckBelongsToLevel, YoleckSchedule};
+use crate::{YoleckBelongsToLevel, YoleckSchedule, prelude::*};
 
 /// Add the systems required for loading levels that use vpeol_2d components
 pub struct Vpeol2dPluginForGame;

@@ -436,7 +436,7 @@ impl<T: YoleckAutoEdit + Default> YoleckAutoEdit for Option<T> {
                     *value = None;
                 }
             }
-            if let Some(ref mut inner) = value {
+            if let Some(inner) = value.as_mut() {
                 T::auto_edit(inner, ui);
             }
         });
@@ -454,7 +454,7 @@ impl<T: YoleckAutoEdit + Default> YoleckAutoEdit for Option<T> {
                         *value = None;
                     }
                 }
-                if let Some(ref mut inner) = value {
+                if let Some(inner) = value.as_mut() {
                     T::auto_edit(inner, ui);
                 }
             })
@@ -616,9 +616,9 @@ impl YoleckAutoEdit for YoleckEntityRef {
     }
 }
 
+use crate::YoleckExtForApp;
 use crate::editing::{YoleckEdit, YoleckUi};
 use crate::specs_registration::YoleckComponent;
-use crate::YoleckExtForApp;
 
 #[cfg(feature = "vpeol")]
 use crate::entity_ref::YoleckEntityRefAccessor;
@@ -626,9 +626,9 @@ use crate::entity_ref::YoleckEntityRefAccessor;
 use bevy::ecs::component::Mutable;
 
 #[cfg(feature = "vpeol")]
-use crate::entity_uuid::YoleckEntityUuid;
-#[cfg(feature = "vpeol")]
 use crate::YoleckManaged;
+#[cfg(feature = "vpeol")]
+use crate::entity_uuid::YoleckEntityUuid;
 
 #[cfg(feature = "vpeol")]
 pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor>(

@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy_egui::{egui, EguiContext, PrimaryEguiContext};
+use bevy_egui::{EguiContext, PrimaryEguiContext, egui};
 
-use crate::editor_panels::EditorPanel;
 use crate::YoleckEditorBottomPanelSections;
 use crate::YoleckEditorLeftPanelSections;
 use crate::YoleckEditorRightPanelSections;
 use crate::YoleckEditorTopPanelSections;
+use crate::editor_panels::EditorPanel;
 
 #[derive(Resource, Default)]
 pub struct YoleckEditorViewportRect {

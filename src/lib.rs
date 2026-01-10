@@ -229,7 +229,7 @@ pub mod prelude {
     pub use bevy_yoleck_macros::{YoleckAutoEdit, YoleckComponent};
 }
 
-pub use self::console::{console_layer_factory, YoleckConsoleLogHistory, YoleckConsoleState};
+pub use self::console::{YoleckConsoleLogHistory, YoleckConsoleState, console_layer_factory};
 pub use self::editing::YoleckEditMarker;
 pub use self::editor::YoleckDirective;
 pub use self::editor::YoleckEditorEvent;
@@ -529,7 +529,10 @@ impl YoleckExtForApp for App {
         let mut entity_upgrading = self.world_mut().get_resource_mut::<YoleckEntityUpgrading>()
             .expect("add_yoleck_entity_upgrade can only be called after the YoleckEntityUpgrading plugin was added");
         if entity_upgrading.app_format_version < to_version {
-            panic!("Cannot create an upgrade system to version {} when YoleckEntityUpgrading set the version to {}", to_version, entity_upgrading.app_format_version);
+            panic!(
+                "Cannot create an upgrade system to version {} when YoleckEntityUpgrading set the version to {}",
+                to_version, entity_upgrading.app_format_version
+            );
         }
         entity_upgrading
             .upgrade_functions

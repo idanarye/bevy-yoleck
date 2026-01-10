@@ -146,10 +146,8 @@ pub(crate) fn yoleck_prepare_populate_schedule(
         }
         yoleck_managed.lifecycle_status = YoleckEntityLifecycleStatus::Synchronized;
     }
-    if level_needs_saving {
-        if let Some(yoleck_state) = yoleck_state.as_mut() {
-            yoleck_state.level_needs_saving = true;
-        }
+    if level_needs_saving && let Some(yoleck_state) = yoleck_state.as_mut() {
+        yoleck_state.level_needs_saving = true;
     }
 }
 

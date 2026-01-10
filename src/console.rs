@@ -1,6 +1,6 @@
+use bevy::log::BoxedLayer;
 use bevy::log::tracing;
 use bevy::log::tracing_subscriber;
-use bevy::log::BoxedLayer;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use std::collections::VecDeque;

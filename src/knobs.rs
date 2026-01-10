@@ -5,8 +5,8 @@ use bevy::ecs::system::{EntityCommands, SystemParam};
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::editor::YoleckPassedData;
 use crate::BoxedArc;
+use crate::editor::YoleckPassedData;
 
 #[doc(hidden)]
 #[derive(Default, Resource)]
@@ -34,14 +34,14 @@ impl YoleckKnobsCache {
             .entry(self.by_key_hash.hasher().hash_one(&key))
             .or_default();
         for entry in entries.iter_mut() {
-            if let Some(cached_key) = entry.key.downcast_ref::<K>() {
-                if key == *cached_key {
-                    entry.keep_alive = true;
-                    return KnobFromCache {
-                        cmd: commands.entity(entry.entity),
-                        is_new: false,
-                    };
-                }
+            if let Some(cached_key) = entry.key.downcast_ref::<K>()
+                && key == *cached_key
+            {
+                entry.keep_alive = true;
+                return KnobFromCache {
+                    cmd: commands.entity(entry.entity),
+                    is_new: false,
+                };
             }
         }
         let cmd = commands.spawn(YoleckKnobMarker);
