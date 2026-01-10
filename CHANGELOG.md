@@ -49,8 +49,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - UI editing support for `Vpeol2dScale` with separate X, Y drag values.
 
 ### Changed
-- **BREAKING:** `Vpeol3dRotation` now stores Euler angles (`Vec3`) instead of
-  quaternion.
 - Improved editor ergonomics with better organized workspace instead of single
   cluttered panel.
 - Move camera with keyboard (WASD, with Q and E too for FPS camera) insted of

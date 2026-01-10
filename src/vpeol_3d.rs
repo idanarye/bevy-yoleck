@@ -1059,11 +1059,11 @@ impl Default for Vpeol3dTranslationGizmoConfig {
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent)]
 #[serde(transparent)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
-pub struct Vpeol3dRotation(pub Vec3);
+pub struct Vpeol3dRotation(pub Quat);
 
 impl Default for Vpeol3dRotation {
     fn default() -> Self {
-        Self(Vec3::ZERO)
+        Self(Quat::IDENTITY)
     }
 }
 
@@ -1195,7 +1195,8 @@ fn vpeol_3d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeo
     let mut num_entities = 0;
 
     for rotation in edit.iter_matching() {
-        average_euler += rotation.0;
+        let (x, y, z) = rotation.0.to_euler(EulerRot::XYZ);
+        average_euler += Vec3::new(x, y, z);
         num_entities += 1;
     }
     average_euler /= num_entities as f32;
@@ -1234,7 +1235,13 @@ fn vpeol_3d_edit_rotation_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeo
 
         if transition.is_finite() && transition != Vec3::ZERO {
             for mut rotation in edit.iter_matching_mut() {
-                rotation.0 += transition;
+                let (x, y, z) = rotation.0.to_euler(EulerRot::XYZ);
+                rotation.0 = Quat::from_euler(
+                    EulerRot::XYZ,
+                    x + transition.x,
+                    y + transition.y,
+                    z + transition.z,
+                )
             }
         }
     });
@@ -1562,14 +1569,8 @@ fn vpeol_3d_populate_transform(
     populate.populate(
         |_ctx, mut cmd, (position, rotation, scale, belongs_to_level)| {
             let mut transform = Transform::from_translation(position.0);
-            if let Some(Vpeol3dRotation(euler_angles)) = rotation {
-                let quat = Quat::from_euler(
-                    EulerRot::XYZ,
-                    euler_angles.x,
-                    euler_angles.y,
-                    euler_angles.z,
-                );
-                transform = transform.with_rotation(quat);
+            if let Some(Vpeol3dRotation(quat)) = rotation {
+                transform = transform.with_rotation(*quat);
             }
             if let Some(Vpeol3dScale(scale)) = scale {
                 transform = transform.with_scale(*scale);
