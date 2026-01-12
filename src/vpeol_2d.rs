@@ -591,16 +591,35 @@ fn vpeol_2d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol2d
         let mut new_average = average;
 
         ui.add(egui::Label::new("Scale"));
-        ui.add(
-            egui::DragValue::new(&mut new_average.x)
-                .prefix("X:")
-                .speed(0.01),
-        );
-        ui.add(
-            egui::DragValue::new(&mut new_average.y)
-                .prefix("Y:")
-                .speed(0.01),
-        );
+        ui.vertical(|ui| {
+            ui.centered_and_justified(|ui| {
+                let axis_average = (average.x + average.y) / 2.0;
+                let mut new_axis_average = axis_average;
+                if ui
+                    .add(egui::DragValue::new(&mut new_axis_average).speed(0.01))
+                    .dragged()
+                {
+                    // Use difference instead of ration to avoid problems when reaching/crossing
+                    // the zero.
+                    let diff = new_axis_average - axis_average;
+                    new_average.x += diff;
+                    new_average.y += diff;
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::DragValue::new(&mut new_average.x)
+                        .prefix("X:")
+                        .speed(0.01),
+                );
+                ui.add(
+                    egui::DragValue::new(&mut new_average.y)
+                        .prefix("Y:")
+                        .speed(0.01),
+                );
+            });
+        });
+
         let transition = (new_average - average).as_vec2();
 
         if transition.is_finite() && transition != Vec2::ZERO {

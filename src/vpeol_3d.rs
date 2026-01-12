@@ -1264,21 +1264,40 @@ fn vpeol_3d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3d
         let mut new_average = average;
 
         ui.add(egui::Label::new("Scale"));
-        ui.add(
-            egui::DragValue::new(&mut new_average.x)
-                .prefix("X:")
-                .speed(0.01),
-        );
-        ui.add(
-            egui::DragValue::new(&mut new_average.y)
-                .prefix("Y:")
-                .speed(0.01),
-        );
-        ui.add(
-            egui::DragValue::new(&mut new_average.z)
-                .prefix("Z:")
-                .speed(0.01),
-        );
+        ui.vertical(|ui| {
+            ui.centered_and_justified(|ui| {
+                let axis_average = (average.x + average.y + average.z) / 3.0;
+                let mut new_axis_average = axis_average;
+                if ui
+                    .add(egui::DragValue::new(&mut new_axis_average).speed(0.01))
+                    .dragged()
+                {
+                    // Use difference instead of ration to avoid problems when reaching/crossing
+                    // the zero.
+                    let diff = new_axis_average - axis_average;
+                    new_average.x += diff;
+                    new_average.y += diff;
+                    new_average.z += diff;
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::DragValue::new(&mut new_average.x)
+                        .prefix("X:")
+                        .speed(0.01),
+                );
+                ui.add(
+                    egui::DragValue::new(&mut new_average.y)
+                        .prefix("Y:")
+                        .speed(0.01),
+                );
+                ui.add(
+                    egui::DragValue::new(&mut new_average.z)
+                        .prefix("Z:")
+                        .speed(0.01),
+                );
+            });
+        });
 
         let transition = (new_average - average).as_vec3();
 
