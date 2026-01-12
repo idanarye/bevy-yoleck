@@ -37,8 +37,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   selected entity from the level.
 - Copy/paste support for entities: Use `Ctrl+C` to copy and `Ctrl+V` to paste
   entities with all their components and values.
-  - Cross-level entity copying: Entities can be copied between different level
+  - Cross-editor entity copying: Entities can be copied between different level
     editors through system clipboard (opt in via the `arboard` feature)
+  - If `arboard` is not enabled the copy/paste will not be cross-editor
 - Entity deletion via keyboard in addition to the existing UI button.
 - Auto-selection of pasted entities: Newly pasted entities are automatically
   selected for immediate editing.

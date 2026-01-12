@@ -73,6 +73,7 @@ impl Plugin for VpeolBasePlugin {
             )
                 .chain(), // .run_if(in_state(YoleckEditorState::EditorActive)),
         );
+        app.init_resource::<VpeolClipboard>();
         app.add_systems(
             Update,
             (prepare_camera_state, update_camera_world_position)
@@ -757,11 +758,35 @@ fn handle_delete_entity_key(
     Ok(())
 }
 
+#[derive(Resource)]
+enum VpeolClipboard {
+    #[cfg(feature = "arboard")]
+    Arboard(arboard::Clipboard),
+    Internal(String),
+}
+
+impl FromWorld for VpeolClipboard {
+    fn from_world(_: &mut World) -> Self {
+        #[cfg(feature = "arboard")]
+        match arboard::Clipboard::new() {
+            Ok(clipboard) => {
+                debug!("Arboard clipbaord successfully initiated");
+                return VpeolClipboard::Arboard(clipboard);
+            }
+            Err(err) => {
+                warn!("Cannot initiate Arboard clipboard: {err}");
+            }
+        }
+        VpeolClipboard::Internal(String::new())
+    }
+}
+
 fn handle_copy_entity_key(
     mut egui_context: EguiContexts,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     query: Query<&YoleckManaged, With<YoleckEditMarker>>,
     construction_specs: Res<YoleckEntityConstructionSpecs>,
+    mut clipboard: ResMut<VpeolClipboard>,
 ) -> Result {
     if egui_context.ctx_mut()?.wants_keyboard_input() {
         return Ok(());
@@ -800,13 +825,16 @@ fn handle_copy_entity_key(
             })
             .collect();
 
-        if !entities.is_empty() {
-            #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
-            if let Ok(json) = serde_json::to_string(&entities) {
+        if !entities.is_empty()
+            && let Ok(json) = serde_json::to_string(&entities)
+        {
+            match clipboard.as_mut() {
                 #[cfg(feature = "arboard")]
-                {
-                    let mut clipboard = arboard::Clipboard::new()?;
+                VpeolClipboard::Arboard(clipboard) => {
                     clipboard.set_text(json)?;
+                }
+                VpeolClipboard::Internal(clipboard) => {
+                    *clipboard = json;
                 }
             }
         }
@@ -822,6 +850,7 @@ fn handle_paste_entity_key(
     mut commands: Commands,
     mut writer: MessageWriter<YoleckEditorEvent>,
     query: Query<Entity, With<YoleckEditMarker>>,
+    mut clipboard: ResMut<VpeolClipboard>,
 ) -> Result {
     if egui_context.ctx_mut()?.wants_keyboard_input() {
         return Ok(());
@@ -831,19 +860,30 @@ fn handle_paste_entity_key(
         || keyboard_input.pressed(KeyCode::ControlRight);
 
     if ctrl_pressed && keyboard_input.just_pressed(KeyCode::KeyV) {
-        #[allow(unused_variables)] // TODO: try to remove when the arboard alternative gets in
-        let text_to_paste: Option<String> = None;
-
         #[cfg(feature = "arboard")]
-        let text_to_paste = {
-            let mut clipboard = arboard::Clipboard::new()?;
-            clipboard.get_text().ok()
+        let arboard_text_storage: String;
+        let text_to_paste: Option<&str> = match clipboard.as_mut() {
+            #[cfg(feature = "arboard")]
+            VpeolClipboard::Arboard(clipboard) => match clipboard.get_text() {
+                Ok(text) => {
+                    arboard_text_storage = text;
+                    Some(&arboard_text_storage)
+                }
+                Err(err) => {
+                    error!("Cannot load text from arboard: {err}");
+                    None
+                }
+            },
+            VpeolClipboard::Internal(clipboard) => {
+                Some(clipboard.as_str()).filter(|txt| !txt.is_empty())
+            }
         };
 
-        // TODO: add fallback when arboard is not enabled or doesn't work
-
         if let Some(text) = text_to_paste
-            && let Ok(entities) = serde_json::from_str::<Vec<YoleckRawEntry>>(&text)
+            && let Ok(entities) =
+                serde_json::from_str::<Vec<YoleckRawEntry>>(text).inspect_err(|err| {
+                    warn!("Cannot paste - failure to parse copied text: {err}");
+                })
             && !entities.is_empty()
         {
             for prev_selected in query.iter() {
