@@ -135,7 +135,7 @@ enum YoleckDirectiveInner {
     SpawnEntity {
         level: Entity,
         type_name: String,
-        data: serde_json::Value,
+        data: serde_json::Map<String, serde_json::Value>,
         select_created_entity: bool,
         #[allow(clippy::type_complexity)]
         modify_exclusive_systems:
@@ -254,7 +254,11 @@ impl From<SpawnEntityBuilder> for YoleckDirective {
         YoleckDirective(YoleckDirectiveInner::SpawnEntity {
             level: value.level,
             type_name: value.type_name,
-            data: serde_json::to_value(value.data).expect("should always work"),
+            data: value
+                .data
+                .into_iter()
+                .map(|(k, v)| (k.to_owned(), v))
+                .collect(),
             select_created_entity: value.select_created_entity,
             modify_exclusive_systems: value.modify_exclusive_systems,
         })
@@ -334,7 +338,7 @@ pub fn new_entity_section(
                 writer.write(YoleckDirective(YoleckDirectiveInner::SpawnEntity {
                     level: yoleck.level_being_edited,
                     type_name: entity_type.name.clone(),
-                    data: serde_json::Value::Object(Default::default()),
+                    data: Default::default(),
                     select_created_entity: true,
                     modify_exclusive_systems: None,
                 }));

@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Move camera with keyboard (WASD, with Q and E too for FPS camera) insted of
   mouse dragging.
 - Use registered systems instead of `YoleckEditorSection`.
+- `YoleckRawEntry::data` is now a `Map<String, Value>` instead of a `Value`.
 - Upgrade Rust edition to 2024.
 - Update bevy_egui version to 0.38.
 

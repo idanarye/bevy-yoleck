@@ -48,8 +48,17 @@ impl Plugin for YoleckEntityUpgradingPlugin {
 pub(crate) struct YoleckEntityUpgrading {
     pub app_format_version: usize,
     #[allow(clippy::type_complexity)]
-    pub upgrade_functions:
-        BTreeMap<usize, Vec<Box<dyn 'static + Send + Sync + Fn(&str, &mut serde_json::Value)>>>,
+    pub upgrade_functions: BTreeMap<
+        usize,
+        Vec<
+            Box<
+                dyn 'static
+                    + Send
+                    + Sync
+                    + Fn(&str, &mut serde_json::Map<String, serde_json::Value>),
+            >,
+        >,
+    >,
 }
 
 impl YoleckEntityUpgrading {

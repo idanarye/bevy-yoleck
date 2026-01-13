@@ -120,7 +120,7 @@ pub fn level_files_manager_top_section(
                                         yoleck_managed.components_data.get(component)?;
                                     let handler = &construction_specs.component_handlers[component];
                                     Some((
-                                        handler.key(),
+                                        handler.key().to_owned(),
                                         handler.serialize(component_data.as_ref()),
                                     ))
                                 })
@@ -481,7 +481,7 @@ pub fn playtest_buttons_section(
                                         yoleck_managed.components_data.get(component)?;
                                     let handler = &construction_specs.component_handlers[component];
                                     Some((
-                                        handler.key(),
+                                        handler.key().to_owned(),
                                         handler.serialize(component_data.as_ref()),
                                     ))
                                 })

@@ -820,7 +820,7 @@ fn handle_copy_entity_key(
                         name: yoleck_managed.name.clone(),
                         uuid: None,
                     },
-                    data: serde_json::Value::Object(data),
+                    data,
                 })
             })
             .collect();

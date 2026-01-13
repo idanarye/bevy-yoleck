@@ -42,7 +42,7 @@ pub struct YoleckEntryHeader {
 #[derive(Component, Debug, Clone)]
 pub struct YoleckRawEntry {
     pub header: YoleckEntryHeader,
-    pub data: serde_json::Value,
+    pub data: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Serialize for YoleckRawEntry {
@@ -59,8 +59,7 @@ impl<'de> Deserialize<'de> for YoleckRawEntry {
     where
         D: serde::Deserializer<'de>,
     {
-        let (header, data): (YoleckEntryHeader, serde_json::Value) =
-            Deserialize::deserialize(deserializer)?;
+        let (header, data) = Deserialize::deserialize(deserializer)?;
         Ok(Self { header, data })
     }
 }

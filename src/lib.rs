@@ -446,7 +446,10 @@ pub trait YoleckExtForApp {
     fn add_yoleck_entity_upgrade(
         &mut self,
         to_version: usize,
-        upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
+        upgrade_dlg: impl 'static
+        + Send
+        + Sync
+        + Fn(&str, &mut serde_json::Map<String, serde_json::Value>),
     );
 
     /// Register a function that upgrades entities of a specific type from a previous version of
@@ -455,7 +458,7 @@ pub trait YoleckExtForApp {
         &mut self,
         to_version: usize,
         for_type_name: impl ToString,
-        upgrade_dlg: impl 'static + Send + Sync + Fn(&mut serde_json::Value),
+        upgrade_dlg: impl 'static + Send + Sync + Fn(&mut serde_json::Map<String, serde_json::Value>),
     ) {
         let for_type_name = for_type_name.to_string();
         self.add_yoleck_entity_upgrade(to_version, move |type_name, data| {
@@ -524,7 +527,10 @@ impl YoleckExtForApp for App {
     fn add_yoleck_entity_upgrade(
         &mut self,
         to_version: usize,
-        upgrade_dlg: impl 'static + Send + Sync + Fn(&str, &mut serde_json::Value),
+        upgrade_dlg: impl 'static
+        + Send
+        + Sync
+        + Fn(&str, &mut serde_json::Map<String, serde_json::Value>),
     ) {
         let mut entity_upgrading = self.world_mut().get_resource_mut::<YoleckEntityUpgrading>()
             .expect("add_yoleck_entity_upgrade can only be called after the YoleckEntityUpgrading plugin was added");

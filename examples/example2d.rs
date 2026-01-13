@@ -69,7 +69,7 @@ fn main() {
     app.add_yoleck_edit_system(edit_player);
     app.add_systems(YoleckSchedule::Populate, populate_player);
     app.add_yoleck_entity_upgrade_for(1, "Player", |data| {
-        let mut old_data = data.as_object_mut().unwrap().remove("Player").unwrap();
+        let mut old_data = data.remove("Player").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
     });
 
@@ -90,7 +90,7 @@ fn main() {
         if type_name != "Fruit" {
             return;
         }
-        let mut old_data = data.as_object_mut().unwrap().remove("Fruit").unwrap();
+        let mut old_data = data.remove("Fruit").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
         data["FruitType"] = serde_json::json!({
             "index": old_data.get_mut("fruit_index").unwrap().take(),
@@ -116,11 +116,7 @@ fn main() {
         if type_name != "FloatingText" {
             return;
         }
-        let mut old_data = data
-            .as_object_mut()
-            .unwrap()
-            .remove("FloatingText")
-            .unwrap();
+        let mut old_data = data.remove("FloatingText").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
         data["TextContent"] = serde_json::json!({
             "text": old_data.get_mut("text").unwrap().take(),
