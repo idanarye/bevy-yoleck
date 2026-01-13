@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use bevy::ecs::system::SystemState;
@@ -224,18 +225,36 @@ pub struct SpawnEntityBuilder {
     level: Entity,
     type_name: String,
     select_created_entity: bool,
-    data: HashMap<&'static str, serde_json::Value>,
+    data: HashMap<Cow<'static, str>, serde_json::Value>,
     #[allow(clippy::type_complexity)]
     modify_exclusive_systems: Option<Box<dyn Sync + Send + Fn(&mut YoleckExclusiveSystemsQueue)>>,
 }
 
 impl SpawnEntityBuilder {
     /// Override a component of the spawned entity.
-    pub fn with<T: YoleckComponent>(mut self, component: T) -> Self {
-        self.data.insert(
+    pub fn with<T: YoleckComponent>(self, component: T) -> Self {
+        self.with_raw(
             T::KEY,
             serde_json::to_value(component).expect("should always work"),
-        );
+        )
+    }
+
+    pub fn with_raw(
+        mut self,
+        component_name: impl Into<Cow<'static, str>>,
+        component_data: serde_json::Value,
+    ) -> Self {
+        self.data.insert(component_name.into(), component_data);
+        self
+    }
+
+    pub fn extend(
+        mut self,
+        components: impl Iterator<Item = (impl Into<Cow<'static, str>>, serde_json::Value)>,
+    ) -> Self {
+        for (component_name, component_data) in components.into_iter() {
+            self = self.with_raw(component_name, component_data);
+        }
         self
     }
 
@@ -257,7 +276,7 @@ impl From<SpawnEntityBuilder> for YoleckDirective {
             data: value
                 .data
                 .into_iter()
-                .map(|(k, v)| (k.to_owned(), v))
+                .map(|(k, v)| (k.into_owned(), v))
                 .collect(),
             select_created_entity: value.select_created_entity,
             modify_exclusive_systems: value.modify_exclusive_systems,

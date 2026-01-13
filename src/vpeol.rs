@@ -20,8 +20,8 @@ use crate::entity_management::YoleckRawEntry;
 use crate::knobs::YoleckKnobMarker;
 use crate::prelude::{YoleckEditorState, YoleckUi};
 use crate::{
-    YoleckBelongsToLevel, YoleckDirective, YoleckEditMarker, YoleckEditorEvent,
-    YoleckEntityConstructionSpecs, YoleckManaged, YoleckRunEditSystems, YoleckState,
+    YoleckDirective, YoleckEditMarker, YoleckEditorEvent, YoleckEntityConstructionSpecs,
+    YoleckManaged, YoleckRunEditSystems, YoleckState,
 };
 
 pub mod prelude {
@@ -846,10 +846,8 @@ fn handle_copy_entity_key(
 fn handle_paste_entity_key(
     mut egui_context: EguiContexts,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut yoleck_state: ResMut<YoleckState>,
-    mut commands: Commands,
-    mut writer: MessageWriter<YoleckEditorEvent>,
-    query: Query<Entity, With<YoleckEditMarker>>,
+    yoleck_state: Res<YoleckState>,
+    mut directives_writer: MessageWriter<YoleckDirective>,
     mut clipboard: ResMut<VpeolClipboard>,
 ) -> Result {
     if egui_context.ctx_mut()?.wants_keyboard_input() {
@@ -886,28 +884,15 @@ fn handle_paste_entity_key(
                 })
             && !entities.is_empty()
         {
-            for prev_selected in query.iter() {
-                commands.entity(prev_selected).remove::<YoleckEditMarker>();
-                writer.write(YoleckEditorEvent::EntityDeselected(prev_selected));
-            }
-
             let level_being_edited = yoleck_state.level_being_edited;
 
             for entry in entities {
-                let entity_id = commands
-                    .spawn((
-                        entry,
-                        YoleckBelongsToLevel {
-                            level: level_being_edited,
-                        },
-                        YoleckEditMarker,
-                    ))
-                    .id();
-
-                writer.write(YoleckEditorEvent::EntitySelected(entity_id));
+                directives_writer.write(
+                    YoleckDirective::spawn_entity(level_being_edited, entry.header.type_name, true)
+                        .extend(entry.data.into_iter())
+                        .into(),
+                );
             }
-
-            yoleck_state.level_needs_saving = true;
         }
     }
 
