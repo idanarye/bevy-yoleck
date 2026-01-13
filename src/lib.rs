@@ -292,16 +292,21 @@ impl Plugin for YoleckPluginBase {
                 entity_management::yoleck_process_raw_entries,
                 ApplyDeferred,
                 (
-                    entity_management::yoleck_run_level_loaded_schedule,
+                    entity_management::yoleck_run_post_load_resolutions_schedule,
+                    entity_management::yoleck_run_level_loaded_schedule.run_if(
+                        |freshly_loaded_level_entities: Query<
+                            (),
+                            (With<YoleckLevelJustLoaded>, Without<YoleckLevelInEditor>),
+                        >| { !freshly_loaded_level_entities.is_empty() },
+                    ),
                     entity_management::yoleck_remove_just_loaded_marker_from_levels,
                     ApplyDeferred,
                 )
                     .chain()
                     .run_if(
-                        |freshly_loaded_level_entities: Query<
-                            (),
-                            (With<YoleckLevelJustLoaded>, Without<YoleckLevelInEditor>),
-                        >| { !freshly_loaded_level_entities.is_empty() },
+                        |freshly_loaded_level_entities: Query<(), With<YoleckLevelJustLoaded>>| {
+                            !freshly_loaded_level_entities.is_empty()
+                        },
                     ),
             )
                 .chain()
@@ -332,6 +337,7 @@ impl Plugin for YoleckPluginBase {
                 .before(YoleckSystems::ProcessRawEntities),),
         );
         app.add_schedule(Schedule::new(YoleckSchedule::Populate));
+        app.add_schedule(Schedule::new(YoleckInternalSchedule::PostLoadResolutions));
         app.add_schedule(Schedule::new(YoleckSchedule::LevelLoaded));
         app.add_schedule(Schedule::new(YoleckSchedule::OverrideCommonComponents));
     }
@@ -567,7 +573,7 @@ pub struct YoleckManaged {
 
     lifecycle_status: YoleckEntityLifecycleStatus,
 
-    components_data: HashMap<TypeId, BoxedAny>,
+    pub(crate) components_data: HashMap<TypeId, BoxedAny>,
 }
 
 /// A marker for entities that belongs to the Yoleck level and should be despawned with it.
@@ -645,6 +651,9 @@ pub struct YoleckPlaytestLevel(pub Option<YoleckRawLevel>);
 #[derive(ScheduleLabel, Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum YoleckInternalSchedule {
     UpdateManagedDataFromComponents,
+    /// Before [`LevelLoaded`][YoleckSchedule::LevelLoaded] to resolve things like entity
+    /// references.
+    PostLoadResolutions,
 }
 
 /// Schedules for user code to do the actual entity/level population after Yoleck spawns the level

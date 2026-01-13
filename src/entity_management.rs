@@ -16,7 +16,7 @@ use crate::populating::PopulateReason;
 use crate::prelude::{YoleckEntityUuid, YoleckUuidRegistry};
 use crate::{
     YoleckBelongsToLevel, YoleckEntityConstructionSpecs, YoleckEntityLifecycleStatus,
-    YoleckLevelJustLoaded, YoleckManaged, YoleckSchedule, YoleckState,
+    YoleckInternalSchedule, YoleckLevelJustLoaded, YoleckManaged, YoleckSchedule, YoleckState,
 };
 
 /// Used by Yoleck to determine how to handle the entity.
@@ -183,6 +183,10 @@ pub(crate) fn process_loading_command(
             }
         }
     }
+}
+
+pub(crate) fn yoleck_run_post_load_resolutions_schedule(world: &mut World) {
+    world.run_schedule(YoleckInternalSchedule::PostLoadResolutions);
 }
 
 pub(crate) fn yoleck_run_level_loaded_schedule(world: &mut World) {

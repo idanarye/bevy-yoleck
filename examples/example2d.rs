@@ -143,7 +143,7 @@ fn main() {
     // Common systems
     // ========================================================================
 
-    app.add_systems(Update, (resolve_laser_pointers, draw_laser_pointers));
+    app.add_systems(Update, draw_laser_pointers);
     app.add_systems(
         Update,
         (control_player, eat_fruits).run_if(in_state(YoleckEditorState::GameActive)),
@@ -573,15 +573,6 @@ fn populate_triangle(
 // ============================================================================
 // LaserPointer (shared)
 // ============================================================================
-
-fn resolve_laser_pointers(
-    mut query: Query<&mut TextLaserPointer>,
-    uuid_registry: Res<YoleckUuidRegistry>,
-) {
-    for mut laser_pointer in query.iter_mut() {
-        let _ = laser_pointer.target.resolve(&uuid_registry);
-    }
-}
 
 fn draw_laser_pointers(
     query: Query<(&TextLaserPointer, &GlobalTransform)>,

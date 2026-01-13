@@ -1,7 +1,11 @@
+use std::any::TypeId;
+
+use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::YoleckManaged;
 use crate::entity_uuid::YoleckUuidRegistry;
 use crate::errors::YoleckEntityRefCannotBeResolved;
 
@@ -57,6 +61,18 @@ pub struct YoleckEntityRef {
     #[serde(skip)]
     resolved: Option<Entity>,
 }
+
+// impl std::hash::Hash for YoleckEntityRef {
+// fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+// self.uuid.hash(state);
+// }
+// }
+
+// impl PartialEq for YoleckEntityRef {
+// fn eq(&self, other: &Self) -> bool {
+// self.uuid == other.uuid
+// }
+// }
 
 impl YoleckEntityRef {
     pub fn new() -> Self {
@@ -118,6 +134,8 @@ impl YoleckEntityRef {
 pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
     fn entity_ref_fields() -> &'static [(&'static str, Option<&'static str>)];
     fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut YoleckEntityRef;
+    // TODO: make this more versatile
+    fn resolve_entity_refs(&mut self, registry: &YoleckUuidRegistry);
 }
 
 #[cfg(feature = "vpeol")]
@@ -136,6 +154,22 @@ pub(crate) fn validate_entity_ref_requirements_for<T: YoleckEntityRefAccessor>(
                 field_name,
                 required_entity_type
             );
+        }
+    }
+}
+
+pub fn resolve_entity_refs<
+    T: 'static + Component<Mutability = Mutable> + YoleckEntityRefAccessor,
+>(
+    mut query: Query<(&mut T, &mut YoleckManaged)>,
+    registry: Res<YoleckUuidRegistry>,
+) {
+    for (mut component, mut managed) in query.iter_mut() {
+        component.resolve_entity_refs(registry.as_ref());
+        if let Some(data) = managed.components_data.get_mut(&TypeId::of::<T>())
+            && let Some(data) = data.downcast_mut::<T>()
+        {
+            data.resolve_entity_refs(registry.as_ref());
         }
     }
 }

@@ -228,22 +228,20 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let fields = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => &fields.named,
-            _ => {
-                return Err(Error::new_spanned(
-                    &input,
-                    "YoleckAutoEdit only supports structs with named fields",
-                ));
-            }
-        },
-        _ => {
+    let fields = if let Data::Struct(data) = &input.data {
+        if let Fields::Named(fields) = &data.fields {
+            &fields.named
+        } else {
             return Err(Error::new_spanned(
                 &input,
-                "YoleckAutoEdit only supports structs",
+                "YoleckAutoEdit only supports structs with named fields",
             ));
         }
+    } else {
+        return Err(Error::new_spanned(
+            &input,
+            "YoleckAutoEdit only supports structs",
+        ));
     };
 
     let mut field_uis = Vec::new();
@@ -256,9 +254,16 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
     }
 
     let mut entity_ref_fields = Vec::new();
+    let mut entity_ref_field_names = Vec::new();
     for field in fields {
         if let Some(info) = parse_entity_ref_attrs(field)? {
             entity_ref_fields.push(info);
+            entity_ref_field_names.push(
+                field
+                    .ident
+                    .as_ref()
+                    .expect("fields are taken from a named struct variant"),
+            );
         }
     }
 
@@ -321,6 +326,12 @@ fn impl_yoleck_auto_edit_derive(input: DeriveInput) -> Result<TokenStream, Error
 
             fn get_entity_ref_mut(&mut self, field_name: &str) -> &mut bevy_yoleck::entity_ref::YoleckEntityRef {
                 #get_entity_ref_mut_body
+            }
+
+            fn resolve_entity_refs(&mut self, registry: &bevy_yoleck::prelude::YoleckUuidRegistry) {
+                #(
+                    let _ = self.#entity_ref_field_names.resolve(registry);
+                )*
             }
         }
     };

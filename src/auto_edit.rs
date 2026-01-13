@@ -1,11 +1,16 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
+use crate::YoleckInternalSchedule;
+use crate::entity_ref::resolve_entity_refs;
+
 #[cfg(feature = "vpeol")]
 use crate::entity_ref::validate_entity_ref_requirements_for;
 
 #[cfg(feature = "vpeol")]
 use crate::entity_ref::YoleckEntityRef;
+#[cfg(feature = "vpeol")]
+use crate::prelude::YoleckUuidRegistry;
 
 #[cfg(feature = "vpeol")]
 use std::collections::HashMap;
@@ -635,6 +640,7 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAcc
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<&mut T>,
     entities_query: Query<(&YoleckEntityUuid, &YoleckManaged)>,
+    registry: Res<YoleckUuidRegistry>,
 ) {
     let Ok(mut component) = edit.single_mut() else {
         return;
@@ -668,6 +674,8 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAcc
         ui.separator();
         T::auto_edit(&mut component, ui);
     });
+
+    component.resolve_entity_refs(registry.as_ref());
 }
 
 #[cfg(not(feature = "vpeol"))]
@@ -712,6 +720,10 @@ impl YoleckAutoEditExt for App {
         &mut self,
     ) {
         self.add_yoleck_edit_system(auto_edit_system::<T>);
+        self.add_systems(
+            YoleckInternalSchedule::PostLoadResolutions,
+            resolve_entity_refs::<T>,
+        );
 
         let construction_specs = self
             .world_mut()
@@ -723,7 +735,15 @@ impl YoleckAutoEditExt for App {
     }
 
     #[cfg(not(feature = "vpeol"))]
-    fn add_yoleck_auto_edit<T: YoleckComponent + YoleckAutoEdit>(&mut self) {
+    fn add_yoleck_auto_edit<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor>(
+        &mut self,
+    ) {
+        use crate::YoleckInternalSchedule;
+
         self.add_yoleck_edit_system(auto_edit_system::<T>);
+        self.add_systems(
+            YoleckInternalSchedule::PostLoadResolutions,
+            resolve_entity_refs::<T>,
+        );
     }
 }

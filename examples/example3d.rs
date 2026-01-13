@@ -74,7 +74,7 @@ fn main() {
     });
     app.add_yoleck_auto_edit::<LaserPointer>();
     app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);
-    app.add_systems(Update, (resolve_laser_pointers, draw_laser_pointers));
+    app.add_systems(Update, draw_laser_pointers);
 
     app.add_systems(
         Update,
@@ -276,15 +276,6 @@ fn populate_simple_sphere(
             cmd.insert((Mesh3d(mesh), MeshMaterial3d(material)));
         }
     });
-}
-
-fn resolve_laser_pointers(
-    mut query: Query<&mut LaserPointer>,
-    uuid_registry: Res<YoleckUuidRegistry>,
-) {
-    for mut laser_pointer in query.iter_mut() {
-        let _ = laser_pointer.target.resolve(&uuid_registry);
-    }
 }
 
 fn draw_laser_pointers(
