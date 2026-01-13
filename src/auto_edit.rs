@@ -4,15 +4,11 @@ use bevy_egui::egui;
 use crate::YoleckInternalSchedule;
 use crate::entity_ref::resolve_entity_refs;
 
-#[cfg(feature = "vpeol")]
 use crate::entity_ref::validate_entity_ref_requirements_for;
 
-#[cfg(feature = "vpeol")]
 use crate::entity_ref::YoleckEntityRef;
-#[cfg(feature = "vpeol")]
 use crate::prelude::YoleckUuidRegistry;
 
-#[cfg(feature = "vpeol")]
 use std::collections::HashMap;
 
 /// Attributes that can be applied to fields for customizing their UI
@@ -528,14 +524,12 @@ impl<T: YoleckAutoEdit> YoleckAutoEdit for [T] {
     }
 }
 
-#[cfg(feature = "vpeol")]
 #[derive(Clone)]
 struct EntityRefDisplayInfo {
     pub type_name: String,
     pub name: String,
 }
 
-#[cfg(feature = "vpeol")]
 impl YoleckAutoEdit for YoleckEntityRef {
     fn auto_edit(value: &mut Self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
@@ -625,17 +619,12 @@ use crate::YoleckExtForApp;
 use crate::editing::{YoleckEdit, YoleckUi};
 use crate::specs_registration::YoleckComponent;
 
-#[cfg(feature = "vpeol")]
 use crate::entity_ref::YoleckEntityRefAccessor;
-#[cfg(feature = "vpeol")]
 use bevy::ecs::component::Mutable;
 
-#[cfg(feature = "vpeol")]
 use crate::YoleckManaged;
-#[cfg(feature = "vpeol")]
 use crate::entity_uuid::YoleckEntityUuid;
 
-#[cfg(feature = "vpeol")]
 pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor>(
     mut ui: ResMut<YoleckUi>,
     mut edit: YoleckEdit<&mut T>,
@@ -678,24 +667,7 @@ pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAcc
     component.resolve_entity_refs(registry.as_ref());
 }
 
-#[cfg(not(feature = "vpeol"))]
-pub fn auto_edit_system<T: YoleckComponent + YoleckAutoEdit>(
-    mut ui: ResMut<YoleckUi>,
-    mut edit: YoleckEdit<&mut T>,
-) {
-    let Ok(mut component) = edit.single_mut() else {
-        return;
-    };
-
-    ui.group(|ui| {
-        ui.label(egui::RichText::new(T::KEY).strong());
-        ui.separator();
-        T::auto_edit(&mut component, ui);
-    });
-}
-
 pub trait YoleckAutoEditExt {
-    #[cfg(feature = "vpeol")]
     fn add_yoleck_auto_edit<
         T: Component<Mutability = Mutable>
             + YoleckComponent
@@ -704,13 +676,9 @@ pub trait YoleckAutoEditExt {
     >(
         &mut self,
     );
-
-    #[cfg(not(feature = "vpeol"))]
-    fn add_yoleck_auto_edit<T: YoleckComponent + YoleckAutoEdit>(&mut self);
 }
 
 impl YoleckAutoEditExt for App {
-    #[cfg(feature = "vpeol")]
     fn add_yoleck_auto_edit<
         T: Component<Mutability = Mutable>
             + YoleckComponent
@@ -732,18 +700,5 @@ impl YoleckAutoEditExt for App {
         if let Some(specs) = construction_specs {
             validate_entity_ref_requirements_for::<T>(specs);
         }
-    }
-
-    #[cfg(not(feature = "vpeol"))]
-    fn add_yoleck_auto_edit<T: YoleckComponent + YoleckAutoEdit + YoleckEntityRefAccessor>(
-        &mut self,
-    ) {
-        use crate::YoleckInternalSchedule;
-
-        self.add_yoleck_edit_system(auto_edit_system::<T>);
-        self.add_systems(
-            YoleckInternalSchedule::PostLoadResolutions,
-            resolve_entity_refs::<T>,
-        );
     }
 }

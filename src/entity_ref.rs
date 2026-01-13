@@ -138,7 +138,6 @@ pub trait YoleckEntityRefAccessor: Sized + Send + Sync + 'static {
     fn resolve_entity_refs(&mut self, registry: &YoleckUuidRegistry);
 }
 
-#[cfg(feature = "vpeol")]
 pub(crate) fn validate_entity_ref_requirements_for<T: YoleckEntityRefAccessor>(
     construction_specs: &crate::YoleckEntityConstructionSpecs,
 ) {
