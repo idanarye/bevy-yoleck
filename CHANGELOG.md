@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - UI editing support for `Vpeol3dScale` with separate X, Y, Z drag values.
 - UI editing support for `Vpeol2dRotatation` using degrees.
 - UI editing support for `Vpeol2dScale` with separate X, Y drag values.
+- `Vpeol3dSnapToPlane` to force an entity on a specific plane.
 
 ### Changed
 - Improved editor ergonomics with better organized workspace instead of single

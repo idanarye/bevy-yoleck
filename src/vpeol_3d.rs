@@ -1030,6 +1030,23 @@ pub fn vpeol_3d_camera_mode_selector(
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dPosition(pub Vec3);
 
+/// Add this to an entity with [`Vpeol3dPosition`] to force it to be on a specific plane while
+/// editing.
+///
+/// This is useful for 2D games that use 3D graphics but don't want to allow free positioning of
+/// entities on all axes.
+///
+/// Note that this is not a [`YoleckComponent`]. Do not add it with
+/// [`insert_on_init_during_editor`](YoleckEntityType::with). The best way to add it is by using
+/// [`insert_on_init_during_editor`](YoleckEntityType::insert_on_init_during_editor) which also
+/// allows setting the data.
+#[derive(Component)]
+pub struct Vpeol3dSnapToPlane {
+    pub normal: Dir3,
+    /// Offset of the plane from the origin of axes
+    pub offset: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Vpeol3dTranslationGizmoMode {
     World,
@@ -1113,7 +1130,12 @@ impl CommonDragPlane {
 
 fn vpeol_3d_edit_transform_group(
     mut ui: ResMut<YoleckUi>,
-    position_edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    position_edit: YoleckEdit<(
+        Entity,
+        &mut Vpeol3dPosition,
+        Option<&VpeolDragPlane>,
+        Option<&Vpeol3dSnapToPlane>,
+    )>,
     rotation_edit: YoleckEdit<&mut Vpeol3dRotation>,
     scale_edit: YoleckEdit<&mut Vpeol3dScale>,
     global_drag_plane: Res<VpeolDragPlane>,
@@ -1136,7 +1158,12 @@ fn vpeol_3d_edit_transform_group(
 
 fn vpeol_3d_edit_position_impl(
     ui: &mut egui::Ui,
-    mut edit: YoleckEdit<(Entity, &mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    mut edit: YoleckEdit<(
+        Entity,
+        &mut Vpeol3dPosition,
+        Option<&VpeolDragPlane>,
+        Option<&Vpeol3dSnapToPlane>,
+    )>,
     global_drag_plane: &VpeolDragPlane,
     passed_data: &YoleckPassedData,
 ) {
@@ -1149,7 +1176,7 @@ fn vpeol_3d_edit_position_impl(
 
     let mut common_drag_plane = CommonDragPlane::NotDecidedYet;
 
-    for (entity, position, drag_plane) in edit.iter_matching() {
+    for (entity, position, drag_plane, _) in edit.iter_matching() {
         let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane);
         common_drag_plane.consider(*drag_plane.normal);
 
@@ -1180,8 +1207,12 @@ fn vpeol_3d_edit_position_impl(
     });
 
     if transition.is_finite() && transition != Vec3::ZERO {
-        for (_, mut position, _) in edit.iter_matching_mut() {
+        for (_, mut position, _, snap) in edit.iter_matching_mut() {
             position.0 += transition;
+            if let Some(snap) = snap {
+                let displacement = position.0.project_onto(*snap.normal);
+                position.0 += snap.offset * snap.normal - displacement;
+            }
         }
     }
 }

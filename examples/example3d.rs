@@ -71,6 +71,10 @@ fn main() {
             .with::<Vpeol3dPosition>()
             .with::<LaserPointer>()
             .insert_on_init(|| SimpleSphere)
+            .insert_on_init_during_editor(|| Vpeol3dSnapToPlane {
+                normal: Dir3::Y,
+                offset: 2.0,
+            })
     });
     app.add_yoleck_auto_edit::<LaserPointer>();
     app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);
