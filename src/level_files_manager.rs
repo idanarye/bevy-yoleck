@@ -137,16 +137,16 @@ pub fn level_files_manager_top_section(
         })
     };
 
-    let mut clear_level = |commands: &mut Commands| {
-        for level_entity in keep_levels_query.iter() {
-            commands.entity(level_entity).despawn();
-        }
-        for knob_entity in knobs_cache.drain() {
-            commands.entity(knob_entity).despawn();
-        }
-    };
-
     if matches!(editor_state.get(), YoleckEditorState::EditorActive) {
+        enum LevelManagementAction {
+            DoNothing,
+            ClearLevel,
+            LoadLevel { filename: String },
+            SaveExisting { filename: String },
+        }
+
+        let mut level_management_action = LevelManagementAction::DoNothing;
+
         let file_button_response = ui.button("File");
         if file_button_response.clicked() {
             *file_popup_open = !*file_popup_open;
@@ -185,18 +185,6 @@ pub fn level_files_manager_top_section(
                                     warn!("Cannot open {:?} - {}", index_file, err);
                                 }
                             }
-                        };
-
-                        let save_existing = |filename: &str| -> io::Result<()> {
-                            let file_path = levels_directory.0.join(filename);
-                            info!("Saving current level to {:?}", file_path);
-                            let fd = fs::OpenOptions::new()
-                                .write(true)
-                                .create(false)
-                                .truncate(true)
-                                .open(file_path)?;
-                            serde_json::to_writer(fd, &gen_raw_level_file())?;
-                            Ok(())
                         };
 
                         if *should_list_files {
@@ -284,38 +272,6 @@ pub fn level_files_manager_top_section(
                                                     swap_with_previous = Some(index + 1);
                                                 }
                                                 let yoleck = yoleck.as_mut();
-                                                let mut load_level = || {
-                                                    clear_level(&mut commands);
-                                                    let fd = fs::File::open(
-                                                        levels_directory.0.join(&file.filename),
-                                                    )
-                                                    .unwrap();
-                                                    let level: serde_json::Value =
-                                                        serde_json::from_reader(fd).unwrap();
-                                                    match upgrade_level_file(level) {
-                                                        Ok(level) => {
-                                                            let level: YoleckRawLevel =
-                                                                serde_json::from_value(level)
-                                                                    .unwrap();
-                                                            let level_asset_handle =
-                                                                level_assets.add(level);
-                                                            yoleck.level_being_edited = commands
-                                                                .spawn((
-                                                                    YoleckLevelInEditor,
-                                                                    YoleckLoadLevel(
-                                                                        level_asset_handle,
-                                                                    ),
-                                                                ))
-                                                                .id();
-                                                        }
-                                                        Err(err) => {
-                                                            warn!(
-                                                                "Cannot upgrade {:?} - {}",
-                                                                file.filename, err
-                                                            );
-                                                        }
-                                                    }
-                                                };
                                                 if ui
                                                     .selectable_label(is_selected, &file.filename)
                                                     .clicked()
@@ -326,17 +282,10 @@ pub fn level_files_manager_top_section(
                                                             SelectedLevelFile::Existing(
                                                                 file.filename.clone(),
                                                             );
-                                                        load_level();
-                                                    }
-                                                }
-                                                if is_selected && yoleck.level_needs_saving {
-                                                    if ui.button("SAVE").clicked() {
-                                                        save_existing(&file.filename).unwrap();
-                                                        yoleck.level_needs_saving = false;
-                                                    }
-                                                    if ui.button("REVERT").clicked() {
-                                                        load_level();
-                                                        yoleck.level_needs_saving = false;
+                                                        level_management_action =
+                                                            LevelManagementAction::LoadLevel {
+                                                                filename: file.filename.clone(),
+                                                            };
                                                     }
                                                 }
                                             });
@@ -391,12 +340,6 @@ pub fn level_files_manager_top_section(
                                                     }
                                                 }
                                             }
-                                            if yoleck.level_needs_saving
-                                                && ui.button("Wipe Level").clicked()
-                                            {
-                                                clear_level(&mut commands);
-                                                yoleck.level_needs_saving = false;
-                                            }
                                         }
                                         SelectedLevelFile::Existing(_) => {
                                             let button = ui.add_enabled(
@@ -404,7 +347,8 @@ pub fn level_files_manager_top_section(
                                                 egui::Button::new("New Level"),
                                             );
                                             if button.clicked() {
-                                                clear_level(&mut commands);
+                                                level_management_action =
+                                                    LevelManagementAction::ClearLevel;
                                                 *selected_level_file =
                                                     SelectedLevelFile::Unsaved(String::new());
                                                 yoleck.level_being_edited = commands
@@ -432,6 +376,82 @@ pub fn level_files_manager_top_section(
                 && !button_rect.contains(pos)
             {
                 *file_popup_open = false;
+            }
+        }
+
+        match selected_level_file {
+            SelectedLevelFile::Unsaved(_) => {
+                ui.add_enabled_ui(yoleck.level_needs_saving, |ui| {
+                    if ui.button("Wipe Level").clicked() {
+                        level_management_action = LevelManagementAction::ClearLevel;
+                    }
+                });
+            }
+            SelectedLevelFile::Existing(filename) => {
+                ui.label(filename.as_str());
+                ui.add_enabled_ui(yoleck.level_needs_saving, |ui| {
+                    if ui.button("SAVE").clicked() {
+                        level_management_action = LevelManagementAction::SaveExisting {
+                            filename: filename.clone(),
+                        }
+                    }
+                    if ui.button("REVERT").clicked() {
+                        level_management_action = LevelManagementAction::LoadLevel {
+                            filename: filename.clone(),
+                        };
+                    }
+                });
+            }
+        }
+
+        match level_management_action {
+            LevelManagementAction::DoNothing => {}
+            LevelManagementAction::ClearLevel => {
+                for level_entity in keep_levels_query.iter() {
+                    commands.entity(level_entity).despawn();
+                }
+                for knob_entity in knobs_cache.drain() {
+                    commands.entity(knob_entity).despawn();
+                }
+
+                yoleck.level_needs_saving = false;
+            }
+            LevelManagementAction::LoadLevel { filename } => {
+                // Clear the level before loading
+                for level_entity in keep_levels_query.iter() {
+                    commands.entity(level_entity).despawn();
+                }
+                for knob_entity in knobs_cache.drain() {
+                    commands.entity(knob_entity).despawn();
+                }
+
+                yoleck.level_needs_saving = false;
+
+                let fd = fs::File::open(levels_directory.0.join(&filename)).unwrap();
+                let level: serde_json::Value = serde_json::from_reader(fd).unwrap();
+                match upgrade_level_file(level) {
+                    Ok(level) => {
+                        let level: YoleckRawLevel = serde_json::from_value(level).unwrap();
+                        let level_asset_handle = level_assets.add(level);
+                        yoleck.level_being_edited = commands
+                            .spawn((YoleckLevelInEditor, YoleckLoadLevel(level_asset_handle)))
+                            .id();
+                    }
+                    Err(err) => {
+                        warn!("Cannot upgrade {:?} - {}", filename, err);
+                    }
+                }
+            }
+            LevelManagementAction::SaveExisting { filename } => {
+                let file_path = levels_directory.0.join(filename);
+                info!("Saving current level to {:?}", file_path);
+                let fd = fs::OpenOptions::new()
+                    .write(true)
+                    .create(false)
+                    .truncate(true)
+                    .open(file_path)?;
+                serde_json::to_writer(fd, &gen_raw_level_file())?;
+                yoleck.level_needs_saving = false;
             }
         }
     }
