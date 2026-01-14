@@ -10,7 +10,7 @@ repository = "https://github.com/idanarye/bevy-yoleck"
 [package]
 name = "bevy-yoleck"
 description = "Your Own Level Editor Creation Kit"
-version = "0.29.0"
+version = "0.30.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -24,7 +24,7 @@ exclude = ["assets"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy-yoleck-macros = { version = "0.9.1", path = "macros" }
+bevy-yoleck-macros = { version = "0.10.0", path = "macros" }
 bevy = { version = "^0.17", default-features = false, features = [
     "bevy_state",
     "bevy_window",
