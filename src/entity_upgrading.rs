@@ -16,7 +16,7 @@ use crate::YoleckRawLevel;
 ///
 /// // The newest upgrade, from 4 to 5
 /// app.add_yoleck_entity_upgrade_for(5, "Foo", |data| {
-///     let mut old_data = data.as_object_mut().unwrap().remove("OldFooComponent").unwrap();
+///     let mut old_data = data.remove("OldFooComponent").unwrap();
 ///     data["NewFooComponent"] = old_data;
 /// });
 ///
