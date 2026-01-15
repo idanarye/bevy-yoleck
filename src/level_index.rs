@@ -70,6 +70,7 @@ impl Deref for YoleckLevelIndex {
     }
 }
 
+#[derive(TypePath)]
 pub(crate) struct YoleckLevelIndexLoader;
 
 impl AssetLoader for YoleckLevelIndexLoader {

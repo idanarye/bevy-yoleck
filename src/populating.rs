@@ -134,7 +134,7 @@ impl YoleckMarking<'_, '_> {
             }
         }
         for (parent, children) in marked_children_map {
-            cmd.commands().entity(parent).remove_children(&children);
+            cmd.commands().entity(parent).detach_children(&children);
             for child in children {
                 cmd.commands().entity(child).despawn();
             }

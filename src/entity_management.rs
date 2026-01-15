@@ -259,6 +259,7 @@ pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
 #[derive(Component)]
 pub struct YoleckKeepLevel;
 
+#[derive(TypePath)]
 pub(crate) struct YoleckLevelAssetLoader;
 
 /// Represents a level file.

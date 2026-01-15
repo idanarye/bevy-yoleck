@@ -219,15 +219,20 @@ fn prepare_camera_state(
 }
 
 fn update_camera_world_position(
-    mut cameras_query: Query<(&mut VpeolCameraState, &GlobalTransform, &Camera)>,
+    mut cameras_query: Query<(
+        &mut VpeolCameraState,
+        &GlobalTransform,
+        &Camera,
+        &RenderTarget,
+    )>,
     window_getter: WindowGetter,
 ) {
-    for (mut camera_state, camera_transform, camera) in cameras_query.iter_mut() {
+    for (mut camera_state, camera_transform, camera, render_target) in cameras_query.iter_mut() {
         camera_state.cursor_ray = (|| {
-            let RenderTarget::Window(window_ref) = camera.target else {
+            let RenderTarget::Window(window_ref) = render_target else {
                 return None;
             };
-            let window = window_getter.get_window(window_ref)?;
+            let window = window_getter.get_window(*window_ref)?;
             let cursor_in_screen_pos = window.cursor_position()?;
             camera
                 .viewport_to_world(camera_transform, cursor_in_screen_pos)
@@ -254,7 +259,7 @@ impl WindowGetter<'_, '_> {
 #[allow(clippy::too_many_arguments)]
 fn handle_camera_state(
     mut egui_context: EguiContexts,
-    mut query: Query<(&Camera, &mut VpeolCameraState)>,
+    mut query: Query<(&RenderTarget, &mut VpeolCameraState)>,
     window_getter: WindowGetter,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -285,7 +290,7 @@ fn handle_camera_state(
         }
         return Ok(());
     };
-    for (camera, mut camera_state) in query.iter_mut() {
+    for (render_target, mut camera_state) in query.iter_mut() {
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
@@ -297,10 +302,10 @@ fn handle_camera_state(
             Some(cursor_ray.get_point(distance))
         };
 
-        let RenderTarget::Window(window_ref) = camera.target else {
+        let RenderTarget::Window(window_ref) = render_target else {
             continue;
         };
-        let Some(window) = window_getter.get_window(window_ref) else {
+        let Some(window) = window_getter.get_window(*window_ref) else {
             continue;
         };
         let Some(cursor_in_screen_pos) = window.cursor_position() else {

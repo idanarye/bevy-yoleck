@@ -399,6 +399,7 @@ fn camera_2d_zoom(
         &mut Transform,
         &VpeolCameraState,
         &Camera,
+        &RenderTarget,
         &Vpeol2dCameraControl,
     )>,
     mut wheel_events_reader: MessageReader<MouseWheel>,
@@ -407,7 +408,9 @@ fn camera_2d_zoom(
         return Ok(());
     }
 
-    for (mut camera_transform, camera_state, camera, camera_control) in cameras_query.iter_mut() {
+    for (mut camera_transform, camera_state, camera, render_target, camera_control) in
+        cameras_query.iter_mut()
+    {
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
@@ -431,8 +434,8 @@ fn camera_2d_zoom(
 
         let scale_by = (-zoom_amount).exp();
 
-        let window = if let RenderTarget::Window(window_ref) = camera.target {
-            window_getter.get_window(window_ref).unwrap()
+        let window = if let RenderTarget::Window(window_ref) = render_target {
+            window_getter.get_window(*window_ref).unwrap()
         } else {
             continue;
         };
