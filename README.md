@@ -92,6 +92,7 @@ at a directory's contents). The index file contains a tuple of two values:
 
 | bevy | bevy-yoleck | bevy_egui |
 |------|-------------|-----------|
+| 0.18 | 0.31        | 0.39      |
 | 0.17 | 0.30        | 0.38      |
 | 0.17 | 0.29        | 0.37      |
 | 0.16 | 0.28        | 0.36      |

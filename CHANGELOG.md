@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.31.0 - 2026-01-15
+### Changed
+- Upgrade Bevy to 0.18
+
 ## 0.30.0 - 2026-01-15
 ### Added
 - Automatic UI generation for components using reflection and attributes.
