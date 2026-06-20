@@ -104,7 +104,7 @@ fn setup_camera(mut commands: Commands) {
         DirectionalLight {
             color: Color::WHITE,
             illuminance: 50_000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..Default::default()
         },
         Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z),
@@ -165,7 +165,9 @@ fn populate_spaceship(
     populate.populate(|ctx, mut cmd, _settings| {
         cmd.insert(VpeolWillContainClickableChildren);
         if ctx.is_first_time() {
-            cmd.insert(SceneRoot(asset_server.load("models/spaceship.glb#Scene0")));
+            cmd.insert(WorldAssetRoot(
+                asset_server.load("models/spaceship.glb#Scene0"),
+            ));
         }
     });
 }
@@ -214,7 +216,9 @@ fn populate_planet(
     populate.populate(|ctx, mut cmd, ()| {
         cmd.insert(VpeolWillContainClickableChildren);
         if ctx.is_first_time() {
-            cmd.insert(SceneRoot(asset_server.load("models/planet.glb#Scene0")));
+            cmd.insert(WorldAssetRoot(
+                asset_server.load("models/planet.glb#Scene0"),
+            ));
         }
     });
 }

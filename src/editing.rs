@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bevy::ecs::query::{QueryData, QueryFilter, QueryIter, QuerySingleError};
+use bevy::ecs::query::{IterQueryData, QueryData, QueryFilter, QueryIter, QuerySingleError};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -18,12 +18,12 @@ pub struct YoleckEditMarker;
 /// delegate to them, but if there are edited entities that do not fit the query they will act as
 /// if they found no match.
 #[derive(SystemParam)]
-pub struct YoleckEdit<'w, 's, Q: 'static + QueryData, F: 'static + QueryFilter = ()> {
+pub struct YoleckEdit<'w, 's, Q: 'static + IterQueryData, F: 'static + QueryFilter = ()> {
     query: Query<'w, 's, Q, (With<YoleckEditMarker>, F)>,
     verification_query: Query<'w, 's, (), With<YoleckEditMarker>>,
 }
 
-impl<'s, Q: 'static + QueryData, F: 'static + QueryFilter> YoleckEdit<'_, 's, Q, F> {
+impl<'s, Q: 'static + IterQueryData, F: 'static + QueryFilter> YoleckEdit<'_, 's, Q, F> {
     pub fn single(
         &self,
     ) -> Result<<<Q as QueryData>::ReadOnly as QueryData>::Item<'_, 's>, QuerySingleError> {

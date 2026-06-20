@@ -527,7 +527,7 @@ fn camera_3d_wasd_movement(
     time: Res<Time>,
     mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
 ) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
+    if egui_context.ctx_mut()?.egui_wants_keyboard_input() {
         return Ok(());
     }
 
@@ -623,7 +623,7 @@ fn camera_3d_move_along_plane_normal(
     mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
     mut wheel_events_reader: MessageReader<MouseWheel>,
 ) -> Result {
-    if egui_context.ctx_mut()?.is_pointer_over_area() {
+    if egui_context.ctx_mut()?.is_pointer_over_egui() {
         return Ok(());
     }
 
@@ -663,7 +663,7 @@ fn draw_scene_gizmo(
 
     let ctx = egui_context.ctx_mut()?;
 
-    if !ctx.is_using_pointer() && ctx.input(|i| i.viewport_rect().width() == 0.0) {
+    if !ctx.egui_is_using_pointer() && ctx.input(|i| i.viewport_rect().width() == 0.0) {
         return Ok(());
     }
 
@@ -898,7 +898,7 @@ fn camera_3d_rotate(
     };
 
     if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
+        if egui_context.ctx_mut()?.is_pointer_over_egui() {
             return Ok(());
         }
 
@@ -1366,7 +1366,7 @@ fn vpeol_3d_init_position(
         position.0 = cursor_ray.get_point(distance_to_plane);
     };
 
-    if egui_context.ctx_mut().unwrap().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
+    if egui_context.ctx_mut().unwrap().is_pointer_over_egui() || ui.ctx().is_pointer_over_egui() {
         return YoleckExclusiveSystemDirective::Listening;
     }
 

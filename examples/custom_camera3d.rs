@@ -118,7 +118,7 @@ fn setup_camera(mut commands: Commands) {
         DirectionalLight {
             color: Color::WHITE,
             illuminance: 10_000.0,
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..Default::default()
         },
         Transform::from_xyz(5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -151,7 +151,7 @@ fn isometric_camera_movement(
     time: Res<Time>,
     mut cameras_query: Query<(&mut Transform, &Vpeol3dCameraControl)>,
 ) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
+    if egui_context.ctx_mut()?.egui_wants_keyboard_input() {
         return Ok(());
     }
 

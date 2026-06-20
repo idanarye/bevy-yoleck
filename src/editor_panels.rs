@@ -28,12 +28,17 @@ pub(crate) trait EditorPanel: Resource + Sized {
     fn wrapper(
         &mut self,
         ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
         add_content: impl FnOnce(&mut Self, &mut egui::Ui),
     ) -> egui::Response;
 
-    fn show_panel(world: &mut World, ctx: &mut egui::Context) -> egui::Response {
+    fn show_panel(
+        world: &mut World,
+        ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
+    ) -> egui::Response {
         world.resource_scope(|world, mut this: Mut<Self>| {
-            this.wrapper(ctx, |this, ui| {
+            this.wrapper(ctx, viewport_ui, |this, ui| {
                 let frame = egui::Frame::new();
                 let mut prepared = frame.begin(ui);
                 let content_ui = std::mem::replace(
@@ -103,13 +108,14 @@ impl EditorPanel for YoleckEditorLeftPanelSections {
     fn wrapper(
         &mut self,
         ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
         add_content: impl FnOnce(&mut Self, &mut egui::Ui),
     ) -> egui::Response {
-        egui::SidePanel::left("yoleck_left_panel")
+        egui::Panel::left("yoleck_left_panel")
             .resizable(true)
-            .default_width(300.0)
-            .max_width(ctx.content_rect().width() / 4.0)
-            .show(ctx, |ui| {
+            .default_size(300.0)
+            .max_size(ctx.content_rect().width() / 4.0)
+            .show_inside(viewport_ui, |ui| {
                 ui.heading("Level Hierarchy");
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -141,13 +147,14 @@ impl EditorPanel for YoleckEditorRightPanelSections {
     fn wrapper(
         &mut self,
         ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
         add_content: impl FnOnce(&mut Self, &mut egui::Ui),
     ) -> egui::Response {
-        egui::SidePanel::right("yoleck_right_panel")
+        egui::Panel::right("yoleck_right_panel")
             .resizable(true)
-            .default_width(300.0)
-            .max_width(ctx.content_rect().width() / 4.0)
-            .show(ctx, |ui| {
+            .default_size(300.0)
+            .max_size(ctx.content_rect().width() / 4.0)
+            .show_inside(viewport_ui, |ui| {
                 ui.heading("Properties");
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -179,12 +186,13 @@ impl EditorPanel for YoleckEditorTopPanelSections {
 
     fn wrapper(
         &mut self,
-        ctx: &mut egui::Context,
+        _ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
         add_content: impl FnOnce(&mut Self, &mut egui::Ui),
     ) -> egui::Response {
-        egui::TopBottomPanel::top("yoleck_top_panel")
+        egui::Panel::top("yoleck_top_panel")
             .resizable(false)
-            .show(ctx, |ui| {
+            .show_inside(viewport_ui, |ui| {
                 let inner_margin = 3.;
 
                 ui.add_space(inner_margin);
@@ -243,13 +251,14 @@ impl EditorPanel for YoleckEditorBottomPanelSections {
     fn wrapper(
         &mut self,
         ctx: &mut egui::Context,
+        viewport_ui: &mut egui::Ui,
         add_content: impl FnOnce(&mut Self, &mut egui::Ui),
     ) -> egui::Response {
-        egui::TopBottomPanel::bottom("yoleck_bottom_panel")
+        egui::Panel::bottom("yoleck_bottom_panel")
             .resizable(true)
-            .default_height(200.0)
-            .max_height(ctx.content_rect().height() / 4.0)
-            .show(ctx, |ui| {
+            .default_size(200.0)
+            .max_size(ctx.content_rect().height() / 4.0)
+            .show_inside(viewport_ui, |ui| {
                 let inner_margin = 3.;
                 ui.add_space(inner_margin);
 

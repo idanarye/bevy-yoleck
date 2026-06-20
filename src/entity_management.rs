@@ -165,9 +165,9 @@ pub(crate) fn process_loading_command(
     mut commands: Commands,
 ) {
     for (level_entity, load_level) in query.iter() {
-        if let Some(raw_level) = raw_levels_assets.get_mut(&load_level.0) {
+        if let Some(mut raw_level) = raw_levels_assets.get_mut(&load_level.0) {
             if let Some(entity_upgrading) = &entity_upgrading {
-                entity_upgrading.upgrade_raw_level_file(raw_level);
+                entity_upgrading.upgrade_raw_level_file(&mut raw_level);
             }
             commands
                 .entity(level_entity)

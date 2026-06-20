@@ -32,19 +32,27 @@ pub(crate) fn yoleck_editor_window(
     // can go last because giving the side panels more height for displaying their lists is more
     // important than giving extra width to the console.
 
-    let top = YoleckEditorTopPanelSections::show_panel(world, ctx)
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "viewport".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    let top = YoleckEditorTopPanelSections::show_panel(world, ctx, &mut viewport_ui)
         .rect
         .height();
 
-    let left = YoleckEditorLeftPanelSections::show_panel(world, ctx)
+    let left = YoleckEditorLeftPanelSections::show_panel(world, ctx, &mut viewport_ui)
         .rect
         .width();
 
-    let right = YoleckEditorRightPanelSections::show_panel(world, ctx)
+    let right = YoleckEditorRightPanelSections::show_panel(world, ctx, &mut viewport_ui)
         .rect
         .width();
 
-    let bottom = YoleckEditorBottomPanelSections::show_panel(world, ctx)
+    let bottom = YoleckEditorBottomPanelSections::show_panel(world, ctx, &mut viewport_ui)
         .rect
         .height();
 

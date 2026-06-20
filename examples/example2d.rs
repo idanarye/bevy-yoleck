@@ -185,7 +185,7 @@ impl FromWorld for GameAssets {
             EguiContexts,
         )>::new(world);
         let (asset_server, mut texture_atlas_layout_assets, mut egui_context) =
-            system_state.get_mut(world);
+            system_state.get_mut(world).unwrap();
         let fruits_atlas_texture = asset_server.load("sprites/fruits.png");
         let fruits_atlas_layout =
             TextureAtlasLayout::from_grid(UVec2::new(64, 64), 3, 1, None, None);
@@ -477,8 +477,8 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAss
         cmd.insert((
             Text2d(content.text.clone()),
             TextFont {
-                font: assets.font.clone(),
-                font_size: 72.0,
+                font: assets.font.clone().into(),
+                font_size: FontSize::Px(72.0),
                 ..Default::default()
             },
         ));
@@ -537,7 +537,7 @@ fn populate_triangle(
     mut material_assets: ResMut<Assets<ColorMaterial>>,
 ) {
     populate.populate(|_ctx, mut cmd, (triangle, mesh2d)| {
-        let mesh = if let Some(Mesh2d(mesh_handle)) = mesh2d {
+        let mut mesh = if let Some(Mesh2d(mesh_handle)) = mesh2d {
             mesh_assets
                 .get_mut(mesh_handle)
                 .expect("mesh inserted by previous invocation of this system")

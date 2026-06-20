@@ -260,7 +260,7 @@ pub fn console_layer_factory(app: &mut App) -> Option<BoxedLayer> {
     let layer = YoleckConsoleLayer::new(sender);
     let resource = CapturedLogMessages(receiver);
 
-    app.insert_non_send_resource(resource);
+    app.insert_non_send(resource);
     app.add_message::<LogEntry>();
     app.add_systems(Update, (transfer_log_messages, store_log_messages).chain());
 

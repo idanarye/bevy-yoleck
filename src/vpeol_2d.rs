@@ -360,7 +360,7 @@ fn camera_2d_pan(
     }
 
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Right) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
+        if egui_context.ctx_mut()?.is_pointer_over_egui() {
             return Ok(());
         }
         MouseButtonOp::JustPressed
@@ -404,7 +404,7 @@ fn camera_2d_zoom(
     )>,
     mut wheel_events_reader: MessageReader<MouseWheel>,
 ) -> Result {
-    if egui_context.ctx_mut()?.is_pointer_over_area() {
+    if egui_context.ctx_mut()?.is_pointer_over_egui() {
         return Ok(());
     }
 
@@ -653,7 +653,7 @@ fn vpeol_2d_init_position(
 
     position.0 = cursor_ray.origin.truncate();
 
-    if egui_context.ctx_mut().unwrap().is_pointer_over_area() || ui.ctx().is_pointer_over_area() {
+    if egui_context.ctx_mut().unwrap().is_pointer_over_egui() || ui.ctx().is_pointer_over_egui() {
         return YoleckExclusiveSystemDirective::Listening;
     }
 

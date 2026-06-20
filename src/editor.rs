@@ -526,7 +526,7 @@ pub fn entity_editing_section(
                 active_exclusive_system,
                 mut exclusive_systems_queue,
                 entity_creation_exclusive_systems,
-            ) = system_state.get_mut(world);
+            ) = system_state.get_mut(world)?;
 
             if !matches!(editor_state.get(), YoleckEditorState::EditorActive) {
                 return Ok(());

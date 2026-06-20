@@ -106,7 +106,7 @@ impl Plugin for VpeolBasePlugin {
 ///
 /// This configuration is only meaningful for 3D, but vpeol_2d still requires it resource.
 /// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
-#[derive(Component, Resource)]
+#[derive(Resource)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct VpeolDragPlane(pub InfinitePlane3d);
 
@@ -276,7 +276,7 @@ fn handle_camera_state(
         JustReleased,
     }
     let mouse_button_op = if mouse_buttons.just_pressed(MouseButton::Left) {
-        if egui_context.ctx_mut()?.is_pointer_over_area() {
+        if egui_context.ctx_mut()?.is_pointer_over_egui() {
             return Ok(());
         }
         MouseButtonOp::JustPressed
@@ -687,7 +687,7 @@ pub fn vpeol_read_click_on_entity<Filter: QueryFilter>(
     buttons: Res<ButtonInput<MouseButton>>,
     mut candidate: Local<Option<Entity>>,
 ) -> Option<Entity> {
-    let target = if ui.ctx().is_pointer_over_area() {
+    let target = if ui.ctx().is_pointer_over_egui() {
         None
     } else {
         cameras_query
@@ -746,7 +746,7 @@ fn handle_delete_entity_key(
     mut commands: Commands,
     mut writer: MessageWriter<YoleckEditorEvent>,
 ) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
+    if egui_context.ctx_mut()?.egui_wants_keyboard_input() {
         return Ok(());
     }
 
@@ -793,7 +793,7 @@ fn handle_copy_entity_key(
     construction_specs: Res<YoleckEntityConstructionSpecs>,
     mut clipboard: ResMut<VpeolClipboard>,
 ) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
+    if egui_context.ctx_mut()?.egui_wants_keyboard_input() {
         return Ok(());
     }
 
@@ -855,7 +855,7 @@ fn handle_paste_entity_key(
     mut directives_writer: MessageWriter<YoleckDirective>,
     mut clipboard: ResMut<VpeolClipboard>,
 ) -> Result {
-    if egui_context.ctx_mut()?.wants_keyboard_input() {
+    if egui_context.ctx_mut()?.egui_wants_keyboard_input() {
         return Ok(());
     }
 

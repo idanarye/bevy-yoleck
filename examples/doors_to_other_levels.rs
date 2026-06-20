@@ -199,8 +199,8 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
         cmd.insert((
             Text2d(text),
             TextFont {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: 72.0,
+                font: asset_server.load("fonts/FiraSans-Bold.ttf").into(),
+                font_size: FontSize::Px(72.0),
                 ..Default::default()
             },
             TextColor(color.into()),
