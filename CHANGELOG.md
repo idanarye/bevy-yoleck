@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Upgrade Bevy to 0.19
+- `VpeolDragPlane` now only works as a global resource. The component version
+  is split out of it into a new component named `VpeolOverrideDragPlane`.
 
 ## 0.31.0 - 2026-01-15
 ### Changed

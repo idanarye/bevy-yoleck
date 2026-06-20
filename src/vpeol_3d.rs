@@ -133,8 +133,8 @@ use crate::exclusive_systems::{
 };
 use crate::vpeol::{
     VpeolBasePlugin, VpeolCameraState, VpeolClicksOnObjectsState, VpeolDragPlane,
-    VpeolRepositionLevel, VpeolRootResolver, VpeolSystems, handle_clickable_children_system,
-    ray_intersection_with_mesh,
+    VpeolOverrideDragPlane, VpeolRepositionLevel, VpeolRootResolver, VpeolSystems,
+    handle_clickable_children_system, ray_intersection_with_mesh,
 };
 use crate::{
     YoleckBelongsToLevel, YoleckDirective, YoleckEditorTopPanelSections, YoleckSchedule, prelude::*,
@@ -1343,7 +1343,7 @@ fn vpeol_3d_edit_scale_impl(ui: &mut egui::Ui, mut edit: YoleckEdit<&mut Vpeol3d
 fn vpeol_3d_init_position(
     mut egui_context: EguiContexts,
     ui: Res<YoleckUi>,
-    mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolDragPlane>)>,
+    mut edit: YoleckEdit<(&mut Vpeol3dPosition, Option<&VpeolOverrideDragPlane>)>,
     global_drag_plane: Res<VpeolDragPlane>,
     cameras_query: Query<&VpeolCameraState>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
@@ -1359,7 +1359,11 @@ fn vpeol_3d_init_position(
         return YoleckExclusiveSystemDirective::Listening;
     };
 
-    let VpeolDragPlane(drag_plane) = drag_plane.unwrap_or(global_drag_plane.as_ref());
+    let drag_plane = if let Some(VpeolOverrideDragPlane(drag_plane)) = drag_plane {
+        drag_plane
+    } else {
+        &global_drag_plane.0
+    };
     if let Some(distance_to_plane) =
         cursor_ray.intersect_plane(position.0, InfinitePlane3d::new(*drag_plane.normal))
     {
@@ -1587,7 +1591,7 @@ fn vpeol_3d_edit_axis_knobs(
             ));
 
             let mut knob = knobs.knob((entity, knob_name));
-            knob.cmd.insert(VpeolDragPlane(InfinitePlane3d {
+            knob.cmd.insert(VpeolOverrideDragPlane(InfinitePlane3d {
                 normal: axis_data.drag_plane_normal,
             }));
             knob.cmd.insert((

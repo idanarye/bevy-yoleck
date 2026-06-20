@@ -62,7 +62,7 @@ fn main() {
             .with::<Vpeol3dRotation>()
             .with::<Vpeol3dScale>()
             .insert_on_init(|| IsPlanet)
-            .insert_on_init_during_editor(|| VpeolDragPlane::XY)
+            .insert_on_init_during_editor(|| VpeolOverrideDragPlane::XY)
     });
     app.add_systems(YoleckSchedule::Populate, populate_planet);
 

@@ -26,8 +26,8 @@ use crate::{
 
 pub mod prelude {
     pub use crate::vpeol::{
-        VpeolCameraState, VpeolDragPlane, VpeolRepositionLevel, VpeolSelectionCuePlugin,
-        VpeolWillContainClickableChildren, YoleckKnobClick,
+        VpeolCameraState, VpeolDragPlane, VpeolOverrideDragPlane, VpeolRepositionLevel,
+        VpeolSelectionCuePlugin, VpeolWillContainClickableChildren, YoleckKnobClick,
     };
     #[cfg(feature = "vpeol_2d")]
     pub use crate::vpeol_2d::{
@@ -93,26 +93,45 @@ impl Plugin for VpeolBasePlugin {
                 .run_if(in_state(YoleckEditorState::EditorActive)),
         );
         #[cfg(feature = "bevy_reflect")]
-        app.register_type::<VpeolDragPlane>();
+        app.register_type::<VpeolDragPlane>()
+            .register_type::<VpeolOverrideDragPlane>();
     }
 }
 
 /// A plane to define the drag direction of entities.
 ///
-/// This is both a component and a resource. Entities that have the component will use the plane
-/// defined by it, while entities that don't will use the global one defined by the resource.
-/// Child entities will use the plane of the root Yoleck managed entity (if it has one). Knobs will
-/// use the one attached to the knob entity.
+/// This is a global resource, affecting all Vpeol controlled entities. It can be overridden for
+/// specific entities using [`OverrideVpeolDragPlane`].
 ///
-/// This configuration is only meaningful for 3D, but vpeol_2d still requires it resource.
+/// This is both a component and a resource. Entities that have the component will use the plane
+/// defined by it, while entities that don't will use the global one defined by the resource. Child
+/// entities will use the plane of the root Yoleck managed entity (if it has one). Knobs will use
+/// the one attached to the knob entity.
+///
+/// This configuration is only meaningful for 3D, but vpeol_2d still requires this resource.
 /// `Vpeol2dPluginForEditor` already adds it as `Vec3::Z`. Don't modify it.
 #[derive(Resource)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct VpeolDragPlane(pub InfinitePlane3d);
 
 impl VpeolDragPlane {
-    pub const XY: VpeolDragPlane = VpeolDragPlane(InfinitePlane3d { normal: Dir3::Z });
-    pub const XZ: VpeolDragPlane = VpeolDragPlane(InfinitePlane3d { normal: Dir3::Y });
+    pub const XY: Self = Self(InfinitePlane3d { normal: Dir3::Z });
+    pub const XZ: Self = Self(InfinitePlane3d { normal: Dir3::Y });
+}
+
+/// A plane to define the drag direction of specific entities.
+///
+/// This is the component version of the global [`VpeolDragPlane`] resource.
+///
+/// Child entities will use the plane of the root Yoleck managed entity if it has one - otherwise
+/// they'll revert to [`VpeolDragPlane`]. Knobs will use the one attached to the knob entity.
+#[derive(Component)]
+#[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
+pub struct VpeolOverrideDragPlane(pub InfinitePlane3d);
+
+impl VpeolOverrideDragPlane {
+    pub const XY: Self = Self(InfinitePlane3d { normal: Dir3::Z });
+    pub const XZ: Self = Self(InfinitePlane3d { normal: Dir3::Y });
 }
 
 /// Data passed between Vpeol abstraction and backends.
@@ -268,7 +287,7 @@ fn handle_camera_state(
     knob_query: Query<Entity, With<YoleckKnobMarker>>,
     mut directives_writer: MessageWriter<YoleckDirective>,
     global_drag_plane: Res<VpeolDragPlane>,
-    drag_plane_overrides_query: Query<&VpeolDragPlane>,
+    drag_plane_overrides_query: Query<&VpeolOverrideDragPlane>,
 ) -> Result {
     enum MouseButtonOp {
         JustPressed,
@@ -295,9 +314,13 @@ fn handle_camera_state(
             continue;
         };
         let calc_cursor_in_world_position = |entity: Entity, plane_origin: Vec3| -> Option<Vec3> {
-            let VpeolDragPlane(drag_plane) = drag_plane_overrides_query
-                .get(entity)
-                .unwrap_or(&global_drag_plane);
+            let drag_plane = if let Ok(VpeolOverrideDragPlane(drag_plane)) =
+                drag_plane_overrides_query.get(entity)
+            {
+                drag_plane
+            } else {
+                &global_drag_plane.0
+            };
             let distance = cursor_ray.intersect_plane(plane_origin, *drag_plane)?;
             Some(cursor_ray.get_point(distance))
         };
