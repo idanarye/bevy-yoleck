@@ -119,7 +119,7 @@
 //!     ) {
 //!         populate.populate(|_ctx, mut cmd, example| {
 //!             cmd.insert(Transform::from_translation(example.position));
-//!             cmd.insert(SceneRoot(asset_server.load("scene.glb#Scene0")));
+//!             cmd.insert(WorldAssetRoot(asset_server.load("scene.glb#Scene0")));
 //!         });
 //!     }
 //!     ```
