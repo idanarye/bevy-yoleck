@@ -14,14 +14,14 @@ use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::window::{PrimaryWindow, WindowRef};
-use bevy_egui::EguiContexts;
+use bevy_egui::{EguiContexts, egui};
 
 use crate::entity_management::YoleckRawEntry;
 use crate::knobs::YoleckKnobMarker;
 use crate::prelude::{YoleckEditorState, YoleckUi};
 use crate::{
-    YoleckDirective, YoleckEditMarker, YoleckEditorEvent, YoleckEntityConstructionSpecs,
-    YoleckManaged, YoleckRunEditSystems, YoleckState,
+    YoleckDirective, YoleckEditMarker, YoleckEditorEvent, YoleckEditorViewportRect,
+    YoleckEntityConstructionSpecs, YoleckManaged, YoleckRunEditSystems, YoleckState,
 };
 
 pub mod prelude {
@@ -288,6 +288,7 @@ fn handle_camera_state(
     mut directives_writer: MessageWriter<YoleckDirective>,
     global_drag_plane: Res<VpeolDragPlane>,
     drag_plane_overrides_query: Query<&VpeolOverrideDragPlane>,
+    editor_viewport: Res<YoleckEditorViewportRect>,
 ) -> Result {
     enum MouseButtonOp {
         JustPressed,
@@ -334,6 +335,17 @@ fn handle_camera_state(
         let Some(cursor_in_screen_pos) = window.cursor_position() else {
             continue;
         };
+        if matches!(*window_ref, WindowRef::Primary)
+            && matches!(mouse_button_op, MouseButtonOp::JustPressed)
+            && editor_viewport.rect.is_some_and(|rect| {
+                !rect.contains(egui::Pos2::new(
+                    cursor_in_screen_pos.x,
+                    cursor_in_screen_pos.y,
+                ))
+            })
+        {
+            continue;
+        }
 
         match (&mouse_button_op, &camera_state.clicks_on_objects_state) {
             (MouseButtonOp::JustPressed, VpeolClicksOnObjectsState::Empty) => {
