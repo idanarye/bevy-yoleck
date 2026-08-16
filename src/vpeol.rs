@@ -101,7 +101,7 @@ impl Plugin for VpeolBasePlugin {
 /// A plane to define the drag direction of entities.
 ///
 /// This is a global resource, affecting all Vpeol controlled entities. It can be overridden for
-/// specific entities using [`OverrideVpeolDragPlane`].
+/// specific entities using [`VpeolOverrideDragPlane`].
 ///
 /// This is both a component and a resource. Entities that have the component will use the plane
 /// defined by it, while entities that don't will use the global one defined by the resource. Child
