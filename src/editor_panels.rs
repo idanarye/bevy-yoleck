@@ -115,7 +115,7 @@ impl EditorPanel for YoleckEditorLeftPanelSections {
             .resizable(true)
             .default_size(300.0)
             .max_size(ctx.content_rect().width() / 4.0)
-            .show_inside(viewport_ui, |ui| {
+            .show(viewport_ui, |ui| {
                 ui.heading("Level Hierarchy");
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -154,7 +154,7 @@ impl EditorPanel for YoleckEditorRightPanelSections {
             .resizable(true)
             .default_size(300.0)
             .max_size(ctx.content_rect().width() / 4.0)
-            .show_inside(viewport_ui, |ui| {
+            .show(viewport_ui, |ui| {
                 ui.heading("Properties");
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
@@ -192,7 +192,7 @@ impl EditorPanel for YoleckEditorTopPanelSections {
     ) -> egui::Response {
         egui::Panel::top("yoleck_top_panel")
             .resizable(false)
-            .show_inside(viewport_ui, |ui| {
+            .show(viewport_ui, |ui| {
                 let inner_margin = 3.;
 
                 ui.add_space(inner_margin);
@@ -258,7 +258,7 @@ impl EditorPanel for YoleckEditorBottomPanelSections {
             .resizable(true)
             .default_size(200.0)
             .max_size(ctx.content_rect().height() / 4.0)
-            .show_inside(viewport_ui, |ui| {
+            .show(viewport_ui, |ui| {
                 let inner_margin = 3.;
                 ui.add_space(inner_margin);
 
