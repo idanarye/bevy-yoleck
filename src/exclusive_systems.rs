@@ -67,7 +67,7 @@ pub type YoleckExclusiveSystem = Box<dyn System<In = (), Out = YoleckExclusiveSy
 ///     };
 ///     looking_at.0 = cursor_ray.origin.truncate();
 ///
-///     if ui.ctx().is_pointer_over_area() {
+///     if ui.ctx().is_pointer_over_egui() {
 ///         return YoleckExclusiveSystemDirective::Listening;
 ///     }
 ///
