@@ -49,6 +49,8 @@
 //!     the game's state with the [`YoleckEditorState`] (optional but highly recommended)
 //! * If the application starts in game mode:
 //!   * Add the [`YoleckPluginForGame`] plugin.
+//!   * **DO NOT** add the `EguiPlugin` unless you need it yourself. Since Yoleck will not be using
+//!     it, registering the plugin may cause issues.
 //!   * Use the [`YoleckLevelIndex`] asset to determine the list of available levels (optional)
 //!   * Spawn an entity with the [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) component
 //!     to load the level. Note that the level can be unloaded by despawning that entity or by

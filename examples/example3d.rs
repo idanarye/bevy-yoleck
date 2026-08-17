@@ -16,7 +16,6 @@ fn main() {
 
     let level = std::env::args().nth(1);
     if let Some(level) = level {
-        app.add_plugins(EguiPlugin::default());
         app.add_plugins(YoleckPluginForGame);
         app.add_plugins(Vpeol3dPluginForGame);
         app.add_systems(

@@ -22,7 +22,7 @@ fn main() {
 
     let level = std::env::args().nth(1);
     if let Some(level) = level {
-        app.add_plugins(EguiPlugin::default());
+        //app.add_plugins(EguiPlugin::default());
         app.add_plugins(YoleckPluginForGame);
         app.add_plugins(bevy_yoleck::vpeol_2d::Vpeol2dPluginForGame);
         app.add_systems(
@@ -173,7 +173,7 @@ fn setup_assets(world: &mut World) {
 struct GameAssets {
     fruits_sprite_sheet_texture: Handle<Image>,
     fruits_sprite_sheet_layout: Handle<TextureAtlasLayout>,
-    fruits_sprite_sheet_egui: (egui::TextureId, Vec<egui::Rect>),
+    fruits_sprite_sheet_egui: Option<(egui::TextureId, Vec<egui::Rect>)>,
     font: Handle<Font>,
 }
 
@@ -182,14 +182,14 @@ impl FromWorld for GameAssets {
         let mut system_state = SystemState::<(
             Res<AssetServer>,
             ResMut<Assets<TextureAtlasLayout>>,
-            EguiContexts,
+            Option<EguiContexts>,
         )>::new(world);
-        let (asset_server, mut texture_atlas_layout_assets, mut egui_context) =
+        let (asset_server, mut texture_atlas_layout_assets, egui_context) =
             system_state.get_mut(world).unwrap();
         let fruits_atlas_texture = asset_server.load("sprites/fruits.png");
         let fruits_atlas_layout =
             TextureAtlasLayout::from_grid(UVec2::new(64, 64), 3, 1, None, None);
-        let fruits_egui = {
+        let fruits_egui = egui_context.map(|mut egui_context| {
             (
                 egui_context.add_image(bevy_egui::EguiTextureHandle::Strong(
                     fruits_atlas_texture.clone(),
@@ -214,7 +214,7 @@ impl FromWorld for GameAssets {
                     })
                     .collect(),
             )
-        };
+        });
         Self {
             fruits_sprite_sheet_texture: fruits_atlas_texture,
             fruits_sprite_sheet_layout: texture_atlas_layout_assets.add(fruits_atlas_layout),
@@ -338,7 +338,10 @@ fn edit_fruit_type(
         return;
     }
 
-    let (texture_id, rects) = &assets.fruits_sprite_sheet_egui;
+    let (texture_id, rects) = assets
+        .fruits_sprite_sheet_egui
+        .as_ref()
+        .expect("should only run when egui is enabled");
     let mut selected_fruit_types = vec![false; rects.len()];
     for (entity, mut fruit_type, Vpeol2dPosition(position)) in edit.iter_matching_mut() {
         selected_fruit_types[fruit_type.index] = true;

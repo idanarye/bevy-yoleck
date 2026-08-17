@@ -19,8 +19,6 @@ fn main() {
         std::env::args().nth(1)
     };
 
-    app.add_plugins(EguiPlugin::default());
-
     if let Some(level) = level {
         app.add_plugins(YoleckPluginForGame);
         app.add_plugins(Vpeol2dPluginForGame);
@@ -33,6 +31,8 @@ fn main() {
             },
         );
     } else {
+        app.add_plugins(EguiPlugin::default());
+
         app.add_plugins(YoleckPluginForEditor);
         app.add_plugins(Vpeol2dPluginForEditor);
         app.add_plugins(VpeolSelectionCuePlugin::default());
