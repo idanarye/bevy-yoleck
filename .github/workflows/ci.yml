@@ -25,10 +25,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        rust: [1.97.1, nightly]
+        rust: [1.98.0, nightly]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Install rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libudev-dev
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: ~/.cargo
@@ -50,10 +50,10 @@ jobs:
    name: Rustfmt
    runs-on: ubuntu-latest
    steps:
-     - uses: actions/checkout@v3
+     - uses: actions/checkout@v7
      - uses: dtolnay/rust-toolchain@master
        with:
-         toolchain: 1.97.1
+         toolchain: 1.98.0
          components: rustfmt
      - name: Run fmt --all -- --check
        run: cargo fmt --all -- --check
@@ -62,15 +62,15 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           components: clippy
       - name: Install dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libudev-dev
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: ~/.cargo
@@ -84,14 +84,14 @@ jobs:
     name: Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
       - name: Install dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libudev-dev
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: ~/.cargo
@@ -105,14 +105,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: jetli/wasm-bindgen-action@v0.2.0
         with:
           version: 'latest'
       - uses: dtolnay/rust-toolchain@master
         with:
           targets: wasm32-unknown-unknown
-          toolchain: 1.97.1
+          toolchain: 1.98.0
       - name: Build docs
         env:
           GITHUB_REPO: ${{ github.repository }}
