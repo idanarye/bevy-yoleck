@@ -228,9 +228,11 @@ fn update_camera_status_for_sprites(
         };
 
         for (entity, entity_transform, sprite, anchor) in entities_query
-            .iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
+            // Note: starting from Bevy 0.20, sprites are registered as Mesh2d in the list of
+            // visible entities. We still use the sprites checks for them, because for whatever
+            // reason the ray intersection function does not work with them.
+            .iter_many(visible_entities.iter(TypeId::of::<Mesh2d>()))
             .matched()
-        // entities_query.iter()
         {
             let size = if let Some(custom_size) = sprite.custom_size {
                 custom_size
