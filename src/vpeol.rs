@@ -612,7 +612,7 @@ fn restore_transform_from_cache_after_transform_propagate(
 }
 
 pub(crate) fn ray_intersection_with_mesh(ray: Ray3d, mesh: &Mesh) -> Option<f32> {
-    let aabb = mesh.compute_aabb()?;
+    let aabb = mesh.get_aabb()?;
     let distance_to_aabb = ray_intersection_with_aabb(ray, aabb)?;
 
     if let Some(mut triangles) = iter_triangles(mesh) {
@@ -644,11 +644,7 @@ fn ray_intersection_with_aabb(ray: Ray3d, aabb: Aabb) -> Option<f32> {
             if let Some(low) = low {
                 max_low = max_low.max(low);
             }
-            if let Some(high) = high {
-                min_high = min_high.min(high);
-            } else {
-                return None;
-            }
+            min_high = min_high.min(high?);
         }
     }
     if max_low <= min_high {

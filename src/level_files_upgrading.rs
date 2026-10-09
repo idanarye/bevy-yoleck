@@ -13,6 +13,7 @@ pub fn upgrade_level_file(mut level: serde_json::Value) -> Result<serde_json::Va
         .as_u64()
         .ok_or("`format_version` must be a non-negative number")?;
 
+    #[allow(clippy::single_element_loop)]
     for (upgrade_to, upgrade_fn) in [(2, upgrade_level_file_1_to_2)] {
         if format_version < upgrade_to {
             upgrade_fn(parts)?;
