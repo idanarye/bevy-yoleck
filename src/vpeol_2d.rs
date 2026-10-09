@@ -227,8 +227,9 @@ fn update_camera_status_for_sprites(
             continue;
         };
 
-        for (entity, entity_transform, sprite, anchor) in
-            entities_query.iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
+        for (entity, entity_transform, sprite, anchor) in entities_query
+            .iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
+            .matched()
         // entities_query.iter()
         {
             let size = if let Some(custom_size) = sprite.custom_size {
@@ -270,8 +271,9 @@ fn update_camera_status_for_2d_meshes(
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
-        for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter(TypeId::of::<Mesh2d>()))
+        for (entity, global_transform, mesh) in entities_query
+            .iter_many(visible_entities.iter(TypeId::of::<Mesh2d>()))
+            .matched()
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
@@ -311,7 +313,9 @@ fn update_camera_status_for_text_2d(
 
         for (entity, entity_transform, text_layout_info, anchor) in
             // Weird that it is not `WithText`...
-            entities_query.iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
+            entities_query
+                .iter_many(visible_entities.iter(TypeId::of::<Sprite>()))
+                .matched()
         {
             if cursor.check_square(entity_transform, anchor, text_layout_info.size) {
                 let z_depth = entity_transform.translation().z;

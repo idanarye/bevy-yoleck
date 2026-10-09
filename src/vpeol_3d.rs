@@ -274,8 +274,9 @@ fn update_camera_status_for_models(
         let Some(cursor_ray) = camera_state.cursor_ray else {
             continue;
         };
-        for (entity, global_transform, mesh) in
-            entities_query.iter_many(visible_entities.iter(TypeId::of::<Mesh3d>()))
+        for (entity, global_transform, mesh) in entities_query
+            .iter_many(visible_entities.iter(TypeId::of::<Mesh3d>()))
+            .matched()
         {
             let Some(mesh) = mesh_assets.get(&mesh.0) else {
                 continue;
