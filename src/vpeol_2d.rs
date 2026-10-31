@@ -333,7 +333,7 @@ fn update_camera_status_for_text_2d(
 }
 
 /// Pan and zoom a camera entity with the mouse while inisde the editor.
-#[derive(Component)]
+#[derive(Component, Clone)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol2dCameraControl {
     /// How much to zoom when receiving scroll event in `MouseScrollUnit::Line` units.

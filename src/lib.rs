@@ -589,7 +589,7 @@ pub struct YoleckManaged {
 ///
 /// There is no need to add this to child entities of entities that already has this marker,
 /// because Bevy will already despawn them when despawning their parent.
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, FromTemplate)]
 pub struct YoleckBelongsToLevel {
     /// The entity which was used with [`YoleckLoadLevel`](entity_management::YoleckLoadLevel) to
     /// load the level that this entity belongs to.

@@ -148,6 +148,25 @@ pub struct VpeolCameraState {
     pub clicks_on_objects_state: VpeolClicksOnObjectsState,
 }
 
+impl FromTemplate for VpeolCameraState {
+    type Template = VpeolCameraStateTemplate;
+}
+
+#[derive(Default)]
+pub struct VpeolCameraStateTemplate;
+
+impl Template for VpeolCameraStateTemplate {
+    type Output = VpeolCameraState;
+
+    fn build_template(&self, _: &mut bevy::ecs::template::TemplateContext) -> Result<Self::Output> {
+        Ok(VpeolCameraState::default())
+    }
+
+    fn clone_template(&self) -> Self {
+        Self
+    }
+}
+
 /// Information on how the cursor is pointing at an entity.
 #[derive(Clone, Debug)]
 pub struct VpeolCursorPointing {
@@ -464,7 +483,7 @@ pub struct YoleckKnobClick;
 ///
 /// Populate systems should mark the entity with this component when applicable. The viewport
 /// overlay plugin is responsible for handling it by using [`handle_clickable_children_system`].
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct VpeolWillContainClickableChildren;
 
 /// Marker for viewport editor overlay plugins to route child interaction to parent entities.
@@ -766,7 +785,7 @@ pub fn vpeol_read_click_on_entity<Filter: QueryFilter>(
 ///   responsibility of whatever populates their `Transform` to take this component (of their level
 ///   entity) into account.
 /// * The repositioning is done directly on the `Transform` - not on the `GlobalTransform`.
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct VpeolRepositionLevel(pub Transform);
 
 fn handle_delete_entity_key(

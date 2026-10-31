@@ -247,7 +247,7 @@ pub(crate) fn process_unloading_command(
 /// Note that the entities inside the level will _not_ be children of the level entity. Games that
 /// want to load multiple levels and dynamically position them should use
 /// [`VpeolRepositionLevel`](crate::vpeol::VpeolRepositionLevel).
-#[derive(Component)]
+#[derive(Component, FromTemplate)]
 pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
 
 /// Marks an entity that represents a level. Its removal will unload the level.
@@ -256,7 +256,7 @@ pub struct YoleckLoadLevel(pub Handle<YoleckRawLevel>);
 /// is loaded.
 ///
 /// To unload the level, either despawn the entity or remove this component from it.
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct YoleckKeepLevel;
 
 #[derive(TypePath)]

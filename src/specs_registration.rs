@@ -54,6 +54,16 @@ impl YoleckEntityType {
         self
     }
 
+    pub fn apply_scene_on_init<T: Scene>(
+        mut self,
+        scene: impl 'static + Sync + Send + Fn() -> T,
+    ) -> Self {
+        self.on_init.push(Box::new(move |_, cmd| {
+            cmd.apply_scene(scene());
+        }));
+        self
+    }
+
     /// Automatically spawn regular Bevy components when creating entities of this type.
     ///
     /// This is useful for marker components that don't carry data that needs to be saved to files.

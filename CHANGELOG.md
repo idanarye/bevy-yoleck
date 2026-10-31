@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- BSN support:
+  - `apply_scene_on_init` method for adding scenes to Yoleck entities.
+  - Implement `FromTemplate` for:
+      - `YoleckBelongsToLevel`
+      - `YoleckKeepLevel`
+      - `YoleckLoadLevel`
+      - `YoleckSystemMarker`
+      - `Vpeol2dCameraControl`
+      - `Vpeol3dCameraControl`
+      - `VpeolCameraState`
+      - `VpeolRepositionLevel`
+      - `VpeolWillContainClickableChildren`
+
 ## 0.34.0 - 2026-10-10
 ### Changed
 - Upgrade Bevy to 0.20

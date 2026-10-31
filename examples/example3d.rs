@@ -49,10 +49,15 @@ fn main() {
         YoleckEntityType::new("Spaceship")
             .with::<Vpeol3dPosition>()
             .with::<SpaceshipSettings>()
-            .insert_on_init(|| IsSpaceship)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    IsSpaceship
+                    VpeolWillContainClickableChildren
+                    WorldAssetRoot("models/spaceship.glb#Scene0")
+                }
+            })
     });
     app.add_yoleck_auto_edit::<SpaceshipSettings>();
-    app.add_systems(YoleckSchedule::Populate, populate_spaceship);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Planet")
@@ -60,23 +65,35 @@ fn main() {
             .with::<Vpeol3dPosition>()
             .with::<Vpeol3dRotation>()
             .with::<Vpeol3dScale>()
-            .insert_on_init(|| IsPlanet)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    IsPlanet
+                    VpeolWillContainClickableChildren
+                    Children [ // for some odd reason it fails otherwise
+                        WorldAssetRoot("models/planet.glb#Scene0")
+                    ]
+                }
+            })
             .insert_on_init_during_editor(|| VpeolOverrideDragPlane::XY)
     });
-    app.add_systems(YoleckSchedule::Populate, populate_planet);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("PlanetPointer")
             .with::<Vpeol3dPosition>()
             .with::<LaserPointer>()
-            .insert_on_init(|| SimpleSphere)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    SimpleSphere
+                    Mesh3d(asset_value(Sphere { radius: 1.0 }))
+                    MeshMaterial3d<StandardMaterial>(asset_value(Color::from(css::YELLOW)))
+                }
+            })
             .insert_on_init_during_editor(|| Vpeol3dSnapToPlane {
                 normal: Dir3::Y,
                 offset: 2.0,
             })
     });
     app.add_yoleck_auto_edit::<LaserPointer>();
-    app.add_systems(YoleckSchedule::Populate, populate_simple_sphere);
     app.add_systems(Update, draw_laser_pointers);
 
     app.add_systems(
@@ -92,49 +109,37 @@ fn main() {
 // ============================================================================
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 16.0, 40.0).looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y),
-        VpeolCameraState::default(),
-        Vpeol3dCameraControl::topdown(),
-    ));
-
-    commands.spawn((
+    commands.spawn_scene_list(bsn_list! {
+        Camera3d
+        Transform::from_xyz(0.0, 16.0, 40.0).looking_at(Vec3::new(0.0, 0.0, 0.0), Vec3::Y)
+        VpeolCameraState
+        Vpeol3dCameraControl::topdown()
+        --
         DirectionalLight {
             color: Color::WHITE,
             illuminance: 50_000.0,
             shadow_maps_enabled: true,
-            ..Default::default()
-        },
-        Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z),
-    ));
+        }
+        Transform::from_xyz(0.0, 100.0, 0.0).looking_to(-Vec3::Y, Vec3::Z)
+    });
 }
 
-fn setup_arena(
-    mut commands: Commands,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-) {
-    let mesh = mesh_assets.add(Mesh::from(
-        Plane3d {
+fn setup_arena(mut commands: Commands) {
+    commands.spawn_scene(bsn! {
+        Mesh3d(asset_value(Plane3d {
             normal: Dir3::Y,
             half_size: Vec2::new(100.0, 100.0),
-        }
-        .mesh(),
-    ));
-    let material = material_assets.add(Color::from(css::GRAY));
-    commands.spawn((
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
-        Transform::from_xyz(0.0, -10.0, 0.0),
-    ));
+        }))
+        MeshMaterial3d<StandardMaterial>(asset_value(Color::from(css::GRAY)))
+        Transform::from_xyz(0.0, -10.0, 0.0)
+    });
 }
 
 // ============================================================================
 // Spaceship
 // ============================================================================
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct IsSpaceship;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Component, YoleckComponent, YoleckAutoEdit)]
@@ -155,20 +160,6 @@ impl Default for SpaceshipSettings {
             enabled: true,
         }
     }
-}
-
-fn populate_spaceship(
-    mut populate: YoleckPopulate<&SpaceshipSettings, With<IsSpaceship>>,
-    asset_server: Res<AssetServer>,
-) {
-    populate.populate(|ctx, mut cmd, _settings| {
-        cmd.insert(VpeolWillContainClickableChildren);
-        if ctx.is_first_time() {
-            cmd.insert(WorldAssetRoot(
-                asset_server.load("models/spaceship.glb#Scene0"),
-            ));
-        }
-    });
 }
 
 fn control_spaceship(
@@ -205,22 +196,8 @@ fn control_spaceship(
 // Planet
 // ============================================================================
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct IsPlanet;
-
-fn populate_planet(
-    mut populate: YoleckPopulate<(), With<IsPlanet>>,
-    asset_server: Res<AssetServer>,
-) {
-    populate.populate(|ctx, mut cmd, ()| {
-        cmd.insert(VpeolWillContainClickableChildren);
-        if ctx.is_first_time() {
-            cmd.insert(WorldAssetRoot(
-                asset_server.load("models/planet.glb#Scene0"),
-            ));
-        }
-    });
-}
 
 fn hit_planets(
     spaceship_query: Query<&Transform, With<IsSpaceship>>,
@@ -246,7 +223,7 @@ fn hit_planets(
 // LaserPointer (PlanetPointer)
 // ============================================================================
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct SimpleSphere;
 
 #[derive(
@@ -263,26 +240,6 @@ struct SimpleSphere;
 struct LaserPointer {
     #[yoleck(entity_ref = "Planet")]
     target: YoleckEntityRef,
-}
-
-fn populate_simple_sphere(
-    mut populate: YoleckPopulate<(), With<SimpleSphere>>,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut mesh: Local<Option<Handle<Mesh>>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-    mut material: Local<Option<Handle<StandardMaterial>>>,
-) {
-    populate.populate(|ctx, mut cmd, ()| {
-        if ctx.is_first_time() {
-            let mesh = mesh
-                .get_or_insert_with(|| mesh_assets.add(Mesh::from(Sphere { radius: 1.0 })))
-                .clone();
-            let material = material
-                .get_or_insert_with(|| material_assets.add(Color::from(css::YELLOW)))
-                .clone();
-            cmd.insert((Mesh3d(mesh), MeshMaterial3d(material)));
-        }
-    });
 }
 
 fn draw_laser_pointers(

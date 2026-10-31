@@ -428,10 +428,11 @@ impl Default for YoleckCameraChoices {
 /// Use this enum to identify which camera mode is currently active, instead of string comparisons.
 /// The built-in modes (`Fps`, `Sidescroller`, `Topdown`) are provided by default.
 /// Use `Custom(u32)` for user-defined camera modes with unique identifiers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub enum Vpeol3dCameraMode {
     /// FPS-style camera with full rotation freedom.
+    #[default]
     Fps,
     /// Fixed camera for sidescroller games (XY plane).
     Sidescroller,
@@ -442,7 +443,7 @@ pub enum Vpeol3dCameraMode {
 }
 
 /// Move and rotate a camera entity with the mouse while inside the editor.
-#[derive(Component, Clone)]
+#[derive(Component, Default, Clone)]
 #[cfg_attr(feature = "bevy_reflect", derive(bevy::reflect::Reflect))]
 pub struct Vpeol3dCameraControl {
     /// Camera mode identifier for type-safe mode comparisons.

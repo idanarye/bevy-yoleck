@@ -1,9 +1,12 @@
 use std::path::Path;
 
 use bevy::color::palettes::css;
+use bevy::ecs::template::OptionTemplate;
+use bevy::image::TextureAtlasTemplate;
 use bevy::math::Affine3A;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
+use bevy::text::FontSourceTemplate;
 use bevy_egui::{EguiPlugin, egui};
 use bevy_yoleck::vpeol::prelude::*;
 use bevy_yoleck::{YoleckEditableLevels, prelude::*};
@@ -47,15 +50,30 @@ fn main() {
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Player")
             .with::<Vpeol2dPosition>()
-            .insert_on_init(|| IsPlayer)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    IsPlayer
+                    Sprite {
+                        image: "sprites/player.png",
+                        custom_size: Vec2::new(100.0, 100.0)
+                    }
+                }
+            })
     });
-    app.add_systems(YoleckSchedule::Populate, populate_player);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("FloatingText")
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dScale>()
             .with::<TextContent>()
+            .apply_scene_on_init(|| {
+                bsn! {
+                    TextFont {
+                        font: FontSourceTemplate::Handle("fonts/FiraSans-Bold.ttf"),
+                        font_size: FontSize::Px(72.0),
+                    }
+                }
+            })
     });
     app.add_yoleck_edit_system(edit_text);
     app.add_systems(YoleckSchedule::Populate, populate_text);
@@ -65,10 +83,27 @@ fn main() {
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dRotatation>()
             .with::<Doorway>()
+            .apply_scene_on_init(|| {
+                bsn! {
+                    Sprite {
+                        image: "sprites/doorway.png",
+                        custom_size: Vec2::new(100.0, 100.0),
+                        texture_atlas: OptionTemplate::Some(TextureAtlasTemplate {
+                            layout: asset_value(TextureAtlasLayout::from_grid(
+                                            UVec2::new(64, 64),
+                                            1,
+                                            2,
+                                            None,
+                                            None,
+                                    )),
+                                    index: 0,
+                        })
+                    }
+                }
+            })
     });
     app.add_yoleck_edit_system(edit_doorway_rotation);
     app.add_yoleck_edit_system(edit_doorway);
-    app.add_systems(YoleckSchedule::Populate, populate_doorway);
     app.add_systems(Update, set_doorways_sprite_index);
 
     app.add_systems(
@@ -94,32 +129,16 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        Transform::from_xyz(0.0, 0.0, 100.0).with_scale(2.0 * (Vec3::X + Vec3::Y) + Vec3::Z),
-        VpeolCameraState::default(),
-        Vpeol2dCameraControl::default(),
-    ));
-}
-
-#[derive(Component)]
-struct IsPlayer;
-
-fn populate_player(
-    mut populate: YoleckPopulate<(), With<IsPlayer>>,
-    asset_server: Res<AssetServer>,
-    mut texture_cache: Local<Option<Handle<Image>>>,
-) {
-    populate.populate(|_ctx, mut cmd, ()| {
-        cmd.insert(Sprite {
-            image: texture_cache
-                .get_or_insert_with(|| asset_server.load("sprites/player.png"))
-                .clone(),
-            custom_size: Some(Vec2::new(100.0, 100.0)),
-            ..Default::default()
-        });
+    commands.spawn_scene(bsn! {
+        Camera2d
+        Transform::from_xyz(0.0, 0.0, 100.0).with_scale(2.0 * (Vec3::X + Vec3::Y) + Vec3::Z)
+        VpeolCameraState
+        Vpeol2dCameraControl
     });
 }
+
+#[derive(Component, Default, Clone)]
+struct IsPlayer;
 
 fn control_camera(
     player_query: Query<&GlobalTransform, With<IsPlayer>>,
@@ -185,7 +204,7 @@ fn edit_text(
     scale.0.y = scale.0.x;
 }
 
-fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<AssetServer>) {
+fn populate_text(mut populate: YoleckPopulate<&TextContent>) {
     populate.populate(|ctx, mut cmd, content| {
         let text;
         let color;
@@ -196,15 +215,7 @@ fn populate_text(mut populate: YoleckPopulate<&TextContent>, asset_server: Res<A
             text = content.text.clone();
             color = css::WHITE;
         };
-        cmd.insert((
-            Text2d(text),
-            TextFont {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf").into(),
-                font_size: FontSize::Px(72.0),
-                ..Default::default()
-            },
-            TextColor(color.into()),
-        ));
+        cmd.insert((Text2d(text), TextColor(color.into())));
     });
 }
 
@@ -264,39 +275,6 @@ fn edit_doorway_rotation(
     }
 }
 
-fn populate_doorway(
-    mut populate: YoleckPopulate<(), With<Doorway>>,
-    asset_server: Res<AssetServer>,
-    mut asset_handle_cache: Local<Option<(Handle<Image>, Handle<TextureAtlasLayout>)>>,
-    mut texture_atlas_layout_assets: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    populate.populate(|_ctx, mut cmd, ()| {
-        let (image, texture_atlas_layout) = asset_handle_cache
-            .get_or_insert_with(|| {
-                (
-                    asset_server.load("sprites/doorway.png"),
-                    texture_atlas_layout_assets.add(TextureAtlasLayout::from_grid(
-                        UVec2::new(64, 64),
-                        1,
-                        2,
-                        None,
-                        None,
-                    )),
-                )
-            })
-            .clone();
-        cmd.insert(Sprite {
-            image,
-            custom_size: Some(Vec2::new(100.0, 100.0)),
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0,
-            }),
-            ..Default::default()
-        });
-    });
-}
-
 fn set_doorways_sprite_index(mut query: Query<(&mut Sprite, Has<DoorIsOpen>), With<Doorway>>) {
     for (mut sprite, door_is_open) in query.iter_mut() {
         if let Some(texture_atlas) = sprite.texture_atlas.as_mut() {
@@ -305,12 +283,12 @@ fn set_doorways_sprite_index(mut query: Query<(&mut Sprite, Has<DoorIsOpen>), Wi
     }
 }
 
-#[derive(Component)]
+#[derive(Component, FromTemplate)]
 struct LevelFromOpenedDoor {
     exit_door: Entity,
 }
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct PlayerHoldingLevel;
 
 fn handle_player_entity_when_level_loads(
@@ -327,13 +305,13 @@ fn handle_player_entity_when_level_loads(
             commands.entity(player_entity).despawn();
         } else {
             belongs_to_level.level = commands
-                .spawn((
+                .spawn_scene(bsn! {
                     // So that the player entity will be removed when finishing a playtest in the
                     // editor:
-                    YoleckKeepLevel,
+                    YoleckKeepLevel
                     // So that we won't remove that level when unloading old rooms:
-                    PlayerHoldingLevel,
-                ))
+                    PlayerHoldingLevel
+                })
                 .id();
             let translation_for_camera = player_position.0.extend(100.0);
             for mut camera_transform in camera_query.iter_mut() {
@@ -360,7 +338,6 @@ fn handle_door_opening(
         Without<DoorIsOpen>,
     >,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     levels_query: Query<Entity, (With<YoleckKeepLevel>, Without<PlayerHoldingLevel>)>,
 ) {
     for player_transform in players_query.iter() {
@@ -376,14 +353,12 @@ fn handle_door_opening(
                 }
 
                 commands.entity(door_entity).insert(DoorIsOpen);
-                commands.spawn((
-                    YoleckLoadLevel(
-                        asset_server.load(format!("levels_doors/{}", doorway.target_level)),
-                    ),
+                commands.spawn_scene(bsn! {
+                    YoleckLoadLevel(format!("levels_doors/{}", doorway.target_level))
                     LevelFromOpenedDoor {
                         exit_door: door_entity,
-                    },
-                ));
+                    }
+                });
             }
         }
     }

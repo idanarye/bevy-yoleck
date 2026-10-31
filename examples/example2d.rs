@@ -2,9 +2,12 @@ use std::path::Path;
 
 use bevy::color::palettes::css;
 use bevy::ecs::system::SystemState;
+use bevy::ecs::template::OptionTemplate;
+use bevy::image::TextureAtlasTemplate;
 use bevy::mesh::Indices;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
+use bevy::text::FontSourceTemplate;
 use bevy::{asset::RenderAssetUsages, log::LogPlugin};
 use bevy_egui::{EguiContexts, EguiPlugin, egui};
 
@@ -64,10 +67,17 @@ fn main() {
         YoleckEntityType::new("Player")
             .with::<Vpeol2dPosition>()
             .with::<Vpeol2dRotatation>()
-            .insert_on_init(|| IsPlayer)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    IsPlayer
+                    Sprite {
+                        image: "sprites/player.png",
+                        custom_size: Vec2::new(100.0, 100.0)
+                    }
+                }
+            })
     });
     app.add_yoleck_edit_system(edit_player);
-    app.add_systems(YoleckSchedule::Populate, populate_player);
     app.add_yoleck_entity_upgrade_for(1, "Player", |data| {
         let mut old_data = data.remove("Player").unwrap();
         data["Vpeol2dPosition"] = old_data.get_mut("position").unwrap().take();
@@ -82,6 +92,13 @@ fn main() {
             .with_uuid()
             .with::<Vpeol2dPosition>()
             .with::<FruitType>()
+            .apply_scene_on_init(|| {
+                bsn! {
+                    Visibility
+                    VpeolWillContainClickableChildren
+                    IsFruit
+                }
+            })
     });
     app.add_yoleck_edit_system(duplicate_fruit);
     app.add_yoleck_edit_system(edit_fruit_type);
@@ -108,6 +125,14 @@ fn main() {
             .with::<Vpeol2dScale>()
             .with::<TextContent>()
             .with::<TextLaserPointer>()
+            .apply_scene_on_init(|| {
+                bsn! {
+                    TextFont {
+                        font: FontSourceTemplate::Handle("fonts/FiraSans-Bold.ttf"),
+                        font_size: FontSize::Px(72.0),
+                    }
+                }
+            })
     });
     app.add_yoleck_auto_edit::<TextContent>();
     app.add_yoleck_auto_edit::<TextLaserPointer>();
@@ -135,6 +160,11 @@ fn main() {
         YoleckEntityType::new("Triangle")
             .with::<Vpeol2dPosition>()
             .with::<TriangleVertices>()
+            .apply_scene_on_init(|| {
+                bsn! {
+                    MeshMaterial2d<ColorMaterial>(asset_value(Color::from(css::GREEN)))
+                }
+            })
     });
     app.add_yoleck_edit_system(edit_triangle);
     app.add_systems(YoleckSchedule::Populate, populate_triangle);
@@ -157,12 +187,12 @@ fn main() {
 // ============================================================================
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        Transform::from_xyz(0.0, 0.0, 100.0),
-        VpeolCameraState::default(),
-        Vpeol2dCameraControl::default(),
-    ));
+    commands.spawn_scene(bsn! {
+        Camera2d
+        Transform::from_xyz(0.0, 0.0, 100.0)
+        VpeolCameraState
+        Vpeol2dCameraControl
+    });
 }
 
 fn setup_assets(world: &mut World) {
@@ -174,7 +204,6 @@ struct GameAssets {
     fruits_sprite_sheet_texture: Handle<Image>,
     fruits_sprite_sheet_layout: Handle<TextureAtlasLayout>,
     fruits_sprite_sheet_egui: Option<(egui::TextureId, Vec<egui::Rect>)>,
-    font: Handle<Font>,
 }
 
 impl FromWorld for GameAssets {
@@ -219,7 +248,6 @@ impl FromWorld for GameAssets {
             fruits_sprite_sheet_texture: fruits_atlas_texture,
             fruits_sprite_sheet_layout: texture_atlas_layout_assets.add(fruits_atlas_layout),
             fruits_sprite_sheet_egui: fruits_egui,
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
         }
     }
 }
@@ -228,24 +256,8 @@ impl FromWorld for GameAssets {
 // Player
 // ============================================================================
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct IsPlayer;
-
-fn populate_player(
-    mut populate: YoleckPopulate<(), With<IsPlayer>>,
-    asset_server: Res<AssetServer>,
-    mut texture_cache: Local<Option<Handle<Image>>>,
-) {
-    populate.populate(|_ctx, mut cmd, ()| {
-        cmd.insert(Sprite {
-            image: texture_cache
-                .get_or_insert_with(|| asset_server.load("sprites/player.png"))
-                .clone(),
-            custom_size: Some(Vec2::new(100.0, 100.0)),
-            ..Default::default()
-        });
-    });
-}
 
 fn edit_player(
     mut ui: ResMut<YoleckUi>,
@@ -297,7 +309,7 @@ fn control_player(
 // Fruit
 // ============================================================================
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 struct IsFruit;
 
 #[derive(
@@ -409,22 +421,18 @@ fn populate_fruit(
 ) {
     populate.populate(|_ctx, mut cmd, fruit| {
         marking.despawn_marked(&mut cmd);
-        cmd.insert((
-            Visibility::default(),
-            VpeolWillContainClickableChildren,
-            IsFruit,
-        ));
-        cmd.with_children(|commands| {
-            let mut child = commands.spawn(marking.marker());
-            child.insert((Sprite {
-                image: assets.fruits_sprite_sheet_texture.clone(),
-                texture_atlas: Some(TextureAtlas {
-                    layout: assets.fruits_sprite_sheet_layout.clone(),
-                    index: fruit.index,
+        let marker = marking.marker();
+        cmd.insert(VpeolWillContainClickableChildren);
+        cmd.queue_spawn_related_scenes::<Children>(bsn_list! {
+            marker
+            Sprite {
+                image: {assets.fruits_sprite_sheet_texture.clone()}
+                texture_atlas: OptionTemplate::Some(TextureAtlasTemplate {
+                    layout: {assets.fruits_sprite_sheet_layout.clone()},
+                    index: {fruit.index},
                 }),
-                custom_size: Some(Vec2::new(100.0, 100.0)),
-                ..Default::default()
-            },));
+                custom_size: Vec2::new(100.0, 100.0),
+            }
         });
     });
 }
@@ -475,16 +483,9 @@ struct TextLaserPointer {
     target: YoleckEntityRef,
 }
 
-fn populate_text(mut populate: YoleckPopulate<&TextContent>, assets: Res<GameAssets>) {
+fn populate_text(mut populate: YoleckPopulate<&TextContent>) {
     populate.populate(|_ctx, mut cmd, content| {
-        cmd.insert((
-            Text2d(content.text.clone()),
-            TextFont {
-                font: assets.font.clone().into(),
-                font_size: FontSize::Px(72.0),
-                ..Default::default()
-            },
-        ));
+        cmd.insert((Text2d(content.text.clone()),));
     });
 }
 
@@ -537,7 +538,6 @@ fn edit_triangle(
 fn populate_triangle(
     mut populate: YoleckPopulate<(&TriangleVertices, Option<&Mesh2d>)>,
     mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut material_assets: ResMut<Assets<ColorMaterial>>,
 ) {
     populate.populate(|_ctx, mut cmd, (triangle, mesh2d)| {
         let mut mesh = if let Some(Mesh2d(mesh_handle)) = mesh2d {
@@ -550,10 +550,7 @@ fn populate_triangle(
                 RenderAssetUsages::default(),
             ));
             let mesh = mesh_assets.get_mut(&mesh_handle);
-            cmd.insert((
-                Mesh2d(mesh_handle),
-                MeshMaterial2d(material_assets.add(Color::from(css::GREEN))),
-            ));
+            cmd.insert((Mesh2d(mesh_handle),));
             mesh.expect("mesh was just inserted")
         };
         mesh.insert_attribute(

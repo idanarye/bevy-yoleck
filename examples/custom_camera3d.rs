@@ -91,57 +91,55 @@ fn main() {
         YoleckEntityType::new("Cube")
             .with::<Vpeol3dPosition>()
             .with::<Vpeol3dScale>()
-            .insert_on_init(|| IsCube)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    VpeolWillContainClickableChildren
+                    Mesh3d(asset_value(Cuboid::from_size(Vec3::splat(2.0))))
+                    MeshMaterial3d<StandardMaterial>(asset_value(Color::from(css::BLUE)))
+                }
+            })
     });
-    app.add_systems(YoleckSchedule::Populate, populate_cube);
 
     app.add_yoleck_entity_type({
         YoleckEntityType::new("Sphere")
             .with::<Vpeol3dPosition>()
-            .insert_on_init(|| IsSphere)
+            .apply_scene_on_init(|| {
+                bsn! {
+                    VpeolWillContainClickableChildren
+                    Mesh3d(asset_value(Sphere { radius: 1.0 }))
+                    MeshMaterial3d<StandardMaterial>(asset_value(Color::from(css::RED)))
+                }
+            })
     });
-    app.add_systems(YoleckSchedule::Populate, populate_sphere);
 
     app.run();
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        VpeolCameraState::default(),
-        Vpeol3dCameraControl::topdown(),
-    ));
-
-    commands.spawn((
+    commands.spawn_scene_list(bsn_list! {
+        Camera3d
+        Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y)
+        VpeolCameraState
+        Vpeol3dCameraControl::topdown()
+        --
         DirectionalLight {
             color: Color::WHITE,
             illuminance: 10_000.0,
             shadow_maps_enabled: true,
-            ..Default::default()
-        },
-        Transform::from_xyz(5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-    ));
+        }
+        Transform::from_xyz(5.0, 10.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y)
+    });
 }
 
-fn setup_scene(
-    mut commands: Commands,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-) {
-    let mesh = mesh_assets.add(Mesh::from(
-        Plane3d {
+fn setup_scene(mut commands: Commands) {
+    commands.spawn_scene(bsn! {
+        Mesh3d(asset_value(Plane3d {
             normal: Dir3::Y,
             half_size: Vec2::new(50.0, 50.0),
-        }
-        .mesh(),
-    ));
-    let material = material_assets.add(Color::from(css::DARK_GRAY));
-    commands.spawn((
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
-        Transform::from_xyz(0.0, -1.0, 0.0),
-    ));
+        }))
+        MeshMaterial3d<StandardMaterial>(asset_value(Color::from(css::DARK_GRAY)))
+        Transform::from_xyz(0.0, -1.0, 0.0)
+    });
 }
 
 fn isometric_camera_movement(
@@ -244,54 +242,4 @@ fn orbital_camera_movement(
 
         camera_transform.look_at(look_at, Vec3::Y);
     }
-}
-
-#[derive(Component)]
-struct IsCube;
-
-fn populate_cube(
-    mut populate: YoleckPopulate<(), With<IsCube>>,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut mesh: Local<Option<Handle<Mesh>>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-    mut material: Local<Option<Handle<StandardMaterial>>>,
-) {
-    populate.populate(|ctx, mut cmd, ()| {
-        cmd.insert(VpeolWillContainClickableChildren);
-        if ctx.is_first_time() {
-            let mesh = mesh
-                .get_or_insert_with(|| {
-                    mesh_assets.add(Mesh::from(Cuboid::from_size(Vec3::splat(2.0))))
-                })
-                .clone();
-            let material = material
-                .get_or_insert_with(|| material_assets.add(Color::from(css::BLUE)))
-                .clone();
-            cmd.insert((Mesh3d(mesh), MeshMaterial3d(material)));
-        }
-    });
-}
-
-#[derive(Component)]
-struct IsSphere;
-
-fn populate_sphere(
-    mut populate: YoleckPopulate<(), With<IsSphere>>,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut mesh: Local<Option<Handle<Mesh>>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-    mut material: Local<Option<Handle<StandardMaterial>>>,
-) {
-    populate.populate(|ctx, mut cmd, ()| {
-        cmd.insert(VpeolWillContainClickableChildren);
-        if ctx.is_first_time() {
-            let mesh = mesh
-                .get_or_insert_with(|| mesh_assets.add(Mesh::from(Sphere { radius: 1.0 })))
-                .clone();
-            let material = material
-                .get_or_insert_with(|| material_assets.add(Color::from(css::RED)))
-                .clone();
-            cmd.insert((Mesh3d(mesh), MeshMaterial3d(material)));
-        }
-    });
 }
