@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 0.35.0 - 2026-10-31
 ### Added
 - BSN support:
   - `apply_scene_on_init` method for adding scenes to Yoleck entities.
