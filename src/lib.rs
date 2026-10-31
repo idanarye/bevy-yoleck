@@ -98,6 +98,11 @@
 //!     app.add_yoleck_entity_type({
 //!         YoleckEntityType::new("Rectangle")
 //!             .with::<Rectangle>()
+//!             .apply_scene_on_init(|| bsn! {
+//!                 // Place here a Bevy scene with components that do not need to know the values
+//!                 // of the Yoleck components. Components that depend on that value should go in
+//!                 // populate systems.
+//!             })
 //!     });
 //!     app.add_yoleck_edit_system(edit_rectangle);
 //!     app.add_systems(YoleckSchedule::Populate, populate_rectangle);

@@ -54,6 +54,9 @@ impl YoleckEntityType {
         self
     }
 
+    /// Automatically apply a Bevy scene when creating entities of this type.
+    ///
+    /// Do not use this to add the [`YoleckComponent`]s. Yoleck handles them differently.
     pub fn apply_scene_on_init<T: Scene>(
         mut self,
         scene: impl 'static + Sync + Send + Fn() -> T,
